@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Carrinhos_Net · Sistema</title>
+<style>
+  :root{
+    --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a;
+    --text:#e6e8ec; --muted:#9aa1ad; --accent:#3b82f6; --accent-soft:#1e2b45;
+    --ok:#22c55e; --danger:#ef4444; --warn:#f59e0b;
+    --radius:10px; --font:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
+  input,select,button{font-family:inherit;font-size:14px}
+
+  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;width:100%;max-width:360px}
+  .card h1{font-size:18px;font-weight:600;margin-bottom:4px}
+  .card p{color:var(--muted);font-size:13px;margin-bottom:24px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .field input{width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+  .field input:focus{outline:none;border-color:var(--accent)}
+  .btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer}
+  .btn:hover{opacity:.92}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .erro{color:var(--danger);font-size:13px;margin-top:12px;min-height:18px}
+
+  #app{display:none}
+  #app.on{display:flex;min-height:100vh;align-items:stretch}
+  .sidebar{width:232px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:8px;padding:16px 12px;height:100vh;position:sticky;top:0}
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:6px}
+  .brand .logo{width:32px;height:32px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700}
+  .brand .t1{font-weight:600;font-size:14px}
+  .brand .t2{font-size:11px;color:var(--muted)}
+  .navtit{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 10px 2px}
+  nav{display:flex;flex-direction:column;gap:4px}
+  nav button{padding:10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%}
+  nav button:hover{color:var(--text);background:var(--surface2)}
+  nav button.active{color:#fff;background:var(--accent-soft);border-color:var(--accent)}
+  .userbox{margin-top:auto;display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:13px;padding-top:12px;border-top:1px solid var(--border)}
+  .userbox .who{color:var(--muted)}
+  .link{color:var(--accent);cursor:pointer;background:none;border:none;font-size:13px;padding:0}
+  .content{flex:1;min-width:0}
+
+  main{padding:20px;max-width:1500px;margin:0 auto}
+  .tela{display:none}
+  .tela.active{display:block}
+
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .search{position:relative;flex:1;min-width:200px}
+  .search input{width:100%;padding:9px 12px 9px 34px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .toolbar select{padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+  .toolbar button.act{padding:9px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;white-space:nowrap}
+  .toolbar button.act:hover{border-color:var(--accent)}
+  .toolbar button.prim{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+  .kpi .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .kpi .val{font-size:22px;font-weight:600;letter-spacing:-.01em}
+
+  .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
+  thead th{text-align:left;padding:11px 14px;background:var(--surface2);color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);position:sticky;top:0}
+  tbody td{padding:10px 14px;border-bottom:1px solid var(--border)}
+  tbody tr:hover{background:var(--surface2)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .neg{color:#f87171}
+  .foot{padding:10px 14px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .empty,.loading{padding:48px 20px;text-align:center;color:var(--muted)}
+  td.conf{text-align:center}
+  .chk{width:18px;height:18px;cursor:pointer;accent-color:var(--ok)}
+  .chk:disabled{cursor:not-allowed;opacity:.5}
+  tr.pendente td{background:rgba(245,158,11,.05)}
+  tbody tr{cursor:pointer}
+  .conf-lbl{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:var(--surface2);border:1px solid var(--border)}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:40}
+  .overlay.open{display:block}
+  .drawer{position:fixed;top:0;right:0;height:100vh;width:440px;max-width:92vw;background:var(--surface);border-left:1px solid var(--border);z-index:50;transform:translateX(100%);transition:transform .2s ease;overflow-y:auto;display:flex;flex-direction:column}
+  .drawer.open{transform:translateX(0)}
+  .drawer h2{font-size:15px;font-weight:600;padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  .drawer h2 .x{cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px;line-height:1}
+  .drawer .body{padding:18px 20px;flex:1}
+  .drawer .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .fld{margin-bottom:2px}
+  .fld.full{grid-column:1/-1}
+  .fld label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+  .fld input,.fld select{width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
+  .fld input:focus,.fld select:focus{outline:none;border-color:var(--accent)}
+  .fld input[readonly]{opacity:.55;cursor:not-allowed}
+  .sec-tit{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 10px}
+  .calc-sec{margin-top:18px;padding-top:14px;border-top:1px dashed var(--border)}
+  .drawer .foot{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px}
+  .drawer .foot button{flex:1;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;border:none}
+  .btn-save{background:var(--accent);color:#fff}
+  .btn-cancel{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .drawer-erro{color:var(--danger);font-size:12px;padding:0 20px;min-height:16px}
+
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
+  .modal.open{display:flex}
+  .modal .box{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:640px;max-width:96vw;max-height:86vh;display:flex;flex-direction:column}
+  .modal .box h3{padding:16px 20px;border-bottom:1px solid var(--border);font-size:15px;display:flex;justify-content:space-between;align-items:center}
+  .modal .box .content{padding:16px 20px;overflow-y:auto}
+  .res{width:100%;border-collapse:collapse;font-size:13px}
+  .res th{text-align:left;color:var(--muted);font-weight:500;padding:8px;border-bottom:1px solid var(--border)}
+  .res td{padding:8px;border-bottom:1px solid var(--border)}
+  .res button{padding:5px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px}
+
+  /* menu lateral retrátil */
+  .sidebar{transition:width .18s ease}
+  .toggle-btn{background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:7px;cursor:pointer;flex-shrink:0;line-height:1}
+  .toggle-btn:hover{color:var(--text);border-color:var(--accent)}
+  #app.nav-hidden .sidebar{display:none}
+  .floating-toggle{position:fixed;top:12px;left:12px;z-index:70;display:none;background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:8px;cursor:pointer;font-size:16px}
+  #app.nav-hidden .floating-toggle{display:block}
+
+  /* cadastros */
+  .subtabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
+  .subtabs button{padding:9px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-weight:500;margin-bottom:-1px}
+  .subtabs button.active{color:var(--text);border-bottom-color:var(--accent)}
+  .acao-grupo{margin-bottom:16px}
+  .acao-grupo .gt{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
+  .acao-item{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer}
+  .acao-item input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+  .badge-adm{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;background:var(--accent-soft);color:var(--accent);vertical-align:middle}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="login">
+  <div class="card">
+    <h1>Carrinhos_Net</h1>
+    <p>Sistema de controle · entre para continuar</p>
+    <div class="field"><label>Usuário</label><input id="in-login" autocomplete="username" placeholder="admin" /></div>
+    <div class="field"><label>Senha</label><input id="in-senha" type="password" autocomplete="current-password" placeholder="••••••••" /></div>
+    <button class="btn" id="btn-entrar">Entrar</button>
+    <div class="erro" id="login-erro"></div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <button class="floating-toggle" id="btn-expand" title="Mostrar menu">☰</button>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">CN</div>
+      <div style="flex:1"><div class="t1">Carrinhos_Net</div><div class="t2">Sistema de controle</div></div>
+      <button class="toggle-btn" id="btn-collapse" title="Esconder menu">‹</button>
+    </div>
+    <div class="navtit">Telas</div>
+    <nav id="nav">
+      <button data-tela="vendas" id="nav-vendas">Controle de Vendas</button>
+      <button data-tela="envios" id="nav-envios">Controle de Envios</button>
+      <button data-tela="cadastro" id="nav-cadastro">Cadastros</button>
+    </nav>
+    <div class="userbox"><span class="who" id="who"></span><button class="link" id="btn-sair">Sair</button></div>
+  </aside>
+
+  <div class="content"><main>
+    <!-- =================== TELA VENDAS =================== -->
+    <section class="tela" id="scr-vendas">
+      <div class="toolbar">
+        <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="vd-busca" placeholder="Buscar cliente, ID do pedido ou SKU" /></div>
+        <select id="vd-mes"><option value="">Todos os meses</option></select>
+        <select id="vd-canal"><option value="">Todos os canais</option></select>
+        <button class="act" id="vd-atualizar">↻ Atualizar</button>
+        <button class="act" id="vd-exportar">Exportar CSV</button>
+        <span id="vd-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div id="vd-syncbox" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span id="vd-syncmsg" style="font-size:13px">Atualizando…</span><span id="vd-syncpct" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div style="height:6px;background:var(--surface2);border-radius:4px;overflow:hidden"><div id="vd-syncbar" style="height:100%;width:0%;background:var(--accent);transition:width .3s"></div></div>
+      </div>
+      <div class="kpis" id="vd-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Data</th><th>Canal</th><th>Envio</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
+        <th class="num">Vlr Unit.</th><th class="num">Vlr Total</th><th class="num">Comissão</th><th class="num">% Com.</th><th>Anúncio</th>
+        <th class="num">Frete</th><th class="num">Frete Ag.</th><th class="num">Dif. Frete</th><th class="num">Frete Extra</th>
+        <th class="num">Total NF</th><th class="num">A Receber</th><th class="num">Lucro %</th><th style="text-align:center">Conferido</th>
+      </tr></thead><tbody id="vd-tbody"></tbody></table></div>
+      <div class="foot"><span id="vd-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="vd-prev" style="padding:4px 10px">‹ Anterior</button><span id="vd-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="vd-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
+    </section>
+
+    <!-- =================== TELA ENVIOS =================== -->
+    <section class="tela" id="scr-envios">
+      <div class="toolbar">
+        <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="en-busca" placeholder="Buscar cliente, ID, SKU ou protocolo" /></div>
+        <select id="en-mes"><option value="">Todos os meses</option></select>
+        <select id="en-canal"><option value="">Todos os canais</option></select>
+        <select id="en-status"><option value="">Todos os status</option></select>
+        <select id="en-transp"><option value="">Todas transportadoras</option></select>
+        <select id="en-conf"><option value="">Conf.: todos</option><option value="false">Pendentes</option><option value="true">Conferidos</option></select>
+        <button class="act prim" id="en-lancar">+ Lançar item</button>
+        <button class="act" id="en-gerar">↻ Gerar envios</button>
+        <button class="act" id="en-exportar">Exportar CSV</button>
+        <span id="en-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="kpis" id="en-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Data</th><th>Mês</th><th>Canal</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
+        <th>Transportadora</th><th>Protocolo</th><th>Pgto Frete</th><th>Tempo</th><th>Ent. Prometida</th><th>Ent. Concluída</th><th>Status</th>
+        <th class="num">Vlr Transporte</th><th class="num">Vlr Incluso</th><th class="num">Vlr Extra</th><th class="num">Diferença</th><th style="text-align:center">Conferido</th>
+      </tr></thead><tbody id="en-tbody"></tbody></table></div>
+      <div class="foot"><span id="en-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="en-prev" style="padding:4px 10px">‹ Anterior</button><span id="en-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="en-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
+    </section>
+
+    <!-- =================== TELA CADASTROS =================== -->
+    <section class="tela" id="scr-cadastro">
+      <div class="subtabs">
+        <button id="cad-tab-usuarios" class="active">Usuários</button>
+        <button id="cad-tab-perfis">Perfis</button>
+      </div>
+
+      <div id="cad-usuarios">
+        <div class="toolbar"><button class="act prim" id="cad-novo-usuario">+ Novo usuário</button></div>
+        <div class="tablewrap"><div class="scroll"><table><thead><tr>
+          <th>Nome</th><th>Login</th><th>Perfil</th><th>Situação</th><th></th>
+        </tr></thead><tbody id="cad-u-tbody"></tbody></table></div></div>
+      </div>
+
+      <div id="cad-perfis" style="display:none">
+        <div class="toolbar"><button class="act prim" id="cad-novo-perfil">+ Novo perfil</button></div>
+        <div class="tablewrap"><div class="scroll"><table><thead><tr>
+          <th>Perfil</th><th>Descrição</th><th class="num">Usuários</th><th></th>
+        </tr></thead><tbody id="cad-p-tbody"></tbody></table></div></div>
+      </div>
+    </section>
+  </main></div>
+</div>
+
+<!-- ===== DRAWER VENDAS ===== -->
+<div class="overlay" id="vd-overlay"></div>
+<aside class="drawer" id="vd-drawer">
+  <h2>Editar venda <button class="x" id="vd-drawer-x">×</button></h2>
+  <div class="drawer-erro" id="vd-drawer-erro"></div>
+  <div class="body"><div class="grid">
+    <div class="fld"><label>Data da compra</label><input type="date" id="vd-e-data"></div>
+    <div class="fld"><label>Canal</label><input id="vd-e-canal"></div>
+    <div class="fld"><label>Tipo de envio</label><select id="vd-e-tenvio"><option value="">—</option><option>Transportadora</option><option>Mercado Envios</option><option>Retirada</option><option>Terceiro</option></select></div>
+    <div class="fld"><label>UF</label><input id="vd-e-uf" maxlength="2" style="text-transform:uppercase"></div>
+    <div class="fld full"><label>Cliente</label><input id="vd-e-cliente"></div>
+    <div class="fld"><label>SKU / Modelo</label><input id="vd-e-modelo"></div>
+    <div class="fld"><label>Quantidade</label><input type="number" step="1" id="vd-e-qtd"></div>
+    <div class="fld"><label>Valor unitário (R$)</label><input type="number" step="0.01" id="vd-e-vunit"></div>
+    <div class="fld"><label>Comissão (R$)</label><input type="number" step="0.01" id="vd-e-comissao"></div>
+    <div class="fld"><label>Tipo de anúncio</label><input id="vd-e-anuncio" list="vd-lista-anuncio" placeholder="Premium / Clássico ou pgto (Shopify)"><datalist id="vd-lista-anuncio"><option value="Premium"></option><option value="Clássico"></option></datalist></div>
+    <div class="fld"><label>Frete (R$)</label><input type="number" step="0.01" id="vd-e-frete"></div>
+    <div class="fld"><label>Frete extra (R$)</label><input type="number" step="0.01" id="vd-e-fextra"></div>
+    <div class="fld"><label>Frete aguardado (R$)</label><input type="number" step="0.01" id="vd-e-faguard"></div>
+  </div>
+  <div class="calc-sec"><div class="sec-tit">Calculados automaticamente</div><div class="grid">
+    <div class="fld"><label>Valor total</label><input id="vd-c-total" readonly></div>
+    <div class="fld"><label>Valor total NF</label><input id="vd-c-nf" readonly></div>
+    <div class="fld"><label>Valor a receber</label><input id="vd-c-receber" readonly></div>
+    <div class="fld"><label>Lucro bruto %</label><input id="vd-c-lucro" readonly></div>
+  </div></div></div>
+  <div class="foot"><button class="btn-cancel" id="vd-drawer-cancel">Cancelar</button><button class="btn-save" id="vd-drawer-save">Salvar</button></div>
+</aside>
+
+<!-- ===== DRAWER ENVIOS ===== -->
+<div class="overlay" id="en-overlay"></div>
+<aside class="drawer" id="en-drawer">
+  <h2>Editar envio <button class="x" id="en-drawer-x">×</button></h2>
+  <div class="drawer-erro" id="en-drawer-erro"></div>
+  <div class="body">
+    <div class="sec-tit">Pedido (de Vendas)</div>
+    <div class="grid">
+      <div class="fld"><label>Data</label><input id="en-e-data" readonly></div>
+      <div class="fld"><label>Canal</label><input id="en-e-canal" readonly></div>
+      <div class="fld"><label>ID do pedido</label><input id="en-e-idped" readonly></div>
+      <div class="fld"><label>SKU</label><input id="en-e-modelo" readonly></div>
+      <div class="fld"><label>Cliente</label><input id="en-e-cliente" readonly></div>
+      <div class="fld"><label>UF</label><input id="en-e-uf" readonly></div>
+    </div>
+    <div class="sec-tit">Envio</div>
+    <div class="grid">
+      <div class="fld"><label>Transportadora</label><select id="en-e-transp"></select></div>
+      <div class="fld"><label>Protocolo</label><input id="en-e-protocolo"></div>
+      <div class="fld"><label>Pagamento do frete</label><select id="en-e-pgto"></select></div>
+      <div class="fld"><label>Tempo de entrega</label><select id="en-e-tempo"></select></div>
+      <div class="fld"><label>Entrega prometida</label><input type="date" id="en-e-prometida"></div>
+      <div class="fld"><label>Entrega concluída</label><input type="date" id="en-e-concluida"></div>
+      <div class="fld full"><label>Status</label><select id="en-e-status"></select></div>
+    </div>
+    <div class="sec-tit">Valores</div>
+    <div class="grid">
+      <div class="fld"><label>Valor transporte (R$)</label><input type="number" step="0.01" id="en-e-transporte"></div>
+      <div class="fld"><label>Valor incluso p/ frete (R$)</label><input type="number" step="0.01" id="en-e-incluso"></div>
+      <div class="fld"><label>Valor extra (R$)</label><input id="en-e-extra" readonly></div>
+      <div class="fld"><label>Diferença (R$)</label><input id="en-e-dif" readonly></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="en-drawer-cancel">Cancelar</button><button class="btn-save" id="en-drawer-save">Salvar</button></div>
+</aside>
+
+<!-- ===== MODAL LANÇAMENTO MANUAL (ENVIOS) ===== -->
+<div class="modal" id="en-modal"><div class="box">
+  <h3>Lançar item manualmente <button class="x" id="en-modal-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
+  <div class="content">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Busque um pedido de Vendas (inclusive ME2) que ainda não esteja em Envios.</p>
+    <div class="field"><input id="en-m-busca" placeholder="Buscar cliente, ID do pedido ou SKU" style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+    <div class="drawer-erro" id="en-m-erro" style="padding:6px 0"></div>
+    <div id="en-m-res"></div>
+  </div>
+</div></div>
+
+<!-- ===== DRAWER USUÁRIO ===== -->
+<div class="overlay" id="cu-overlay"></div>
+<aside class="drawer" id="cu-drawer">
+  <h2 id="cu-titulo">Usuário <button class="x" id="cu-x">×</button></h2>
+  <div class="drawer-erro" id="cu-erro"></div>
+  <div class="body"><div class="grid">
+    <div class="fld full"><label>Nome</label><input id="cu-nome"></div>
+    <div class="fld"><label>Login</label><input id="cu-login" autocomplete="off"></div>
+    <div class="fld"><label>Senha</label><input id="cu-senha" type="password" autocomplete="new-password"></div>
+    <div class="fld"><label>Perfil</label><select id="cu-perfil"></select></div>
+    <div class="fld"><label>Situação</label><select id="cu-ativo"><option value="true">Ativo</option><option value="false">Inativo</option></select></div>
+  </div></div>
+  <div class="foot"><button class="btn-cancel" id="cu-cancel">Cancelar</button><button class="btn-save" id="cu-save">Salvar</button></div>
+</aside>
+
+<!-- ===== DRAWER PERFIL ===== -->
+<div class="overlay" id="cp-overlay"></div>
+<aside class="drawer" id="cp-drawer">
+  <h2 id="cp-titulo">Perfil <button class="x" id="cp-x">×</button></h2>
+  <div class="drawer-erro" id="cp-erro"></div>
+  <div class="body">
+    <div class="grid">
+      <div class="fld full"><label>Nome do perfil</label><input id="cp-nome"></div>
+      <div class="fld full"><label>Descrição</label><input id="cp-descricao"></div>
+    </div>
+    <div class="sec-tit">Ações permitidas</div>
+    <div id="cp-acoes"></div>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="cp-cancel">Cancelar</button><button class="btn-save" id="cp-save">Salvar</button></div>
+</aside>
+
+<!-- ============ BASE COMPARTILHADA ============ -->
+<script>
+// ================== CONFIG ==================
+const SUPABASE_URL = "https://mdscihxefuhozrvooqdf.supabase.co";
+const SUPABASE_KEY = "sb_publishable_tFfKZDx9c1mqrj6ezhdhQg_7lucY327";
+// ============================================
+const $ = (id)=>document.getElementById(id);
+const rpcURL = (fn)=>`${SUPABASE_URL}/rest/v1/rpc/${fn}`;
+const FUNC_URL = (fn)=>`${SUPABASE_URL}/functions/v1/${fn}`;
+
+async function rpc(fn, args){
+  const resp = await fetch(rpcURL(fn), { method:"POST", headers:{ "apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json" }, body:JSON.stringify(args||{}) });
+  const txt = await resp.text(); let data; try{ data=JSON.parse(txt); }catch{ data=txt; }
+  if(!resp.ok) throw new Error(data?.message||data?.hint||txt||("HTTP "+resp.status));
+  return data;
+}
+async function chamarFuncao(fn, body){
+  const resp = await fetch(FUNC_URL(fn), { method:"POST", headers:{ "apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json" }, body:JSON.stringify(body||{}) });
+  const txt = await resp.text(); let data; try{ data=JSON.parse(txt); }catch{ data=txt; }
+  if(!resp.ok || (data && data.ok===false)) throw new Error((data&&data.erro)||txt||("HTTP "+resp.status));
+  return data;
+}
+
+let USER=null, PERMISSOES=new Set();
+function temPermissao(a){ return PERMISSOES.has(a); }
+const brl=(v)=>(v==null||v==='')?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const pct=(v)=>(v==null||v==='')?'—':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+const dataBr=(d)=>!d?'—':d.split('-').reverse().join('/');
+const mesLabel=(d)=>{ if(!d) return ''; const [y,m]=d.split('-'); const n=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']; return n[Number(m)-1]+'/'+y; };
+
+// registro de telas: cada arquivo .js chama registrarTela('vendas', {init, ...})
+const TELAS = {};
+const CARREGADO = {};
+function registrarTela(nome, api){ TELAS[nome] = api; }
+
+// ================== LOGIN / NAV ==================
+async function entrar(){
+  const login=$('in-login').value.trim(), senha=$('in-senha').value;
+  $('login-erro').textContent='';
+  if(!login||!senha){ $('login-erro').textContent='Preencha usuário e senha.'; return; }
+  $('btn-entrar').disabled=true; $('btn-entrar').textContent='Entrando...';
+  try{
+    const r=await rpc('autenticar',{p_login:login,p_senha:senha});
+    if(!r||r.length===0) throw new Error('Usuário ou senha inválidos.');
+    USER=r[0]; sessionStorage.setItem('cn_user',JSON.stringify(USER)); await abrirApp();
+  }catch(e){ $('login-erro').textContent=e.message||'Falha ao entrar.'; }
+  finally{ $('btn-entrar').disabled=false; $('btn-entrar').textContent='Entrar'; }
+}
+async function carregarPermissoes(){
+  if(USER.acoes){ PERMISSOES=new Set(USER.acoes); return; }
+  try{ const r=await rpc('cn_minhas_permissoes',{p_usuario_id:USER.id}); PERMISSOES=new Set((r||[]).map(x=>x.acao)); USER.acoes=[...PERMISSOES]; sessionStorage.setItem('cn_user',JSON.stringify(USER)); }
+  catch(e){ PERMISSOES=new Set(); }
+}
+async function abrirApp(){
+  $('login').style.display='none'; $('app').classList.add('on');
+  $('who').textContent = USER.nome + (USER.perfil_nome? ' · '+USER.perfil_nome : '');
+  await carregarPermissoes();
+  $('nav-vendas').style.display = temPermissao('vendas.ver') ? '' : 'none';
+  $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
+  $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
+  const primeira = temPermissao('vendas.ver') ? 'vendas' : (temPermissao('envios.ver') ? 'envios' : (temPermissao('usuarios.gerenciar') ? 'cadastro' : null));
+  if(primeira) mostrarTela(primeira);
+  else document.querySelector('main').innerHTML='<p style="padding:40px;color:var(--muted)">Você não tem permissão para nenhuma tela.</p>';
+}
+function mostrarTela(t){
+  document.querySelectorAll('.tela').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  const scr=$('scr-'+t); if(scr) scr.classList.add('active');
+  const nb=$('nav-'+t); if(nb) nb.classList.add('active');
+  if(TELAS[t] && !CARREGADO[t]){ CARREGADO[t]=true; TELAS[t].init(); }
+}
+function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new Set(); Object.keys(CARREGADO).forEach(k=>CARREGADO[k]=false); $('app').classList.remove('on'); $('login').style.display='flex'; $('in-senha').value=''; }
+</script>
+
+<!-- ============ TELAS (uma por arquivo) ============ -->
+<script src="vendas.js"></script>
+<script src="envios.js"></script>
+<script src="usuarios.js"></script>
+
+<!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
+<script>
+$('btn-entrar').addEventListener('click', entrar);
+$('in-senha').addEventListener('keydown', e=>{ if(e.key==='Enter') entrar(); });
+$('in-login').addEventListener('keydown', e=>{ if(e.key==='Enter') $('in-senha').focus(); });
+$('btn-sair').addEventListener('click', sair);
+$('btn-collapse').addEventListener('click', ()=>$('app').classList.add('nav-hidden'));
+$('btn-expand').addEventListener('click', ()=>$('app').classList.remove('nav-hidden'));
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click', ()=>mostrarTela(b.dataset.tela)));
+(function init(){ const s=sessionStorage.getItem('cn_user'); if(s){ try{ USER=JSON.parse(s); abrirApp(); }catch{} } })();
+</script>
+</body>
+</html>
