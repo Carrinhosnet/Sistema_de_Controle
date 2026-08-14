@@ -37,7 +37,7 @@
   .brand .t2{font-size:11px;color:var(--muted)}
   .navtit{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 10px 2px}
   nav{display:flex;flex-direction:column;gap:4px}
-  nav button{padding:10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%}
+  nav button{position:relative;padding:10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%}
   nav button:hover{color:var(--text);background:var(--surface2)}
   nav button.active{color:#fff;background:var(--accent-soft);border-color:var(--accent)}
   .userbox{margin-top:auto;display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:13px;padding-top:12px;border-top:1px solid var(--border)}
@@ -111,6 +111,7 @@
   .res th{text-align:left;color:var(--muted);font-weight:500;padding:8px;border-bottom:1px solid var(--border)}
   .res td{padding:8px;border-bottom:1px solid var(--border)}
   .res button{padding:5px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px}
+  .res input{padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px}
 
   /* menu lateral retrátil */
   .sidebar{transition:width .18s ease}
@@ -147,6 +148,22 @@
   td.neg { color: #f87171 !important; font-weight: 600; }
   td.pos { color: #4ade80 !important; font-weight: 600; }
 
+  /* ====== BOLETOS ====== */
+  /* bolinha de pendências no menu */
+  .badge-dot{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px var(--surface)}
+  /* cores por status do boleto (linha) */
+  tr.bo-aguardando td { background: rgba(180,120,70,0.16); }    /* marrom claro */
+  tr.bo-pago td       { background: rgba(34,197,94,0.15); }     /* verde claro */
+  tr.bo-atrasado td   { background: rgba(239,68,68,0.15); }     /* vermelho claro */
+  tr.bo-cobranca td   { background: rgba(249,115,22,0.18); }    /* laranja claro */
+  tr.bo-protestado td { background: rgba(153,27,27,0.45); }     /* vermelho escuro */
+  /* botões de ação compactos */
+  td.acoes{white-space:nowrap}
+  button.mini{padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;margin-left:2px}
+  button.mini:hover{border-color:var(--accent)}
+  button.mini.ok{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.4)}
+  button.mini.dg{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#f87171}
+
 </style>
 </head>
 <body>
@@ -176,6 +193,7 @@
     <nav id="nav">
       <button data-tela="vendas" id="nav-vendas">Controle de Vendas</button>
       <button data-tela="envios" id="nav-envios">Controle de Envios</button>
+      <button data-tela="boletos" id="nav-boletos">Controle de Boletos<span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
       <button data-tela="cadastro" id="nav-cadastro">Cadastros</button>
     </nav>
     <div class="userbox"><span class="who" id="who"></span><button class="link" id="btn-sair">Sair</button></div>
@@ -225,9 +243,9 @@
         <select id="en-transp"><option value="">Todas transportadoras</option></select>
         <select id="en-pgto"><option value="">Todos pagamentos de frete</option></select>
         <select id="en-conf"><option value="">Conf.: todos</option><option value="false">Pendentes</option><option value="true">Conferidos</option></select>
-        
+
         <button class="act prim" id="en-btn-filtrar">Filtrar filtros selecionados</button>
-        
+
         <button class="act prim" id="en-lancar">+ Lançar item</button>
         <button class="act" id="en-gerar">↻ Gerar envios</button>
         <button class="act" id="en-exportar">Exportar CSV</button>
@@ -241,6 +259,38 @@
       </tr></thead><tbody id="en-tbody"></tbody></table></div>
       <div class="foot"><span id="en-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
         <button class="act" id="en-prev" style="padding:4px 10px">‹ Anterior</button><span id="en-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="en-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
+    </section>
+
+    <!-- =================== TELA BOLETOS =================== -->
+    <section class="tela" id="scr-boletos">
+      <div class="toolbar">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="bo-busca" placeholder="Buscar cliente, ID do pedido, documento…" />
+        </div>
+        <select id="bo-mes"><option value="">Todos os meses (venc.)</option></select>
+        <select id="bo-canal"><option value="">Todos os canais</option></select>
+        <select id="bo-status">
+          <option value="">Todos os status</option>
+          <option>Aguardando Pagamento</option>
+          <option>Pagamento Atrasado</option>
+          <option>Cobrança Realizada</option>
+          <option>Pago</option>
+          <option>Protestado</option>
+        </select>
+        <button class="act prim" id="bo-btn-filtrar">Filtrar</button>
+        <button class="act prim" id="bo-lancar">+ Lançar boleto</button>
+        <button class="act" id="bo-exportar">Exportar CSV</button>
+        <span id="bo-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="kpis" id="bo-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Data Compra</th><th>Mês Venc.</th><th>Canal</th><th>ID Pedido</th><th>Cliente</th><th>UF</th>
+        <th class="num">Parcela</th><th class="num">Valor</th><th>Vencimento</th><th>Status</th><th>Documento</th><th>Ações</th>
+      </tr></thead><tbody id="bo-tbody"></tbody></table></div>
+      <div class="foot"><span id="bo-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="bo-prev" style="padding:4px 10px">‹ Anterior</button><span id="bo-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="bo-next" style="padding:4px 10px">Próxima ›</button>
       </span></div></div>
     </section>
 
@@ -344,6 +394,61 @@
   </div>
 </div></div>
 
+<!-- ===== DRAWER BOLETOS ===== -->
+<div class="overlay" id="bo-overlay"></div>
+<aside class="drawer" id="bo-drawer">
+  <h2>Editar boleto <button class="x" id="bo-drawer-x">×</button></h2>
+  <div class="drawer-erro" id="bo-drawer-erro"></div>
+  <div class="body">
+    <div class="sec-tit">Pedido (de Vendas)</div>
+    <div class="grid">
+      <div class="fld"><label>Data compra</label><input id="bo-e-data" readonly></div>
+      <div class="fld"><label>Canal</label><input id="bo-e-canal" readonly></div>
+      <div class="fld"><label>ID do pedido</label><input id="bo-e-idped" readonly></div>
+      <div class="fld"><label>Parcela</label><input id="bo-e-parcela" readonly></div>
+      <div class="fld full"><label>Cliente</label><input id="bo-e-cliente" readonly></div>
+    </div>
+    <div class="sec-tit">Boleto</div>
+    <div class="grid">
+      <div class="fld"><label>Valor (R$)</label><input type="number" step="0.01" id="bo-e-valor"></div>
+      <div class="fld"><label>Vencimento</label><input type="date" id="bo-e-venc"></div>
+      <div class="fld full"><label>Nº do documento</label><input id="bo-e-doc"></div>
+      <div class="fld full"><label>Observação</label><input id="bo-e-obs"></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="bo-drawer-cancel">Cancelar</button><button class="btn-save" id="bo-drawer-save">Salvar</button></div>
+</aside>
+
+<!-- ===== MODAL LANÇAMENTO (BOLETOS) ===== -->
+<div class="modal" id="bo-modal"><div class="box">
+  <h3>Lançar boletos <button class="x" id="bo-modal-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
+  <div class="content">
+    <!-- passo 1: escolher o pedido -->
+    <div id="bo-m-step1">
+      <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Busque um pedido de Vendas que ainda não tenha boletos.</p>
+      <div class="field"><input id="bo-m-busca" placeholder="Buscar cliente, ID do pedido ou SKU" style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+      <div class="drawer-erro" id="bo-m-erro" style="padding:6px 0"></div>
+      <div id="bo-m-res"></div>
+    </div>
+    <!-- passo 2: montar as parcelas -->
+    <div id="bo-m-sel" style="display:none">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px" id="bo-m-pedinfo"></div>
+      <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:10px">
+        <div class="fld"><label>Nº de parcelas</label><input type="number" min="1" step="1" id="bo-m-nparc" value="1"></div>
+        <div class="fld"><label>Valor total (R$)</label><input type="number" step="0.01" id="bo-m-total"></div>
+        <div class="fld"><label>1º vencimento</label><input type="date" id="bo-m-primeirovenc"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="act" id="bo-m-gerar">Gerar parcelas</button>
+        <button class="act" id="bo-m-voltar">‹ Voltar</button>
+      </div>
+      <div id="bo-m-parcelas"></div>
+      <div class="drawer-erro" id="bo-m-erro2" style="padding:6px 0"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn-save" id="bo-m-salvar" style="padding:9px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer">Salvar boletos</button></div>
+    </div>
+  </div>
+</div></div>
+
 <!-- ===== DRAWER USUÁRIO ===== -->
 <div class="overlay" id="cu-overlay"></div>
 <aside class="drawer" id="cu-drawer">
@@ -410,6 +515,14 @@ const TELAS = {};
 const CARREGADO = {};
 function registrarTela(nome, api){ TELAS[nome] = api; }
 
+// bolinha de pendências do Controle de Boletos (atraso + cobrança realizada)
+async function atualizarBadgeBoletos(){
+  const dot=$('badge-boletos'); if(!dot) return;
+  if(!temPermissao('boletos.ver')){ dot.style.display='none'; return; }
+  try{ const n=await rpc('cn_boletos_pendencias',{p_usuario_id:USER.id}); dot.style.display=(Number(n)>0)?'inline-block':'none'; }
+  catch(e){ dot.style.display='none'; }
+}
+
 // ================== LOGIN / NAV ==================
 async function entrar(){
   const login=$('in-login').value.trim(), senha=$('in-senha').value;
@@ -434,8 +547,13 @@ async function abrirApp(){
   await carregarPermissoes();
   $('nav-vendas').style.display = temPermissao('vendas.ver') ? '' : 'none';
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
+  $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
-  const primeira = temPermissao('vendas.ver') ? 'vendas' : (temPermissao('envios.ver') ? 'envios' : (temPermissao('usuarios.gerenciar') ? 'cadastro' : null));
+  atualizarBadgeBoletos();
+  const primeira = temPermissao('vendas.ver') ? 'vendas'
+    : temPermissao('envios.ver') ? 'envios'
+    : temPermissao('boletos.ver') ? 'boletos'
+    : temPermissao('usuarios.gerenciar') ? 'cadastro' : null;
   if(primeira) mostrarTela(primeira);
   else document.querySelector('main').innerHTML='<p style="padding:40px;color:var(--muted)">Você não tem permissão para nenhuma tela.</p>';
 }
@@ -452,6 +570,7 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 <!-- ============ TELAS (uma por arquivo) ============ -->
 <script src="vendas.js"></script>
 <script src="envios.js"></script>
+<script src="boletos.js"></script>
 <script src="usuarios.js"></script>
 
 <!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
