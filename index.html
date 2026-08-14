@@ -70,7 +70,6 @@
   tbody td{padding:10px 14px;border-bottom:1px solid var(--border)}
   tbody tr:hover{background:var(--surface2)}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
-  .neg{color:#f87171}
   .foot{padding:10px 14px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
   .empty,.loading{padding:48px 20px;text-align:center;color:var(--muted)}
   td.conf{text-align:center}
@@ -130,6 +129,24 @@
   .acao-item{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer}
   .acao-item input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
   .badge-adm{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;background:var(--accent-soft);color:var(--accent);vertical-align:middle}
+
+  /* Cores para os status (fundos transparentes) */
+  tr.st-ag-pgto td { background: rgba(6, 182, 212, 0.1); }
+  tr.st-ag-cot td { background: rgba(168, 85, 247, 0.1); }
+  tr.st-prod td { background: rgba(180, 83, 9, 0.15); }
+  tr.st-ag-nf td { background: rgba(249, 115, 22, 0.15); }
+  tr.st-ag-transp td { background: rgba(59, 130, 246, 0.15); }
+  tr.st-caminho td { background: rgba(234, 179, 8, 0.15); }
+  tr.st-atrasado td { background: #eab308; color: #000 !important; font-weight: 500; }
+  tr.st-atrasado td * { color: #000 !important; }
+  tr.st-entregue td { background: rgba(34, 197, 94, 0.15); }
+  tr.st-proc-dev td { background: rgba(239, 68, 68, 0.15); }
+  tr.st-devolvido td, tr.st-cancelado td { background: rgba(153, 27, 27, 0.4); }
+
+  /* Cores de Diferença */
+  td.neg { color: #f87171 !important; font-weight: 600; }
+  td.pos { color: #4ade80 !important; font-weight: 600; }
+
 </style>
 </head>
 <body>
@@ -198,13 +215,18 @@
     <!-- =================== TELA ENVIOS =================== -->
     <section class="tela" id="scr-envios">
       <div class="toolbar">
-        <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input id="en-busca" placeholder="Buscar cliente, ID, SKU ou protocolo" /></div>
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="en-busca" placeholder="Buscar cliente, ID, SKU ou protocolo" />
+        </div>
         <select id="en-mes"><option value="">Todos os meses</option></select>
         <select id="en-canal"><option value="">Todos os canais</option></select>
         <select id="en-status"><option value="">Todos os status</option></select>
         <select id="en-transp"><option value="">Todas transportadoras</option></select>
+        <select id="en-pgto"><option value="">Todos pagamentos de frete</option></select>
         <select id="en-conf"><option value="">Conf.: todos</option><option value="false">Pendentes</option><option value="true">Conferidos</option></select>
+        
+        <button class="act prim" id="en-btn-filtrar">Filtrar filtros selecionados</button>
         
         <button class="act prim" id="en-lancar">+ Lançar item</button>
         <button class="act" id="en-gerar">↻ Gerar envios</button>
