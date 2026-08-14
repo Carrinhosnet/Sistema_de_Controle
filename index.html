@@ -593,11 +593,9 @@ document.addEventListener('wheel', function(e){
   if(sc.scrollWidth <= sc.clientWidth) return;      // tabela sem overflow horizontal: normal
   const delta = (e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY); // linhas -> pixels
   if(delta === 0) return;
-  const atLeft  = sc.scrollLeft <= 0;
-  const atRight = sc.scrollLeft + sc.clientWidth >= sc.scrollWidth - 1;
-  if((delta < 0 && atLeft) || (delta > 0 && atRight)) return;   // no limite: libera vertical
-  sc.scrollLeft += delta;
-  e.preventDefault();                               // evita o scroll vertical da página
+  // dentro do painel: SEMPRE lateral (mesmo nos limites) — a página não rola.
+  sc.scrollLeft += delta;                           // scrollLeft satura sozinho no início/fim
+  e.preventDefault();                               // trava o scroll vertical da página
 }, { passive:false });
 
 (function init(){ const s=sessionStorage.getItem('cn_user'); if(s){ try{ USER=JSON.parse(s); abrirApp(); }catch{} } })();
