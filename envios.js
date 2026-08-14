@@ -16,7 +16,9 @@ const EN = (function(){
 
   async function carregarFiltros(){ try{ const meses=await rpc('cn_meses_envios',{p_usuario_id:USER.id}); (meses||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); }); }catch(e){} try{ const canais=await rpc('cn_canais_envios',{p_usuario_id:USER.id}); (canais||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); }); }catch(e){} }
 
-  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="20" class="loading">Carregando envios…</td></tr>'; const fl=filtros();
+  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="20" class="loading">Carregando envios…</td></tr>';
+    try{ await rpc('cn_promover_envios_atrasados',{p_usuario_id:USER.id}); }catch(e){}   // À Caminho vencido -> Atrasado (não bloqueia a listagem)
+    const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([ rpc('cn_listar_envios',{...fl,p_limite:POR,p_offset:PAGINA*POR}), rpc('cn_contar_envios',fl), rpc('cn_kpis_envios',fl) ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag(); f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="20" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
