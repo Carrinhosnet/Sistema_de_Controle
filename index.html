@@ -220,7 +220,7 @@
       </div>
       <div class="kpis" id="vd-kpis"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th>Data</th><th>Canal</th><th>Envio</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
+        <th>Data (import.)</th><th>Canal</th><th>Envio</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
         <th class="num">Vlr Unit.</th><th class="num">Vlr Total</th><th class="num">Comissão</th><th class="num">% Com.</th><th>Anúncio</th>
         <th class="num">Frete</th><th class="num">Frete Ag.</th><th class="num">Dif. Frete</th><th class="num">Frete Extra</th>
         <th class="num">Total NF</th><th class="num">A Receber</th><th class="num">Lucro %</th><th style="text-align:center">Conferido</th>
@@ -324,7 +324,8 @@
   <h2>Editar venda <button class="x" id="vd-drawer-x">×</button></h2>
   <div class="drawer-erro" id="vd-drawer-erro"></div>
   <div class="body"><div class="grid">
-    <div class="fld"><label>Data da compra</label><input type="date" id="vd-e-data"></div>
+    <div class="fld"><label>Data de importação</label><input type="date" id="vd-e-data"></div>
+    <div class="fld"><label>Data Bling (origem)</label><input id="vd-e-databling" readonly></div>
     <div class="fld"><label>Canal</label><input id="vd-e-canal"></div>
     <div class="fld"><label>Tipo de envio</label><select id="vd-e-tenvio"><option value="">—</option><option>Transportadora</option><option>Mercado Envios</option><option>Retirada</option><option>Terceiro</option></select></div>
     <div class="fld"><label>UF</label><input id="vd-e-uf" maxlength="2" style="text-transform:uppercase"></div>
