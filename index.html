@@ -138,11 +138,14 @@
   tr.st-ag-nf td { background: rgba(249, 115, 22, 0.15); }
   tr.st-ag-transp td { background: rgba(59, 130, 246, 0.15); }
   tr.st-caminho td { background: rgba(234, 179, 8, 0.15); }
-  tr.st-atrasado td { background: #eab308; color: #000 !important; font-weight: 500; }
-  tr.st-atrasado td * { color: #000 !important; }
+  tr.st-atrasado td { background: #eab308; font-weight: 500; }
   tr.st-entregue td { background: rgba(34, 197, 94, 0.15); }
   tr.st-proc-dev td { background: rgba(239, 68, 68, 0.15); }
   tr.st-devolvido td, tr.st-cancelado td { background: rgba(153, 27, 27, 0.4); }
+  /* texto branco em todas as linhas de status (a diferença neg/pos mantém verde/vermelho) */
+  tr.st-ag-pgto td, tr.st-ag-cot td, tr.st-prod td, tr.st-ag-nf td, tr.st-ag-transp td,
+  tr.st-caminho td, tr.st-atrasado td, tr.st-entregue td, tr.st-proc-dev td,
+  tr.st-devolvido td, tr.st-cancelado td { color: #fff; }
 
   /* Cores de Diferença */
   td.neg { color: #f87171 !important; font-weight: 600; }
