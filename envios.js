@@ -75,7 +75,7 @@ const EN = (function(){
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="EN.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
     </tr>`; }).join(''); }
 
-  async function conf(id,valor,elem){ elem.disabled=true; try{ await rpc('cn_marcar_conferido_envio',{p_usuario_id:USER.id,p_envio_id:id,p_conferido:valor}); const l=LINHAS.find(x=>x.id===id); if(l)l.conferido=valor; const tr=elem.closest('tr'); tr.classList.toggle('pendente',!valor); tr.querySelector('.conf-lbl').textContent=valor?'Conferido':'Pendente'; }catch(e){ elem.checked=!valor; alert(e.message||e); } finally{ elem.disabled=false; } }
+  async function conf(id,valor,elem){ elem.disabled=true; try{ await rpc('cn_marcar_conferido_envio',{p_usuario_id:USER.id,p_envio_id:id,p_conferido:valor}); const l=LINHAS.find(x=>x.id===id); if(l)l.conferido=valor; const tr=elem.closest('tr'); tr.classList.toggle('pendente',!valor); tr.querySelector('.conf-lbl').textContent=valor?'Conferido':'Pendente'; if(typeof atualizarBadges==='function') atualizarBadges(); }catch(e){ elem.checked=!valor; alert(e.message||e); } finally{ elem.disabled=false; } }
 
   function fillSel(id,tipo,atual){ const sel=f(id); sel.innerHTML='<option value="">—</option>'; const opts=[...(OPC[tipo]||[])]; if(atual&&!opts.includes(atual))opts.unshift(atual); opts.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; if(v===atual)o.selected=true; sel.appendChild(o); }); sel.value=atual||''; }
 

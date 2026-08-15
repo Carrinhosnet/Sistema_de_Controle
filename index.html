@@ -191,9 +191,9 @@
     </div>
     <div class="navtit">Telas</div>
     <nav id="nav">
-      <button data-tela="vendas" id="nav-vendas">Controle de Vendas</button>
-      <button data-tela="cancelamentos" id="nav-cancelamentos">Controle de Cancelamentos</button>
-      <button data-tela="envios" id="nav-envios">Controle de Envios</button>
+      <button data-tela="vendas" id="nav-vendas">Controle de Vendas<span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
+      <button data-tela="cancelamentos" id="nav-cancelamentos">Controle de Cancelamentos<span class="badge-dot" id="badge-cancelamentos" style="display:none"></span></button>
+      <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
       <button data-tela="boletos" id="nav-boletos">Controle de Boletos<span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
       <button data-tela="cadastro" id="nav-cadastro">Cadastros</button>
     </nav>
@@ -540,13 +540,22 @@ const TELAS = {};
 const CARREGADO = {};
 function registrarTela(nome, api){ TELAS[nome] = api; }
 
-// bolinha de pendências do Controle de Boletos (atraso + cobrança realizada)
-async function atualizarBadgeBoletos(){
-  const dot=$('badge-boletos'); if(!dot) return;
-  if(!temPermissao('boletos.ver')){ dot.style.display='none'; return; }
-  try{ const n=await rpc('cn_boletos_pendencias',{p_usuario_id:USER.id}); dot.style.display=(Number(n)>0)?'inline-block':'none'; }
+// bolinhas de notificação ao lado das abas
+// Boletos: itens em atraso/cobrança. Demais telas: itens não conferidos.
+async function setDot(dotId, permitido, fn){
+  const dot=$(dotId); if(!dot) return;
+  if(!permitido){ dot.style.display='none'; return; }
+  try{ const n=await rpc(fn,{p_usuario_id:USER.id}); dot.style.display=(Number(n)>0)?'inline-block':'none'; }
   catch(e){ dot.style.display='none'; }
 }
+async function atualizarBadges(){
+  setDot('badge-vendas',        temPermissao('vendas.ver'),        'cn_vendas_pendencias');
+  setDot('badge-cancelamentos', temPermissao('cancelamentos.ver'), 'cn_cancelamentos_pendencias');
+  setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias');
+  setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias');
+}
+// compatibilidade com chamadas existentes (boletos.js)
+async function atualizarBadgeBoletos(){ return atualizarBadges(); }
 
 // ================== LOGIN / NAV ==================
 async function entrar(){
@@ -575,7 +584,7 @@ async function abrirApp(){
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
-  atualizarBadgeBoletos();
+  atualizarBadges();
   const primeira = temPermissao('vendas.ver') ? 'vendas'
     : temPermissao('cancelamentos.ver') ? 'cancelamentos'
     : temPermissao('envios.ver') ? 'envios'
@@ -590,6 +599,7 @@ function mostrarTela(t){
   const scr=$('scr-'+t); if(scr) scr.classList.add('active');
   const nb=$('nav-'+t); if(nb) nb.classList.add('active');
   if(TELAS[t] && !CARREGADO[t]){ CARREGADO[t]=true; TELAS[t].init(); }
+  if(typeof atualizarBadges==='function') atualizarBadges();
 }
 function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new Set(); Object.keys(CARREGADO).forEach(k=>CARREGADO[k]=false); $('app').classList.remove('on'); $('login').style.display='flex'; $('in-senha').value=''; }
 </script>

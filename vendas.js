@@ -50,7 +50,7 @@ const VD = (function(){
     </tr>`).join('');
   }
 
-  async function conf(id,valor,elem){ elem.disabled=true; try{ await rpc('cn_marcar_conferido',{p_usuario_id:USER.id,p_venda_id:id,p_conferido:valor}); const l=LINHAS.find(x=>x.id===id); if(l)l.conferido=valor; const tr=elem.closest('tr'); tr.classList.toggle('pendente',!valor); tr.querySelector('.conf-lbl').textContent=valor?'Conferido':'Pendente'; }catch(e){ elem.checked=!valor; alert('Não foi possível marcar: '+(e.message||e)); } finally{ elem.disabled=false; } }
+  async function conf(id,valor,elem){ elem.disabled=true; try{ await rpc('cn_marcar_conferido',{p_usuario_id:USER.id,p_venda_id:id,p_conferido:valor}); const l=LINHAS.find(x=>x.id===id); if(l)l.conferido=valor; const tr=elem.closest('tr'); tr.classList.toggle('pendente',!valor); tr.querySelector('.conf-lbl').textContent=valor?'Conferido':'Pendente'; if(typeof atualizarBadges==='function') atualizarBadges(); }catch(e){ elem.checked=!valor; alert('Não foi possível marcar: '+(e.message||e)); } finally{ elem.disabled=false; } }
 
   function abrir(id){ if(!temPermissao('vendas.editar')) return; const l=LINHAS.find(x=>x.id===id); if(!l)return; EDIT_ID=id; f('drawer-erro').textContent='';
     f('e-data').value=l.data_compra||''; f('e-databling').value=dataBr(l.data_bling); f('e-canal').value=l.canal||''; f('e-tenvio').value=l.tipo_envio||''; f('e-uf').value=l.uf||''; f('e-cliente').value=l.cliente||''; f('e-modelo').value=l.modelo||'';
