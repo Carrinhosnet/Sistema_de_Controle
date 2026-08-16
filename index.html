@@ -196,6 +196,7 @@
     <nav id="nav">
       <button data-tela="vendas" id="nav-vendas">Controle de Vendas<span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
       <button data-tela="cancelamentos" id="nav-cancelamentos">Controle de Cancelamentos<span class="badge-dot" id="badge-cancelamentos" style="display:none"></span></button>
+      <button data-tela="devolucoes" id="nav-devolucoes">Controle de Devoluções<span class="badge-dot" id="badge-devolucoes" style="display:none"></span></button>
       <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
       <button data-tela="boletos" id="nav-boletos">Controle de Boletos<span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
       <button data-tela="cadastro" id="nav-cadastro">Cadastros</button>
@@ -254,6 +255,30 @@
       </tr></thead><tbody id="ca-tbody"></tbody></table></div>
       <div class="foot"><span id="ca-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
         <button class="act" id="ca-prev" style="padding:4px 10px">‹ Anterior</button><span id="ca-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="ca-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
+    </section>
+
+    <!-- =================== TELA DEVOLUÇÕES =================== -->
+    <section class="tela" id="scr-devolucoes">
+      <div class="toolbar">
+        <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="dv-busca" placeholder="Buscar cliente, ID do pedido, SKU ou NF" /></div>
+        <select id="dv-mes"><option value="">Todos os meses (chegada)</option></select>
+        <select id="dv-canal"><option value="">Todos os canais</option></select>
+        <select id="dv-status"><option value="">Todos os status</option></select>
+        <button class="act prim" id="dv-btn-filtrar">Filtrar</button>
+        <button class="act prim" id="dv-lancar">+ Lançar devolução</button>
+        <button class="act" id="dv-exportar">Exportar CSV</button>
+        <span id="dv-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="kpis" id="dv-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Data Chegada</th><th>Mês</th><th>Canal</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
+        <th class="num">Valor NF</th><th>Nº NF</th><th>Tipo Dev.</th><th>Motivo</th><th>Status</th>
+        <th class="num">Custo Dev.</th><th class="num">Custo Prej.</th><th>Incluídas</th><th>Data Venda</th><th style="text-align:center">Conferido</th>
+      </tr></thead><tbody id="dv-tbody"></tbody></table></div>
+      <div class="foot"><span id="dv-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="dv-prev" style="padding:4px 10px">‹ Anterior</button><span id="dv-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="dv-next" style="padding:4px 10px">Próxima ›</button>
       </span></div></div>
     </section>
 
@@ -477,6 +502,56 @@
   </div>
 </div></div>
 
+<!-- ===== DRAWER DEVOLUÇÃO ===== -->
+<div class="overlay" id="dv-overlay"></div>
+<aside class="drawer" id="dv-drawer">
+  <h2>Editar devolução <button class="x" id="dv-drawer-x">×</button></h2>
+  <div class="drawer-erro" id="dv-drawer-erro"></div>
+  <div class="body">
+    <div class="sec-tit">Pedido (de Vendas)</div>
+    <div class="grid">
+      <div class="fld"><label>Data venda</label><input id="dv-e-dvenda" readonly></div>
+      <div class="fld"><label>Canal</label><input id="dv-e-canal" readonly></div>
+      <div class="fld"><label>ID do pedido</label><input id="dv-e-idped" readonly></div>
+      <div class="fld"><label>SKU</label><input id="dv-e-modelo" readonly></div>
+      <div class="fld"><label>Cliente</label><input id="dv-e-cliente" readonly></div>
+      <div class="fld"><label>UF</label><input id="dv-e-uf" readonly></div>
+    </div>
+    <div class="sec-tit">Devolução</div>
+    <div class="grid">
+      <div class="fld"><label>Data de chegada</label><input type="date" id="dv-e-chegada"></div>
+      <div class="fld"><label>Tipo de devolução</label><select id="dv-e-tipo"><option value="">—</option><option>Reclamação</option><option>Mediação</option><option>Devolução Simples</option></select></div>
+      <div class="fld full"><label>Status</label><select id="dv-e-status"></select></div>
+      <div class="fld full"><label>Motivo</label><input id="dv-e-motivo"></div>
+    </div>
+    <div class="sec-tit">Nota fiscal</div>
+    <div class="grid">
+      <div class="fld"><label>Valor da NF (R$)</label><input type="number" step="0.01" id="dv-e-valornf"></div>
+      <div class="fld"><label>Nº NF</label><input id="dv-e-numnf"></div>
+      <div class="fld"><label>NFD</label><input id="dv-e-nfd"></div>
+    </div>
+    <div class="sec-tit">Custos e observações</div>
+    <div class="grid">
+      <div class="fld"><label>Custo de devolução (R$)</label><input type="number" step="0.01" id="dv-e-custodev"></div>
+      <div class="fld"><label>Custo do prejuízo (R$)</label><input type="number" step="0.01" id="dv-e-custoprej"></div>
+      <div class="fld"><label>Incluídas</label><input id="dv-e-incluidas"></div>
+      <div class="fld full"><label>Observações</label><input id="dv-e-obs"></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="dv-drawer-cancel">Cancelar</button><button class="btn-save" id="dv-drawer-save">Salvar</button></div>
+</aside>
+
+<!-- ===== MODAL LANÇAMENTO MANUAL (DEVOLUÇÕES) ===== -->
+<div class="modal" id="dv-modal"><div class="box">
+  <h3>Lançar devolução manual <button class="x" id="dv-modal-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
+  <div class="content">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Busque um pedido de Vendas que ainda não esteja em Devoluções.</p>
+    <div class="field"><input id="dv-m-busca" placeholder="Buscar cliente, ID do pedido ou SKU" style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+    <div class="drawer-erro" id="dv-m-erro" style="padding:6px 0"></div>
+    <div id="dv-m-res"></div>
+  </div>
+</div></div>
+
 <!-- ===== DRAWER USUÁRIO ===== -->
 <div class="overlay" id="cu-overlay"></div>
 <aside class="drawer" id="cu-drawer">
@@ -554,6 +629,7 @@ async function setDot(dotId, permitido, fn){
 async function atualizarBadges(){
   setDot('badge-vendas',        temPermissao('vendas.ver'),        'cn_vendas_pendencias');
   setDot('badge-cancelamentos', temPermissao('cancelamentos.ver'), 'cn_cancelamentos_pendencias');
+  setDot('badge-devolucoes',    temPermissao('devolucoes.ver'),    'cn_devolucoes_pendencias');
   setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias');
   setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias');
 }
@@ -584,12 +660,14 @@ async function abrirApp(){
   await carregarPermissoes();
   $('nav-vendas').style.display = temPermissao('vendas.ver') ? '' : 'none';
   $('nav-cancelamentos').style.display = temPermissao('cancelamentos.ver') ? '' : 'none';
+  $('nav-devolucoes').style.display = temPermissao('devolucoes.ver') ? '' : 'none';
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
   atualizarBadges();
   const primeira = temPermissao('vendas.ver') ? 'vendas'
     : temPermissao('cancelamentos.ver') ? 'cancelamentos'
+    : temPermissao('devolucoes.ver') ? 'devolucoes'
     : temPermissao('envios.ver') ? 'envios'
     : temPermissao('boletos.ver') ? 'boletos'
     : temPermissao('usuarios.gerenciar') ? 'cadastro' : null;
@@ -610,6 +688,7 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 <!-- ============ TELAS (uma por arquivo) ============ -->
 <script src="vendas.js"></script>
 <script src="cancelamentos.js"></script>
+<script src="devolucoes.js"></script>
 <script src="envios.js"></script>
 <script src="boletos.js"></script>
 <script src="usuarios.js"></script>
