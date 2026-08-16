@@ -79,10 +79,26 @@ const DEV = (function(){
 
   async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_devolucoes',{...fl,p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_chegada','mes_chegada','canal','tipo_envio','id_pedido','modelo','quantidade','cliente','uf','valor_nf','numero_nf','nfd','tipo_devolucao','motivo','status','custo_devolucao','custo_prejuizo','incluidas','data_venda','data_bling','observacoes','origem_lancamento','conferido']; const head=['Data Chegada','Mes Chegada','Canal','Envio','ID Pedido','SKU','Qtd','Cliente','UF','Valor NF','N NF','NFD','Tipo Devolucao','Motivo','Status','Custo Devolucao','Custo Prejuizo','Incluidas','Data Venda','Data Bling','Observacoes','Origem','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='devolucoes_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
+  // busca automática das devoluções no Mercado Livre (sob demanda)
+  async function buscar(){ const b=f('buscar'); if(b.disabled)return; b.disabled=true; const t=b.textContent;
+    try{
+      f('msg').textContent='Buscando devoluções no Mercado Livre…'; let g=0;
+      while(true){ const r=await chamarFuncao('sync-devolucoes',{dias:90,limite:5}); g++;
+        if(r.restantes>0){ f('msg').textContent=`Buscando devoluções… (faltam ~${r.restantes})`; } else break;
+        if(g>800) break;
+      }
+      f('msg').textContent='Processando devoluções…'; await rpc('cn_processar_devolucoes',{p_usuario_id:USER.id});
+      await carregar(true); if(typeof atualizarBadges==='function') atualizarBadges();
+      f('msg').textContent='Devoluções atualizadas '+new Date().toLocaleTimeString('pt-BR');
+    }catch(e){ alert('Erro ao buscar devoluções: '+(e.message||e)); f('msg').textContent=''; }
+    finally{ b.disabled=false; b.textContent=t; }
+  }
+
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
     f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true)); f('status').addEventListener('change',()=>carregar(true));
     f('btn-filtrar').addEventListener('click',()=>carregar(true));
+    const bx=f('buscar'); if(bx){ if(temPermissao('sync.executar')){ bx.addEventListener('click',buscar); } else { bx.style.display='none'; } }
     f('lancar').addEventListener('click',abrirModal); f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
