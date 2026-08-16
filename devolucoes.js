@@ -83,7 +83,7 @@ const DEV = (function(){
   async function buscar(){ const b=f('buscar'); if(b.disabled)return; b.disabled=true; const t=b.textContent;
     try{
       f('msg').textContent='Buscando devoluções no Mercado Livre…'; let g=0;
-      while(true){ const r=await chamarFuncao('sync-devolucoes',{dias:90,limite:5}); g++;
+      while(true){ const r=await chamarFuncao('sync-devolucoes',{dias:180,limite:5}); g++;
         if(r.restantes>0){ f('msg').textContent=`Buscando devoluções… (faltam ~${r.restantes})`; } else break;
         if(g>800) break;
       }

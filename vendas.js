@@ -66,7 +66,7 @@ const VD = (function(){
 
   // ----- sync (Atualizar) -----
   function syncUI(msg,p){ f('syncbox').style.display='block'; f('syncmsg').textContent=msg; f('syncpct').textContent=p==null?'':Math.round(p)+'%'; f('syncbar').style.width=(p==null?0:p)+'%'; }
-  async function atualizar(){ const b=f('atualizar'); if(b.disabled)return; b.disabled=true; const DIAS=10;
+  async function atualizar(){ const b=f('atualizar'); if(b.disabled)return; b.disabled=true; const DIAS=30;
     try{
       syncUI('Buscando pedidos no Bling…',5); let g=0; while(true){ const r=await chamarFuncao('sync-bling',{dias:DIAS,limite:15}); g++; if(r.restantes>0){ syncUI(`Buscando no Bling… (faltam ~${r.restantes})`,Math.min(40,5+g*3)); } else break; if(g>200)break; }
       syncUI('Processando vendas do Bling…',44); await rpc('cn_processar_staging_bling',{p_usuario_id:USER.id});
