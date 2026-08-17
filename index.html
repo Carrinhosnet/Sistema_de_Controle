@@ -42,6 +42,11 @@
   nav button.active{color:#fff;background:var(--accent-soft);border-color:var(--accent)}
   .navgroup{display:flex;flex-direction:column;gap:4px}
   .navgroup + .navgroup{margin-top:8px}
+  .navtit-toggle{cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+  .navtit-toggle:hover{color:var(--text)}
+  .navtit .caret{font-size:10px;transition:transform .15s ease}
+  .navgroup.collapsed .caret{transform:rotate(-90deg)}
+  .navgroup.collapsed button{display:none !important}
   .userbox{margin-top:auto;display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:13px;padding-top:12px;border-top:1px solid var(--border)}
   .userbox .who{color:var(--muted)}
   .link{color:var(--accent);cursor:pointer;background:none;border:none;font-size:13px;padding:0}
@@ -196,7 +201,7 @@
     </div>
     <nav id="nav">
       <div class="navgroup" id="grp-comercial">
-        <div class="navtit">Comercial</div>
+        <div class="navtit navtit-toggle" data-grp="grp-comercial">Comercial<span class="caret">▾</span></div>
         <button data-tela="vendas" id="nav-vendas">Controle de Vendas<span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
         <button data-tela="cancelamentos" id="nav-cancelamentos">Controle de Cancelamentos<span class="badge-dot" id="badge-cancelamentos" style="display:none"></span></button>
         <button data-tela="devolucoes" id="nav-devolucoes">Controle de Devoluções<span class="badge-dot" id="badge-devolucoes" style="display:none"></span></button>
@@ -204,11 +209,11 @@
         <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-financeiro">
-        <div class="navtit">Financeiro</div>
+        <div class="navtit navtit-toggle" data-grp="grp-financeiro">Financeiro<span class="caret">▾</span></div>
         <button data-tela="boletos" id="nav-boletos">Controle de Boletos<span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-cadastros">
-        <div class="navtit">Cadastros</div>
+        <div class="navtit navtit-toggle" data-grp="grp-cadastros">Cadastros<span class="caret">▾</span></div>
         <button data-tela="cadastro" id="nav-cadastro">Cadastros</button>
       </div>
     </nav>
@@ -793,6 +798,15 @@ $('btn-sair').addEventListener('click', sair);
 $('btn-collapse').addEventListener('click', ()=>$('app').classList.add('nav-hidden'));
 $('btn-expand').addEventListener('click', ()=>$('app').classList.remove('nav-hidden'));
 document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click', ()=>mostrarTela(b.dataset.tela)));
+// categorias retráteis (abre/fecha ao clicar no título; lembra na sessão)
+document.querySelectorAll('.navtit-toggle').forEach(function(t){
+  t.addEventListener('click', function(){
+    const g=$(t.dataset.grp); if(!g) return;
+    g.classList.toggle('collapsed');
+    try{ const st=JSON.parse(sessionStorage.getItem('cn_navcollapse')||'{}'); st[t.dataset.grp]=g.classList.contains('collapsed'); sessionStorage.setItem('cn_navcollapse',JSON.stringify(st)); }catch(e){}
+  });
+});
+try{ const st=JSON.parse(sessionStorage.getItem('cn_navcollapse')||'{}'); Object.keys(st).forEach(function(gid){ if(st[gid]){ const g=$(gid); if(g) g.classList.add('collapsed'); } }); }catch(e){}
 
 // ===== Scroll do mouse => navegação horizontal dentro do painel da tabela =====
 // Só afeta os containers .scroll (as tabelas). Fora deles, o scroll segue normal.
