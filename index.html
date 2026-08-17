@@ -30,14 +30,14 @@
 
   #app{display:none}
   #app.on{display:flex;min-height:100vh;align-items:stretch}
-  .sidebar{width:232px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:8px;padding:16px 12px;height:100vh;position:sticky;top:0}
+  .sidebar{width:290px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:8px;padding:16px 12px;height:100vh;position:sticky;top:0}
   .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:6px}
   .brand .logo{width:32px;height:32px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700}
   .brand .t1{font-weight:600;font-size:14px}
   .brand .t2{font-size:11px;color:var(--muted)}
   .navtit{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 10px 2px}
   nav{display:flex;flex-direction:column;gap:4px}
-  nav button{position:relative;padding:10px 30px 10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%}
+  nav button{position:relative;padding:10px 34px 10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   nav button:hover{color:var(--text);background:var(--surface2)}
   nav button.active{color:#fff;background:var(--accent-soft);border-color:var(--accent)}
   .navgroup{display:flex;flex-direction:column;gap:4px}
