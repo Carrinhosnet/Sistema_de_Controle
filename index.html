@@ -197,6 +197,7 @@
       <button data-tela="vendas" id="nav-vendas">Controle de Vendas<span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
       <button data-tela="cancelamentos" id="nav-cancelamentos">Controle de Cancelamentos<span class="badge-dot" id="badge-cancelamentos" style="display:none"></span></button>
       <button data-tela="devolucoes" id="nav-devolucoes">Controle de Devoluções<span class="badge-dot" id="badge-devolucoes" style="display:none"></span></button>
+      <button data-tela="reclamacoes" id="nav-reclamacoes">Controle de Reclamações<span class="badge-dot" id="badge-reclamacoes" style="display:none"></span></button>
       <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
       <button data-tela="boletos" id="nav-boletos">Controle de Boletos<span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
       <button data-tela="cadastro" id="nav-cadastro">Cadastros</button>
@@ -283,6 +284,31 @@
       </tr></thead><tbody id="dv-tbody"></tbody></table></div>
       <div class="foot"><span id="dv-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
         <button class="act" id="dv-prev" style="padding:4px 10px">‹ Anterior</button><span id="dv-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="dv-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
+    </section>
+
+    <!-- =================== TELA RECLAMAÇÕES =================== -->
+    <section class="tela" id="scr-reclamacoes">
+      <div class="toolbar">
+        <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="rc-busca" placeholder="Buscar cliente, ID do pedido, SKU ou NF" /></div>
+        <select id="rc-mes"><option value="">Todos os meses (abertura)</option></select>
+        <select id="rc-canal"><option value="">Todos os canais</option></select>
+        <select id="rc-status"><option value="">Todos os status</option></select>
+        <select id="rc-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
+        <button class="act prim" id="rc-btn-filtrar">Filtrar</button>
+        <button class="act prim" id="rc-lancar">+ Lançar reclamação</button>
+        <button class="act prim" id="rc-buscar">↻ Buscar reclamações (180d)</button>
+        <button class="act" id="rc-exportar">Exportar CSV</button>
+        <span id="rc-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="kpis" id="rc-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Data Abertura</th><th>Mês</th><th>Canal</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
+        <th>Nº NF</th><th>Motivo</th><th>Status</th><th>Data Resolução</th><th>Data Venda</th><th style="text-align:center">Conferido</th>
+      </tr></thead><tbody id="rc-tbody"></tbody></table></div>
+      <div class="foot"><span id="rc-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="rc-prev" style="padding:4px 10px">‹ Anterior</button><span id="rc-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="rc-next" style="padding:4px 10px">Próxima ›</button>
       </span></div></div>
     </section>
 
@@ -558,6 +584,45 @@
   </div>
 </div></div>
 
+<!-- ===== DRAWER RECLAMAÇÃO ===== -->
+<div class="overlay" id="rc-overlay"></div>
+<aside class="drawer" id="rc-drawer">
+  <h2>Editar reclamação <button class="x" id="rc-drawer-x">×</button></h2>
+  <div class="drawer-erro" id="rc-drawer-erro"></div>
+  <div class="body">
+    <div class="sec-tit">Pedido (de Vendas)</div>
+    <div class="grid">
+      <div class="fld"><label>Data venda</label><input id="rc-e-dvenda" readonly></div>
+      <div class="fld"><label>Canal</label><input id="rc-e-canal" readonly></div>
+      <div class="fld"><label>ID do pedido</label><input id="rc-e-idped" readonly></div>
+      <div class="fld"><label>SKU</label><input id="rc-e-modelo" readonly></div>
+      <div class="fld"><label>Cliente</label><input id="rc-e-cliente" readonly></div>
+      <div class="fld"><label>UF</label><input id="rc-e-uf" readonly></div>
+    </div>
+    <div class="sec-tit">Reclamação</div>
+    <div class="grid">
+      <div class="fld"><label>Data de abertura</label><input type="date" id="rc-e-abertura"></div>
+      <div class="fld"><label>Data da resolução</label><input type="date" id="rc-e-resolucao"></div>
+      <div class="fld full"><label>Status</label><select id="rc-e-status"></select></div>
+      <div class="fld"><label>Nº NF</label><input id="rc-e-numnf"></div>
+      <div class="fld full"><label>Motivo</label><input id="rc-e-motivo"></div>
+      <div class="fld full"><label>Observações</label><input id="rc-e-obs"></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="rc-drawer-cancel">Cancelar</button><button class="btn-save" id="rc-drawer-save">Salvar</button></div>
+</aside>
+
+<!-- ===== MODAL LANÇAMENTO MANUAL (RECLAMAÇÕES) ===== -->
+<div class="modal" id="rc-modal"><div class="box">
+  <h3>Lançar reclamação manual <button class="x" id="rc-modal-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
+  <div class="content">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Busque um pedido de Vendas que ainda não esteja em Reclamações.</p>
+    <div class="field"><input id="rc-m-busca" placeholder="Buscar cliente, ID do pedido ou SKU" style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+    <div class="drawer-erro" id="rc-m-erro" style="padding:6px 0"></div>
+    <div id="rc-m-res"></div>
+  </div>
+</div></div>
+
 <!-- ===== DRAWER USUÁRIO ===== -->
 <div class="overlay" id="cu-overlay"></div>
 <aside class="drawer" id="cu-drawer">
@@ -636,6 +701,7 @@ async function atualizarBadges(){
   setDot('badge-vendas',        temPermissao('vendas.ver'),        'cn_vendas_pendencias');
   setDot('badge-cancelamentos', temPermissao('cancelamentos.ver'), 'cn_cancelamentos_pendencias');
   setDot('badge-devolucoes',    temPermissao('devolucoes.ver'),    'cn_devolucoes_pendencias');
+  setDot('badge-reclamacoes',   temPermissao('reclamacoes.ver'),   'cn_reclamacoes_pendencias');
   setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias');
   setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias');
 }
@@ -667,6 +733,7 @@ async function abrirApp(){
   $('nav-vendas').style.display = temPermissao('vendas.ver') ? '' : 'none';
   $('nav-cancelamentos').style.display = temPermissao('cancelamentos.ver') ? '' : 'none';
   $('nav-devolucoes').style.display = temPermissao('devolucoes.ver') ? '' : 'none';
+  $('nav-reclamacoes').style.display = temPermissao('reclamacoes.ver') ? '' : 'none';
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
@@ -674,6 +741,7 @@ async function abrirApp(){
   const primeira = temPermissao('vendas.ver') ? 'vendas'
     : temPermissao('cancelamentos.ver') ? 'cancelamentos'
     : temPermissao('devolucoes.ver') ? 'devolucoes'
+    : temPermissao('reclamacoes.ver') ? 'reclamacoes'
     : temPermissao('envios.ver') ? 'envios'
     : temPermissao('boletos.ver') ? 'boletos'
     : temPermissao('usuarios.gerenciar') ? 'cadastro' : null;
@@ -695,6 +763,7 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 <script src="vendas.js"></script>
 <script src="cancelamentos.js"></script>
 <script src="devolucoes.js"></script>
+<script src="reclamacoes.js"></script>
 <script src="envios.js"></script>
 <script src="boletos.js"></script>
 <script src="usuarios.js"></script>
