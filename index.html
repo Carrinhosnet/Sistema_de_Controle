@@ -37,7 +37,7 @@
   .brand .t2{font-size:11px;color:var(--muted)}
   .navtit{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 10px 2px}
   nav{display:flex;flex-direction:column;gap:4px}
-  nav button{position:relative;padding:10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%}
+  nav button{position:relative;padding:10px 30px 10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%}
   nav button:hover{color:var(--text);background:var(--surface2)}
   nav button.active{color:#fff;background:var(--accent-soft);border-color:var(--accent)}
   .navgroup{display:flex;flex-direction:column;gap:4px}
@@ -160,7 +160,7 @@
 
   /* ====== BOLETOS ====== */
   /* bolinha de pendências no menu */
-  .badge-dot{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 2px var(--surface)}
+  .badge-dot{position:absolute;right:8px;top:50%;transform:translateY(-50%);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;line-height:1;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--surface)}
   /* cores por status do boleto (linha) */
   tr.bo-aguardando td { background: rgba(180,120,70,0.16); }    /* marrom claro */
   tr.bo-pago td       { background: rgba(34,197,94,0.15); }     /* verde claro */
@@ -709,7 +709,7 @@ function registrarTela(nome, api){ TELAS[nome] = api; }
 async function setDot(dotId, permitido, fn){
   const dot=$(dotId); if(!dot) return;
   if(!permitido){ dot.style.display='none'; return; }
-  try{ const n=await rpc(fn,{p_usuario_id:USER.id}); dot.style.display=(Number(n)>0)?'inline-block':'none'; }
+  try{ const n=Number(await rpc(fn,{p_usuario_id:USER.id}))||0; dot.textContent = n>99 ? '99+' : String(n); dot.style.display = n>0 ? 'inline-flex' : 'none'; }
   catch(e){ dot.style.display='none'; }
 }
 async function atualizarBadges(){
