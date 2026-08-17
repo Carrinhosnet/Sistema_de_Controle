@@ -40,6 +40,8 @@
   nav button{position:relative;padding:10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%}
   nav button:hover{color:var(--text);background:var(--surface2)}
   nav button.active{color:#fff;background:var(--accent-soft);border-color:var(--accent)}
+  .navgroup{display:flex;flex-direction:column;gap:4px}
+  .navgroup + .navgroup{margin-top:8px}
   .userbox{margin-top:auto;display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:13px;padding-top:12px;border-top:1px solid var(--border)}
   .userbox .who{color:var(--muted)}
   .link{color:var(--accent);cursor:pointer;background:none;border:none;font-size:13px;padding:0}
@@ -192,15 +194,23 @@
       <div style="flex:1"><div class="t1">Carrinhos_Net</div><div class="t2">Sistema de controle</div></div>
       <button class="toggle-btn" id="btn-collapse" title="Esconder menu">‹</button>
     </div>
-    <div class="navtit">Telas</div>
     <nav id="nav">
-      <button data-tela="vendas" id="nav-vendas">Controle de Vendas<span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
-      <button data-tela="cancelamentos" id="nav-cancelamentos">Controle de Cancelamentos<span class="badge-dot" id="badge-cancelamentos" style="display:none"></span></button>
-      <button data-tela="devolucoes" id="nav-devolucoes">Controle de Devoluções<span class="badge-dot" id="badge-devolucoes" style="display:none"></span></button>
-      <button data-tela="reclamacoes" id="nav-reclamacoes">Controle de Reclamações<span class="badge-dot" id="badge-reclamacoes" style="display:none"></span></button>
-      <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
-      <button data-tela="boletos" id="nav-boletos">Controle de Boletos<span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
-      <button data-tela="cadastro" id="nav-cadastro">Cadastros</button>
+      <div class="navgroup" id="grp-comercial">
+        <div class="navtit">Comercial</div>
+        <button data-tela="vendas" id="nav-vendas">Controle de Vendas<span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
+        <button data-tela="cancelamentos" id="nav-cancelamentos">Controle de Cancelamentos<span class="badge-dot" id="badge-cancelamentos" style="display:none"></span></button>
+        <button data-tela="devolucoes" id="nav-devolucoes">Controle de Devoluções<span class="badge-dot" id="badge-devolucoes" style="display:none"></span></button>
+        <button data-tela="reclamacoes" id="nav-reclamacoes">Controle de Reclamações<span class="badge-dot" id="badge-reclamacoes" style="display:none"></span></button>
+        <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
+      </div>
+      <div class="navgroup" id="grp-financeiro">
+        <div class="navtit">Financeiro</div>
+        <button data-tela="boletos" id="nav-boletos">Controle de Boletos<span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
+      </div>
+      <div class="navgroup" id="grp-cadastros">
+        <div class="navtit">Cadastros</div>
+        <button data-tela="cadastro" id="nav-cadastro">Cadastros</button>
+      </div>
     </nav>
     <div class="userbox"><span class="who" id="who"></span><button class="link" id="btn-sair">Sair</button></div>
   </aside>
@@ -737,6 +747,12 @@ async function abrirApp(){
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
+  // esconde a categoria inteira se nenhuma tela dela estiver visível
+  ['grp-comercial','grp-financeiro','grp-cadastros'].forEach(function(gid){
+    const g=$(gid); if(!g) return;
+    const vis=[...g.querySelectorAll('button')].some(b=>b.style.display!=='none');
+    g.style.display = vis ? '' : 'none';
+  });
   atualizarBadges();
   const primeira = temPermissao('vendas.ver') ? 'vendas'
     : temPermissao('cancelamentos.ver') ? 'cancelamentos'
