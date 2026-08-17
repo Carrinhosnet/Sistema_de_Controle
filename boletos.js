@@ -25,7 +25,7 @@ const BO = (function(){
 
   async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="12" class="loading">Carregando boletos…</td></tr>'; const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([
-        rpc('cn_listar_boletos',{...fl,p_limite:POR,p_offset:PAGINA*POR}),
+        rpc('cn_listar_boletos',{...fl,p_ordem:f('ordem').value||'prioridade',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_boletos',fl),
         rpc('cn_kpis_boletos',fl)
       ]);
@@ -141,7 +141,7 @@ const BO = (function(){
     catch(e){ f('m-erro2').textContent=(e.message||e); } finally{ b.disabled=false; b.textContent=t; } }
 
   async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
-    try{ const fl=filtros(); const todas=await rpc('cn_listar_boletos',{...fl,p_limite:100000,p_offset:0}); if(!todas||!todas.length)return;
+    try{ const fl=filtros(); const todas=await rpc('cn_listar_boletos',{...fl,p_ordem:f('ordem').value||'prioridade',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return;
       const cols=['data_compra','mes_vencimento','canal','id_pedido','cliente','uf','parcela','total_parcelas','valor','vencimento','status_efetivo','documento_boleto','observacao'];
       const head=['Data Compra','Mes Vencimento','Canal','ID Pedido','Cliente','UF','Parcela','Total Parcelas','Valor','Vencimento','Status','Documento','Observacao'];
       const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';'));
@@ -150,7 +150,7 @@ const BO = (function(){
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
-    f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true)); f('status').addEventListener('change',()=>carregar(true));
+    f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true)); f('status').addEventListener('change',()=>carregar(true)); f('ordem').addEventListener('change',()=>carregar(true));
     f('btn-filtrar').addEventListener('click',()=>carregar(true));
     f('lancar').addEventListener('click',abrirModal); f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });

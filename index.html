@@ -213,6 +213,7 @@
         <select id="vd-mes"><option value="">Todos os meses</option></select>
         <select id="vd-canal"><option value="">Todos os canais</option></select>
         <select id="vd-edit"><option value="">Edição: todos</option><option value="true">Só editados</option><option value="false">Não editados</option></select>
+        <select id="vd-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
         <button class="act" id="vd-atualizar">↻ Atualizar</button>
         <button class="act" id="vd-exportar">Exportar CSV</button>
         <span id="vd-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
@@ -242,6 +243,7 @@
           <input id="ca-busca" placeholder="Buscar cliente, ID do pedido ou SKU" /></div>
         <select id="ca-mes"><option value="">Todos os meses</option></select>
         <select id="ca-canal"><option value="">Todos os canais</option></select>
+        <select id="ca-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
         <button class="act prim" id="ca-buscar">↻ Buscar cancelamentos (180d)</button>
         <button class="act" id="ca-exportar">Exportar CSV</button>
         <span id="ca-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
@@ -266,6 +268,7 @@
         <select id="dv-mes"><option value="">Todos os meses (chegada)</option></select>
         <select id="dv-canal"><option value="">Todos os canais</option></select>
         <select id="dv-status"><option value="">Todos os status</option></select>
+        <select id="dv-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
         <button class="act prim" id="dv-btn-filtrar">Filtrar</button>
         <button class="act prim" id="dv-lancar">+ Lançar devolução</button>
         <button class="act prim" id="dv-buscar">↻ Buscar devoluções (180d)</button>
@@ -296,6 +299,7 @@
         <select id="en-transp"><option value="">Todas transportadoras</option></select>
         <select id="en-pgto"><option value="">Todos pagamentos de frete</option></select>
         <select id="en-conf"><option value="">Conf.: todos</option><option value="false">Pendentes</option><option value="true">Conferidos</option></select>
+        <select id="en-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
 
         <button class="act prim" id="en-btn-filtrar">Filtrar filtros selecionados</button>
 
@@ -332,6 +336,7 @@
           <option>Pago</option>
           <option>Protestado</option>
         </select>
+        <select id="bo-ordem"><option value="prioridade">Prioridade (atraso/cobrança)</option><option value="recentes">Vencimento mais recente</option><option value="antigos">Vencimento mais antigo</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option></select>
         <button class="act prim" id="bo-btn-filtrar">Filtrar</button>
         <button class="act prim" id="bo-lancar">+ Lançar boleto</button>
         <button class="act" id="bo-exportar">Exportar CSV</button>

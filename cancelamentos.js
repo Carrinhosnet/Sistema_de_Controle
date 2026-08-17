@@ -20,7 +20,7 @@ const CANC = (function(){
 
   async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="22" class="loading">Carregando cancelamentos…</td></tr>'; const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([
-        rpc('cn_listar_cancelamentos',{...fl,p_limite:POR,p_offset:PAGINA*POR}),
+        rpc('cn_listar_cancelamentos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_cancelamentos',fl),
         rpc('cn_kpis_cancelamentos',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal})
       ]);
@@ -55,7 +55,7 @@ const CANC = (function(){
 
   async function conf(id,valor,elem){ elem.disabled=true; try{ await rpc('cn_marcar_conferido_cancelamento',{p_usuario_id:USER.id,p_cancelamento_id:id,p_conferido:valor}); const l=LINHAS.find(x=>x.id===id); if(l)l.conferido=valor; const tr=elem.closest('tr'); tr.classList.toggle('pendente',!valor); tr.querySelector('.conf-lbl').textContent=valor?'Conferido':'Pendente'; if(typeof atualizarBadges==='function') atualizarBadges(); }catch(e){ elem.checked=!valor; alert('Não foi possível marcar: '+(e.message||e)); } finally{ elem.disabled=false; } }
 
-  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_cancelamentos',{...fl,p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_compra','data_venda','data_bling','canal','tipo_envio','id_pedido','modelo','quantidade','cliente','uf','valor_unitario','valor_total','valor_comissao','pct_comissao_ml','tipo_anuncio','frete','frete_aguardado','diferenca_frete','frete_extra','valor_total_nf','valor_a_receber','lucro_bruto_pct','conferido']; const head=['Data cancelamento','Data venda','Data Bling','Canal','Envio','ID Pedido','SKU','Qtd','Cliente','UF','Valor Unitario','Valor Total','Comissao','% Comissao','Anuncio','Frete','Frete Aguardado','Dif Frete','Frete Extra','Total NF','A Receber','Lucro %','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='cancelamentos_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
+  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_cancelamentos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_compra','data_venda','data_bling','canal','tipo_envio','id_pedido','modelo','quantidade','cliente','uf','valor_unitario','valor_total','valor_comissao','pct_comissao_ml','tipo_anuncio','frete','frete_aguardado','diferenca_frete','frete_extra','valor_total_nf','valor_a_receber','lucro_bruto_pct','conferido']; const head=['Data cancelamento','Data venda','Data Bling','Canal','Envio','ID Pedido','SKU','Qtd','Cliente','UF','Valor Unitario','Valor Total','Comissao','% Comissao','Anuncio','Frete','Frete Aguardado','Dif Frete','Frete Extra','Total NF','A Receber','Lucro %','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='cancelamentos_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
   // busca 180 dias de cancelados (reconciliação) sob demanda
   async function buscar(){ const b=f('buscar'); if(b.disabled)return; b.disabled=true; const t=b.textContent;
@@ -73,7 +73,7 @@ const CANC = (function(){
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
-    f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true));
+    f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true)); f('ordem').addEventListener('change',()=>carregar(true));
     f('exportar').addEventListener('click',exportar);
     const bb=f('buscar'); if(bb){ if(temPermissao('sync.executar')){ bb.addEventListener('click',buscar); } else { bb.style.display='none'; } }
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });

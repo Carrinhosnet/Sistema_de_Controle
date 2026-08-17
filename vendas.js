@@ -22,7 +22,7 @@ const VD = (function(){
     const fl=filtros();
     try{
       const [linhas,total,kpis,kconf]=await Promise.all([
-        rpc('cn_listar_vendas',{...fl,p_limite:POR,p_offset:PAGINA*POR}),
+        rpc('cn_listar_vendas',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_vendas',fl),
         rpc('cn_kpis_vendas',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal}),
         rpc('cn_kpis_conferencia',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal}),
@@ -62,7 +62,7 @@ const VD = (function(){
     try{ await rpc('cn_editar_venda',{p_usuario_id:USER.id,p_venda_id:EDIT_ID,p_data_compra:f('e-data').value||null,p_canal:f('e-canal').value||null,p_tipo_envio:f('e-tenvio').value||null,p_cliente:f('e-cliente').value||null,p_uf:f('e-uf').value.toUpperCase()||null,p_modelo:f('e-modelo').value||null,p_quantidade:num('e-qtd'),p_valor_unitario:num('e-vunit'),p_valor_comissao:num('e-comissao'),p_tipo_anuncio:f('e-anuncio').value||null,p_frete:num('e-frete'),p_frete_extra:num('e-fextra'),p_frete_aguardado:num('e-faguard')}); fechar(); carregar(); }
     catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; } }
 
-  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_vendas',{...fl,p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_compra','data_bling','canal','tipo_envio','id_pedido','modelo','quantidade','cliente','uf','valor_unitario','valor_total','valor_comissao','pct_comissao_ml','tipo_anuncio','frete','frete_aguardado','diferenca_frete','frete_extra','valor_total_nf','valor_a_receber','lucro_bruto_pct','conferido','editado']; const head=['Data (import.)','Data Bling','Canal','Envio','ID Pedido','SKU','Qtd','Cliente','UF','Valor Unitario','Valor Total','Comissao','% Comissao','Anuncio','Frete','Frete Aguardado','Dif Frete','Frete Extra','Total NF','A Receber','Lucro %','Conferido','Editado']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='vendas_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
+  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_vendas',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_compra','data_bling','canal','tipo_envio','id_pedido','modelo','quantidade','cliente','uf','valor_unitario','valor_total','valor_comissao','pct_comissao_ml','tipo_anuncio','frete','frete_aguardado','diferenca_frete','frete_extra','valor_total_nf','valor_a_receber','lucro_bruto_pct','conferido','editado']; const head=['Data (import.)','Data Bling','Canal','Envio','ID Pedido','SKU','Qtd','Cliente','UF','Valor Unitario','Valor Total','Comissao','% Comissao','Anuncio','Frete','Frete Aguardado','Dif Frete','Frete Extra','Total NF','A Receber','Lucro %','Conferido','Editado']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='vendas_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
   // ----- sync (Atualizar) -----
   function syncUI(msg,p){ f('syncbox').style.display='block'; f('syncmsg').textContent=msg; f('syncpct').textContent=p==null?'':Math.round(p)+'%'; f('syncbar').style.width=(p==null?0:p)+'%'; }
@@ -81,7 +81,7 @@ const VD = (function(){
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
-    f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true)); f('edit').addEventListener('change',()=>carregar(true));
+    f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true)); f('edit').addEventListener('change',()=>carregar(true)); f('ordem').addEventListener('change',()=>carregar(true));
     f('atualizar').addEventListener('click',atualizar); f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     ['e-qtd','e-vunit','e-comissao','e-frete','e-fextra'].forEach(id=>f(id).addEventListener('input',prev));
