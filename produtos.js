@@ -181,7 +181,7 @@ const PD = (function(){
     renderComponentes(); renderImagens();
     ajustarPorTipo(); f('c-status').value=p.status||'—';
     f('excluir').style.display = temPermissao('produtos.excluir') ? '' : 'none';
-    f('excluir').textContent = p.ativo ? 'Inativar produto' : 'Excluir definitivamente';
+    f('excluir').textContent = 'Excluir produto';
     abre();
   }
   function setSelSafe(id,val){ const s=f(id); if(!s)return; if(val&&![...s.options].some(o=>o.value===val)){ const o=document.createElement('option'); o.value=val;o.textContent=val; s.appendChild(o); } s.value=val||''; }
@@ -493,19 +493,13 @@ const PD = (function(){
     recarregarSkusCache();
   }
 
-  async function excluirAtual(){ if(EDIT_ID==null)return; const l=LINHAS.find(x=>x.id===EDIT_ID); const nome = l?l.sku:'este produto'; const ativo = l?l.ativo:true;
-    let definitivo=false;
-    if(ativo){
-      if(!confirm(`Inativar o produto "${nome}"?\n\nEle fica guardado no sistema, mas some das listagens ativas. Você pode reativá-lo depois editando e mudando a Situação para Ativo.`)) return;
-    } else {
-      if(!confirm(`O produto "${nome}" já está inativo.\n\nExcluir DEFINITIVAMENTE? Esta ação não pode ser desfeita e remove também composição e imagens.`)) return;
-      definitivo=true;
-    }
-    const b=f('excluir'); b.disabled=true;
-    try{ await rpc('cn_excluir_produto',{p_usuario_id:USER.id,p_produto_id:EDIT_ID,p_definitivo:definitivo});
-      f('msg').textContent=definitivo?'Produto excluído definitivamente.':'Produto inativado.';
+  async function excluirAtual(){ if(EDIT_ID==null)return; const l=LINHAS.find(x=>x.id===EDIT_ID); const nome = l?l.sku:'este produto';
+    if(!confirm(`Excluir o produto "${nome}" definitivamente?\n\nEsta ação NÃO pode ser desfeita e remove também a composição e as imagens do produto.\n\n(Se quiser apenas tirá-lo das listagens sem apagar, use a Situação "Inativo" e salve.)`)) return;
+    const b=f('excluir'); b.disabled=true; const t=b.textContent; b.textContent='Excluindo…';
+    try{ await rpc('cn_excluir_produto',{p_usuario_id:USER.id,p_produto_id:EDIT_ID,p_definitivo:true});
+      f('msg').textContent='Produto excluído definitivamente.';
       fechar(); await carregar(); await recarregarSkusCache();
-    }catch(e){ f('erro').textContent='Erro ao excluir: '+(e.message||e); } finally{ b.disabled=false; }
+    }catch(e){ f('erro').textContent='Erro ao excluir: '+(e.message||e); b.disabled=false; b.textContent=t; }
   }
 
   return { init, abrir, setComp, rmComp, addComp:()=>addComp(), setImg, rmImg, setPadrao };
