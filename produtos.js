@@ -44,7 +44,7 @@ const PD = (function(){
   function fillSel(id,arr){ const s=f(id); if(!s)return; s.innerHTML=arr.map(v=>`<option value="${v}">${v}</option>`).join(''); }
 
   // ---------- listagem ----------
-  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="11" class="loading">Carregando produtos…</td></tr>'; const fl=filtros();
+  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="12" class="loading">Carregando produtos…</td></tr>'; const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([
         rpc('cn_listar_produtos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_produtos',fl),
@@ -52,7 +52,7 @@ const PD = (function(){
       ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
-    }catch(e){ f('tbody').innerHTML='<tr><td colspan="11" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
+    }catch(e){ f('tbody').innerHTML='<tr><td colspan="12" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp; }
 
@@ -72,13 +72,14 @@ const PD = (function(){
     return `<span class="pill" style="border-color:${cor};color:${cor}">${st||'—'}</span>`; }
   function tipoPill(t){ return `<span class="pill">${t||'—'}</span>`; }
 
-  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="11" class="empty">Nenhum produto encontrado.</td></tr>'; return; }
-    const podeEditar=temPermissao('produtos.editar');
-    tb.innerHTML=LINHAS.map(l=>`<tr class="${l.ativo?'':'pendente'}" ${podeEditar?`style="cursor:pointer" onclick="PD.abrir(${l.id})"`:''}>
-      <td><b>${l.sku||'—'}</b></td><td>${tipoPill(l.tipo_sku)}</td><td>${l.categoria||'—'}</td><td>${l.descricao||'—'}</td><td>${l.origem||'—'}</td>
+  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="12" class="empty">Nenhum produto encontrado.</td></tr>'; return; }
+    const podeEditar=temPermissao('produtos.editar'); const podeExcluir=temPermissao('produtos.excluir');
+    tb.innerHTML=LINHAS.map(l=>`<tr class="${l.ativo?'':'pendente'}">
+      <td ${podeEditar?`style="cursor:pointer" onclick="PD.abrir(${l.id})"`:''}><b>${l.sku||'—'}</b></td><td>${tipoPill(l.tipo_sku)}</td><td>${l.categoria||'—'}</td><td>${l.descricao||'—'}</td><td>${l.origem||'—'}</td>
       <td>${l.unidade_medida||'—'}</td><td class="num">${l.quantidade??'—'}</td><td>${l.ncm||'—'}</td>
       <td class="num">${l.qtd_componentes>0?l.qtd_componentes:'—'}</td><td>${statusPill(l.status)}</td>
       <td>${l.ativo?'<span class="pill">Ativo</span>':'<span class="pill" style="color:var(--muted)">Inativo</span>'}</td>
+      <td class="acoes" onclick="event.stopPropagation()">${podeExcluir?`<button class="mini dg" onclick="PD.excluir(${l.id})">Excluir</button>`:'—'}</td>
     </tr>`).join('');
   }
 
@@ -489,7 +490,24 @@ const PD = (function(){
     recarregarSkusCache();
   }
 
-  return { init, abrir, setComp, rmComp, addComp:()=>addComp(), setImg, rmImg, setPadrao };
+  async function excluir(id){ const l=LINHAS.find(x=>x.id===id); if(!l)return;
+    // 1º passo: se está ativo, oferece inativar; se já inativo, oferece excluir definitivo
+    let definitivo=false;
+    if(l.ativo){
+      const opc=confirm(`Inativar o produto "${l.sku}"?\n\nOK = Inativar (fica guardado, some das listas ativas)\nCancelar = não fazer nada`);
+      if(!opc) return;
+    } else {
+      const opc=confirm(`O produto "${l.sku}" já está inativo.\n\nOK = EXCLUIR DEFINITIVAMENTE (não pode desfazer)\nCancelar = manter inativo`);
+      if(!opc) return;
+      definitivo=true;
+    }
+    try{ await rpc('cn_excluir_produto',{p_usuario_id:USER.id,p_produto_id:id,p_definitivo:definitivo});
+      f('msg').textContent=definitivo?'Produto excluído definitivamente.':'Produto inativado.';
+      await carregar(); await recarregarSkusCache();
+    }catch(e){ alert('Erro ao excluir: '+(e.message||e)); }
+  }
+
+  return { init, abrir, excluir, setComp, rmComp, addComp:()=>addComp(), setImg, rmImg, setPadrao };
 })();
 window.PD = PD;
 registrarTela('produtos', PD);

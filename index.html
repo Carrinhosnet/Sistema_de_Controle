@@ -220,6 +220,7 @@
         <div class="navtit navtit-toggle" data-grp="grp-cadastros">Cadastros<span class="caret">▾</span></div>
         <button data-tela="cadastro" id="nav-cadastro">Cadastros de Usuários</button>
         <button data-tela="produtos" id="nav-produtos">Cadastro de Produtos<span class="badge-dot" id="badge-produtos" style="display:none"></span></button>
+        <button data-tela="opcoes" id="nav-opcoes">Opções de Produtos</button>
       </div>
     </nav>
     <div class="userbox"><span class="who" id="who"></span><button class="link" id="btn-sair">Sair</button></div>
@@ -425,11 +426,29 @@
       <div class="kpis" id="pd-kpis"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
         <th>SKU</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Origem</th>
-        <th>Un.</th><th class="num">Qtd</th><th>NCM</th><th class="num">Comp.</th><th>Status</th><th>Situação</th>
+        <th>Un.</th><th class="num">Qtd</th><th>NCM</th><th class="num">Comp.</th><th>Status</th><th>Situação</th><th></th>
       </tr></thead><tbody id="pd-tbody"></tbody></table></div>
       <div class="foot"><span id="pd-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
         <button class="act" id="pd-prev" style="padding:4px 10px">‹ Anterior</button><span id="pd-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="pd-next" style="padding:4px 10px">Próxima ›</button>
       </span></div></div>
+    </section>
+
+    <!-- =================== TELA OPÇÕES DE PRODUTOS =================== -->
+    <section class="tela" id="scr-opcoes">
+      <div class="subtabs">
+        <button id="op-tab-categoria_produto" class="active">Categorias</button>
+        <button id="op-tab-origem_produto">Origens</button>
+        <button id="op-tab-unidade_medida">Unidades de Medida</button>
+        <button id="op-tab-tipo_sku">Tipos de SKU</button>
+      </div>
+      <div class="toolbar">
+        <button class="act prim" id="op-novo">+ Nova opção</button>
+        <button class="act" id="op-normalizar" title="Corrige produtos já cadastrados que tenham grafia diferente das opções">Normalizar produtos existentes</button>
+        <span id="op-msg" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Valor</th><th class="num">Ordem</th><th>Situação</th><th class="num">Em uso</th><th></th>
+      </tr></thead><tbody id="op-tbody"></tbody></table></div></div>
     </section>
   </main></div>
 </div>
@@ -835,6 +854,21 @@
     </div>
   </div>
 </div></div>
+
+<!-- ===== DRAWER OPÇÃO DE PRODUTO ===== -->
+<div class="overlay" id="op-overlay"></div>
+<aside class="drawer" id="op-drawer" style="max-width:420px">
+  <h2 id="op-titulo">Opção <button class="x" id="op-x">×</button></h2>
+  <div class="drawer-erro" id="op-erro"></div>
+  <div class="body">
+    <div class="grid">
+      <div class="fld full"><label>Valor *</label><input id="op-e-valor" placeholder="Ex.: Rodas"></div>
+      <div class="fld"><label>Ordem</label><input type="number" id="op-e-ordem" value="0"></div>
+      <div class="fld"><label>Situação</label><select id="op-e-ativo"><option value="true">Ativa</option><option value="false">Inativa</option></select></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="op-cancel">Cancelar</button><button class="btn-save" id="op-save">Salvar</button></div>
+</aside>
 <script>
 // ================== CONFIG ==================
 const SUPABASE_URL = "https://mdscihxefuhozrvooqdf.supabase.co";
@@ -917,6 +951,7 @@ async function abrirApp(){
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
   $('nav-produtos').style.display = temPermissao('produtos.ver') ? '' : 'none';
+  $('nav-opcoes').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
   // esconde a categoria inteira se nenhuma tela dela estiver visível
   ['grp-comercial','grp-financeiro','grp-cadastros'].forEach(function(gid){
     const g=$(gid); if(!g) return;
@@ -953,6 +988,7 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 <script src="boletos.js"></script>
 <script src="usuarios.js"></script>
 <script src="produtos.js"></script>
+<script src="opcoes.js"></script>
 
 <!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
 <script>
