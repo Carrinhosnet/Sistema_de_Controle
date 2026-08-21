@@ -217,7 +217,8 @@
       </div>
       <div class="navgroup" id="grp-cadastros">
         <div class="navtit navtit-toggle" data-grp="grp-cadastros">Cadastros<span class="caret">▾</span></div>
-        <button data-tela="cadastro" id="nav-cadastro">Cadastros</button>
+        <button data-tela="cadastro" id="nav-cadastro">Cadastros de Usuários</button>
+        <button data-tela="produtos" id="nav-produtos">Cadastro de Produtos</button>
       </div>
     </nav>
     <div class="userbox"><span class="who" id="who"></span><button class="link" id="btn-sair">Sair</button></div>
@@ -390,6 +391,41 @@
           <th>Perfil</th><th>Descrição</th><th class="num">Usuários</th><th></th>
         </tr></thead><tbody id="cad-p-tbody"></tbody></table></div></div>
       </div>
+    </section>
+
+    <!-- =================== TELA CADASTRO DE PRODUTOS =================== -->
+    <section class="tela" id="scr-produtos">
+      <div class="toolbar">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="pd-busca" placeholder="Buscar por SKU ou descrição…" />
+        </div>
+        <select id="pd-tipo"><option value="">Todos os tipos</option></select>
+        <select id="pd-categoria"><option value="">Todas as categorias</option></select>
+        <select id="pd-origem"><option value="">Todas as origens</option></select>
+        <select id="pd-status">
+          <option value="">Todos os status</option>
+          <option>Básico</option><option>Intermediário</option><option>Completo</option>
+        </select>
+        <select id="pd-ativo">
+          <option value="">Ativos e inativos</option>
+          <option value="true">Somente ativos</option>
+          <option value="false">Somente inativos</option>
+        </select>
+        <select id="pd-ordem"><option value="recentes">Mais recentes</option><option value="sku">SKU (A-Z)</option><option value="descricao">Descrição (A-Z)</option></select>
+        <button class="act prim" id="pd-btn-filtrar">Filtrar</button>
+        <button class="act prim" id="pd-novo">+ Novo produto</button>
+        <button class="act" id="pd-exportar">Exportar CSV</button>
+        <span id="pd-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="kpis" id="pd-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>SKU</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Origem</th>
+        <th>Un.</th><th class="num">Qtd</th><th>NCM</th><th class="num">Comp.</th><th>Status</th><th>Situação</th>
+      </tr></thead><tbody id="pd-tbody"></tbody></table></div>
+      <div class="foot"><span id="pd-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="pd-prev" style="padding:4px 10px">‹ Anterior</button><span id="pd-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="pd-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
     </section>
   </main></div>
 </div>
@@ -646,7 +682,70 @@
   <div class="foot"><button class="btn-cancel" id="cp-cancel">Cancelar</button><button class="btn-save" id="cp-save">Salvar</button></div>
 </aside>
 
-<!-- ============ BASE COMPARTILHADA ============ -->
+<!-- ===== DRAWER CADASTRO DE PRODUTO ===== -->
+<div class="overlay" id="pd-overlay"></div>
+<aside class="drawer" id="pd-drawer">
+  <h2 id="pd-titulo">Produto <button class="x" id="pd-x">×</button></h2>
+  <div class="drawer-erro" id="pd-erro"></div>
+  <div class="body">
+
+    <div class="sec-tit">Classificação</div>
+    <div class="grid">
+      <div class="fld"><label>Tipo de SKU *</label><select id="pd-e-tipo"></select></div>
+      <div class="fld"><label>Situação</label><select id="pd-e-ativo"><option value="true">Ativo</option><option value="false">Inativo</option></select></div>
+      <div class="fld"><label>Categoria *</label><select id="pd-e-categoria"></select></div>
+      <div class="fld"><label>Origem *</label><select id="pd-e-origem"></select></div>
+    </div>
+
+    <!-- Bloco de composição: aparece só para Kit/Combo/Fracionado -->
+    <div id="pd-bloco-composicao" style="display:none">
+      <div class="sec-tit">Composição <span id="pd-comp-hint" style="font-weight:400;color:var(--muted);font-size:11px"></span></div>
+      <div class="grid">
+        <div class="fld"><label id="pd-lbl-pai">SKU do produto-pai</label><input id="pd-e-skupai" placeholder="Digite o SKU base" list="pd-datalist-skus"></div>
+        <div class="fld" id="pd-fld-qtdpai"><label id="pd-lbl-qtdpai">Quantidade</label><input type="number" step="0.0001" id="pd-e-qtdpai" placeholder="ex.: 2 (combo) ou 0,5 (fracionado)"></div>
+      </div>
+      <!-- Kit: lista de vários componentes -->
+      <div id="pd-kit-lista" style="display:none">
+        <div id="pd-componentes"></div>
+        <button class="act" id="pd-add-comp" style="padding:5px 10px;margin-top:6px">+ Adicionar componente</button>
+      </div>
+      <datalist id="pd-datalist-skus"></datalist>
+    </div>
+
+    <div class="sec-tit">Identificação</div>
+    <div class="grid">
+      <div class="fld full"><label>SKU *</label><input id="pd-e-sku" placeholder="Ex.: GE20"></div>
+      <div class="fld full"><label>Descrição * <span style="color:var(--muted);font-weight:400">(máx. 200)</span></label><input id="pd-e-descricao" maxlength="200"></div>
+      <div class="fld"><label>NCM * <span style="color:var(--muted);font-weight:400">(só números)</span></label><input id="pd-e-ncm" inputmode="numeric"></div>
+      <div class="fld"><label>EAN <span style="color:var(--muted);font-weight:400">(só números)</span></label><input id="pd-e-ean" inputmode="numeric"></div>
+      <div class="fld"><label>Unidade de Medida *</label><select id="pd-e-unidade"></select></div>
+      <div class="fld"><label>Quantidade *</label><input type="number" step="0.0001" id="pd-e-qtd"></div>
+    </div>
+
+    <div class="sec-tit">Dimensões e Peso <span style="font-weight:400;color:var(--muted);font-size:11px">(opcional)</span></div>
+    <div class="grid">
+      <div class="fld"><label>Altura (cm)</label><input type="number" step="0.01" id="pd-e-altura"></div>
+      <div class="fld"><label>Largura (cm)</label><input type="number" step="0.01" id="pd-e-largura"></div>
+      <div class="fld"><label>Comprimento (cm)</label><input type="number" step="0.01" id="pd-e-comprimento"></div>
+      <div class="fld"><label>Peso (kg)</label><input type="number" step="0.001" id="pd-e-peso"></div>
+    </div>
+
+    <div class="sec-tit">Conteúdo <span style="font-weight:400;color:var(--muted);font-size:11px">(opcional)</span></div>
+    <div class="grid">
+      <div class="fld full"><label>Descrição longa</label><textarea id="pd-e-desclonga" rows="3" style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;resize:vertical"></textarea></div>
+      <div class="fld full"><label>Características técnicas</label><textarea id="pd-e-caract" rows="3" style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;resize:vertical"></textarea></div>
+    </div>
+
+    <div class="sec-tit">Imagens <span style="font-weight:400;color:var(--muted);font-size:11px">(até 20 — marque uma como padrão)</span></div>
+    <div id="pd-imagens"></div>
+    <button class="act" id="pd-add-img" style="padding:5px 10px;margin-top:6px">+ Adicionar imagem</button>
+
+    <div class="calc-sec"><div class="sec-tit">Status do cadastro</div>
+      <div class="grid"><div class="fld full"><input id="pd-c-status" readonly></div></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="pd-cancel">Cancelar</button><button class="btn-save" id="pd-save">Salvar</button></div>
+</aside>
 <script>
 // ================== CONFIG ==================
 const SUPABASE_URL = "https://mdscihxefuhozrvooqdf.supabase.co";
@@ -727,6 +826,7 @@ async function abrirApp(){
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
+  $('nav-produtos').style.display = temPermissao('produtos.ver') ? '' : 'none';
   // esconde a categoria inteira se nenhuma tela dela estiver visível
   ['grp-comercial','grp-financeiro','grp-cadastros'].forEach(function(gid){
     const g=$(gid); if(!g) return;
@@ -739,7 +839,8 @@ async function abrirApp(){
     : temPermissao('reclamacoes.ver') ? 'reclamacoes'
     : temPermissao('envios.ver') ? 'envios'
     : temPermissao('boletos.ver') ? 'boletos'
-    : temPermissao('usuarios.gerenciar') ? 'cadastro' : null;
+    : temPermissao('usuarios.gerenciar') ? 'cadastro'
+    : temPermissao('produtos.ver') ? 'produtos' : null;
   if(primeira) mostrarTela(primeira);
   else document.querySelector('main').innerHTML='<p style="padding:40px;color:var(--muted)">Você não tem permissão para nenhuma tela.</p>';
 }
@@ -761,6 +862,7 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 <script src="envios.js"></script>
 <script src="boletos.js"></script>
 <script src="usuarios.js"></script>
+<script src="produtos.js"></script>
 
 <!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
 <script>
