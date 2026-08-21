@@ -44,7 +44,7 @@ const PD = (function(){
   function fillSel(id,arr){ const s=f(id); if(!s)return; s.innerHTML=arr.map(v=>`<option value="${v}">${v}</option>`).join(''); }
 
   // ---------- listagem ----------
-  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="12" class="loading">Carregando produtos…</td></tr>'; const fl=filtros();
+  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="11" class="loading">Carregando produtos…</td></tr>'; const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([
         rpc('cn_listar_produtos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_produtos',fl),
@@ -52,7 +52,7 @@ const PD = (function(){
       ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
-    }catch(e){ f('tbody').innerHTML='<tr><td colspan="12" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
+    }catch(e){ f('tbody').innerHTML='<tr><td colspan="11" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp; }
 
@@ -72,14 +72,13 @@ const PD = (function(){
     return `<span class="pill" style="border-color:${cor};color:${cor}">${st||'—'}</span>`; }
   function tipoPill(t){ return `<span class="pill">${t||'—'}</span>`; }
 
-  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="12" class="empty">Nenhum produto encontrado.</td></tr>'; return; }
-    const podeEditar=temPermissao('produtos.editar'); const podeExcluir=temPermissao('produtos.excluir');
-    tb.innerHTML=LINHAS.map(l=>`<tr class="${l.ativo?'':'pendente'}">
-      <td ${podeEditar?`style="cursor:pointer" onclick="PD.abrir(${l.id})"`:''}><b>${l.sku||'—'}</b></td><td>${tipoPill(l.tipo_sku)}</td><td>${l.categoria||'—'}</td><td>${l.descricao||'—'}</td><td>${l.origem||'—'}</td>
+  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="11" class="empty">Nenhum produto encontrado.</td></tr>'; return; }
+    const podeEditar=temPermissao('produtos.editar');
+    tb.innerHTML=LINHAS.map(l=>`<tr class="${l.ativo?'':'pendente'}" ${podeEditar?`style="cursor:pointer" onclick="PD.abrir(${l.id})"`:''}>
+      <td><b>${l.sku||'—'}</b></td><td>${tipoPill(l.tipo_sku)}</td><td>${l.categoria||'—'}</td><td>${l.descricao||'—'}</td><td>${l.origem||'—'}</td>
       <td>${l.unidade_medida||'—'}</td><td class="num">${l.quantidade??'—'}</td><td>${l.ncm||'—'}</td>
       <td class="num">${l.qtd_componentes>0?l.qtd_componentes:'—'}</td><td>${statusPill(l.status)}</td>
       <td>${l.ativo?'<span class="pill">Ativo</span>':'<span class="pill" style="color:var(--muted)">Inativo</span>'}</td>
-      <td class="acoes" onclick="event.stopPropagation()">${podeExcluir?`<button class="mini dg" onclick="PD.excluir(${l.id})">Excluir</button>`:'—'}</td>
     </tr>`).join('');
   }
 
@@ -161,6 +160,7 @@ const PD = (function(){
     ['e-sku','e-descricao','e-ncm','e-ean','e-qtd','e-altura','e-largura','e-comprimento','e-peso','e-desclonga','e-caract','e-skupai','e-qtdpai'].forEach(id=>{ if(f(id))f(id).value=''; });
     COMPONENTES=[]; IMAGENS=[]; renderComponentes(); renderImagens();
     ajustarPorTipo(); f('c-status').value='Básico (novo)';
+    f('excluir').style.display='none';   // novo produto ainda não existe, nada a excluir
     abre();
   }
 
@@ -180,6 +180,8 @@ const PD = (function(){
     IMAGENS=(p.imagens||[]).map(im=>({url:im.url,padrao:im.eh_padrao}));
     renderComponentes(); renderImagens();
     ajustarPorTipo(); f('c-status').value=p.status||'—';
+    f('excluir').style.display = temPermissao('produtos.excluir') ? '' : 'none';
+    f('excluir').textContent = p.ativo ? 'Inativar produto' : 'Excluir definitivamente';
     abre();
   }
   function setSelSafe(id,val){ const s=f(id); if(!s)return; if(val&&![...s.options].some(o=>o.value===val)){ const o=document.createElement('option'); o.value=val;o.textContent=val; s.appendChild(o); } s.value=val||''; }
@@ -468,6 +470,7 @@ const PD = (function(){
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     // drawer
     f('x').addEventListener('click',fechar); f('cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('save').addEventListener('click',salvar);
+    f('excluir').addEventListener('click',excluirAtual);
     f('e-tipo').addEventListener('change',ajustarPorTipo);
     ['e-skupai','e-qtdpai'].forEach(id=>f(id).addEventListener('input',recomputarAuto));
     f('e-unidade').addEventListener('change',recomputarAuto);
@@ -490,24 +493,22 @@ const PD = (function(){
     recarregarSkusCache();
   }
 
-  async function excluir(id){ const l=LINHAS.find(x=>x.id===id); if(!l)return;
-    // 1º passo: se está ativo, oferece inativar; se já inativo, oferece excluir definitivo
+  async function excluirAtual(){ if(EDIT_ID==null)return; const l=LINHAS.find(x=>x.id===EDIT_ID); const nome = l?l.sku:'este produto'; const ativo = l?l.ativo:true;
     let definitivo=false;
-    if(l.ativo){
-      const opc=confirm(`Inativar o produto "${l.sku}"?\n\nOK = Inativar (fica guardado, some das listas ativas)\nCancelar = não fazer nada`);
-      if(!opc) return;
+    if(ativo){
+      if(!confirm(`Inativar o produto "${nome}"?\n\nEle fica guardado no sistema, mas some das listagens ativas. Você pode reativá-lo depois editando e mudando a Situação para Ativo.`)) return;
     } else {
-      const opc=confirm(`O produto "${l.sku}" já está inativo.\n\nOK = EXCLUIR DEFINITIVAMENTE (não pode desfazer)\nCancelar = manter inativo`);
-      if(!opc) return;
+      if(!confirm(`O produto "${nome}" já está inativo.\n\nExcluir DEFINITIVAMENTE? Esta ação não pode ser desfeita e remove também composição e imagens.`)) return;
       definitivo=true;
     }
-    try{ await rpc('cn_excluir_produto',{p_usuario_id:USER.id,p_produto_id:id,p_definitivo:definitivo});
+    const b=f('excluir'); b.disabled=true;
+    try{ await rpc('cn_excluir_produto',{p_usuario_id:USER.id,p_produto_id:EDIT_ID,p_definitivo:definitivo});
       f('msg').textContent=definitivo?'Produto excluído definitivamente.':'Produto inativado.';
-      await carregar(); await recarregarSkusCache();
-    }catch(e){ alert('Erro ao excluir: '+(e.message||e)); }
+      fechar(); await carregar(); await recarregarSkusCache();
+    }catch(e){ f('erro').textContent='Erro ao excluir: '+(e.message||e); } finally{ b.disabled=false; }
   }
 
-  return { init, abrir, excluir, setComp, rmComp, addComp:()=>addComp(), setImg, rmImg, setPadrao };
+  return { init, abrir, setComp, rmComp, addComp:()=>addComp(), setImg, rmImg, setPadrao };
 })();
 window.PD = PD;
 registrarTela('produtos', PD);

@@ -426,7 +426,7 @@
       <div class="kpis" id="pd-kpis"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
         <th>SKU</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Origem</th>
-        <th>Un.</th><th class="num">Qtd</th><th>NCM</th><th class="num">Comp.</th><th>Status</th><th>Situação</th><th></th>
+        <th>Un.</th><th class="num">Qtd</th><th>NCM</th><th class="num">Comp.</th><th>Status</th><th>Situação</th>
       </tr></thead><tbody id="pd-tbody"></tbody></table></div>
       <div class="foot"><span id="pd-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
         <button class="act" id="pd-prev" style="padding:4px 10px">‹ Anterior</button><span id="pd-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="pd-next" style="padding:4px 10px">Próxima ›</button>
@@ -767,7 +767,10 @@
       <div class="grid"><div class="fld full"><input id="pd-c-status" readonly></div></div>
     </div>
   </div>
-  <div class="foot"><button class="btn-cancel" id="pd-cancel">Cancelar</button><button class="btn-save" id="pd-save">Salvar</button></div>
+  <div class="foot" style="justify-content:space-between">
+    <button id="pd-excluir" style="display:none;padding:9px 14px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:8px;color:#f87171;cursor:pointer;font-weight:500">Inativar produto</button>
+    <span style="display:flex;gap:8px"><button class="btn-cancel" id="pd-cancel">Cancelar</button><button class="btn-save" id="pd-save">Salvar</button></span>
+  </div>
 </aside>
 
 <!-- ===== MODAL IMPORTAÇÃO DE PRODUTOS (EXCEL) ===== -->
