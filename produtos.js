@@ -225,6 +225,167 @@ const PD = (function(){
       const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='produtos_carrinhos_net.csv'; a.click();
     }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
+  // =====================================================================
+  // IMPORT / EXPORT EXCEL
+  // =====================================================================
+  let IMP_LINHAS=[];   // linhas normalizadas do arquivo, prontas p/ enviar
+
+  const im=(id)=>$('pdimp-'+id);
+
+  // mapa: nome da aba -> {tipo, mapeamento de cabeçalho da planilha -> campo interno}
+  // cabeçalhos são comparados de forma tolerante (minúsculo, sem acento, sem *).
+  function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\*/g,'').trim(); }
+
+  const MAP_COMUM = {
+    'sku':'sku', 'categoria':'categoria', 'origem':'origem', 'descricao':'descricao',
+    'ncm':'ncm', 'unidade':'unidade_medida', 'quantidade':'quantidade', 'ean':'ean',
+    'peso (kg)':'peso', 'altura (cm)':'dim_altura', 'largura (cm)':'dim_largura',
+    'comprimento (cm)':'dim_comprimento', 'descricao longa':'descricao_longa',
+    'caracteristicas tecnicas':'caracteristicas'
+  };
+  function mapImagens(k){ return norm(k).startsWith('imagens'); }
+  function mapComponentes(k){ return norm(k).startsWith('componentes'); }
+
+  function abrirImport(){ if(!temPermissao('produtos.importar')){ alert('Sem permissão para importar.'); return; }
+    IMP_LINHAS=[]; im('erro').textContent=''; im('status').textContent=''; im('file').value='';
+    im('step1').style.display='block'; im('step2').style.display='none'; im('sim').checked=true;
+    im('confirmar').style.display='none';
+    $('pdimp-modal').classList.add('open');
+  }
+  function fecharImport(){ $('pdimp-modal').classList.remove('open'); }
+
+  // lê o arquivo e monta IMP_LINHAS
+  async function lerArquivo(){
+    const inp=im('file'); if(!inp.files||!inp.files[0]){ im('erro').textContent='Selecione um arquivo.'; return false; }
+    im('erro').textContent=''; im('status').textContent='Lendo arquivo…';
+    const buf=await inp.files[0].arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    const linhas=[];
+    const abas=[['Simples','Simples'],['Kit','Kit'],['Combo','Combo'],['Fracionado','Fracionado']];
+    for(const [abaNome,tipo] of abas){
+      const ws=wb.Sheets[abaNome]; if(!ws) continue;
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}); if(!rows.length) continue;
+      const head=rows[0].map(h=>norm(h));
+      // localizar índices
+      for(let r=1;r<rows.length;r++){
+        const row=rows[r]; if(!row || row.every(c=>String(c).trim()==='')) continue;
+        // pular a linha de exemplo do template (heurística: 1ª linha de dados idêntica ao exemplo conhecido)
+        const obj=montarObj(tipo,head,row,abaNome,r+1);
+        if(obj) linhas.push(obj);
+      }
+    }
+    IMP_LINHAS=linhas;
+    if(!linhas.length){ im('erro').textContent='Nenhuma linha de dados encontrada nas abas Simples/Kit/Combo/Fracionado.'; im('status').textContent=''; return false; }
+    im('status').textContent=`${linhas.length} linha(s) lida(s).`;
+    return true;
+  }
+
+  function valCol(head,row,alvoTest){ for(let i=0;i<head.length;i++){ if(alvoTest(head[i])) return row[i]; } return ''; }
+  function getByMap(head,row,mapKey){ for(let i=0;i<head.length;i++){ if(MAP_COMUM[head[i]]===mapKey) return row[i]; } return ''; }
+
+  // SKUs das linhas de exemplo do template — puladas automaticamente na importação
+  const EXEMPLOS_TEMPLATE = new Set(['GE20','KIT-PD90-PD70','ABAR1200','CE8MM']);
+
+  function montarObj(tipo,head,row,aba,linhaNum){
+    const o={ tipo_sku:tipo, _aba:aba, _linha:linhaNum };
+    // campos comuns via MAP_COMUM
+    for(const campo of ['sku','categoria','origem','descricao','ncm','unidade_medida','quantidade','ean','peso','dim_altura','dim_largura','dim_comprimento','descricao_longa','caracteristicas']){
+      const v=getByMap(head,row,campo); if(v!=='' && v!=null) o[campo]=String(v).trim();
+    }
+    // imagens (coluna que começa com "imagens")
+    const imgs=valCol(head,row,mapImagens);
+    if(imgs){ o.imagens=String(imgs).split(';').map(s=>s.trim()).filter(Boolean); }
+    // por tipo
+    if(tipo==='Kit'){
+      const comp=valCol(head,row,mapComponentes);
+      if(comp){ o.componentes=String(comp).split(';').map(par=>{ const [sku,q]=par.split(':'); return {sku:(sku||'').trim(), quantidade:(q||'1').trim()}; }).filter(c=>c.sku); }
+    } else if(tipo==='Combo' || tipo==='Fracionado'){
+      // colunas específicas: SKU-Pai/SKU-Master e Quantidade no Combo/Fracionada
+      o.sku_pai = String(valCol(head,row,k=>{ const n=norm(k); return n==='sku-pai'||n==='sku-master'; })||'').trim();
+      o.quantidade_composicao = String(valCol(head,row,k=>{ const n=norm(k); return n.startsWith('quantidade no combo')||n.startsWith('quantidade fracionada'); })||'').trim();
+      // SKU e descrição podem vir vazios (auto). Se preenchidos, usa.
+      const skuManual=String(valCol(head,row,k=>norm(k)==='sku'||norm(k).startsWith('sku (deixe'))||'').trim();
+      if(skuManual) o.sku=skuManual;
+      const descManual=String(valCol(head,row,k=>norm(k)==='descricao'||norm(k).startsWith('descricao (deixe'))||'').trim();
+      if(descManual) o.descricao=descManual;
+      if(!o.unidade_medida){ const u=String(valCol(head,row,k=>norm(k)==='unidade')||'').trim(); if(u)o.unidade_medida=u; }
+    }
+    // pula a linha de exemplo do template (SKU ou SKU-pai de exemplo, exatamente na 2ª linha)
+    const skuRef = o.sku || o.sku_pai;
+    if(linhaNum===2 && EXEMPLOS_TEMPLATE.has(skuRef)) return null;
+    return o;
+  }
+
+  async function processarImport(){
+    const b=im('processar'); b.disabled=true;
+    try{
+      const ok=await lerArquivo(); if(!ok){ b.disabled=false; return; }
+      const simular=im('sim').checked; const modo=im('modo').value;
+      im('status').textContent=simular?'Simulando…':'Importando…';
+      const rel=await rpc('cn_importar_produtos',{p_usuario_id:USER.id,p_linhas:IMP_LINHAS,p_modo:modo,p_simulacao:simular});
+      mostrarRelatorio(rel,simular);
+    }catch(e){ im('erro').textContent='Erro: '+(e.message||e); }
+    finally{ b.disabled=false; im('status').textContent=''; }
+  }
+
+  function mostrarRelatorio(rel,simulado){
+    im('step1').style.display='none'; im('step2').style.display='block';
+    const cards=[
+      ['Total',rel.total||0],['Criados',rel.criados||0],['Atualizados',rel.atualizados||0],
+      ['Ignorados',rel.ignorados||0],['Erros',rel.erros||0]
+    ];
+    im('resumo').innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${Number(c[1]).toLocaleString('pt-BR')}</div></div>`).join('');
+    const itens=rel.itens||[];
+    im('itens').innerHTML = itens.length ? itens.map(it=>{
+      const cor = it.acao==='erro'?'#ef4444':(it.acao&&it.acao.startsWith('ignorado')?'#94a3b8':'#22c55e');
+      return `<tr><td>${it.aba||'—'}</td><td>${it.linha||'—'}</td><td>${it.sku||'—'}</td><td><span class="pill" style="border-color:${cor};color:${cor}">${it.acao||'—'}</span></td><td>${it.mensagem||''}</td></tr>`;
+    }).join('') : '<tr><td colspan="5" class="empty">Sem itens.</td></tr>';
+    // se foi simulação e não houve erro fatal, oferece confirmar
+    im('confirmar').style.display = simulado ? '' : 'none';
+  }
+
+  async function confirmarImport(){ // re-processa sem simulação
+    const b=im('confirmar'); b.disabled=true; b.textContent='Importando…';
+    try{
+      const modo=im('modo').value;
+      const rel=await rpc('cn_importar_produtos',{p_usuario_id:USER.id,p_linhas:IMP_LINHAS,p_modo:modo,p_simulacao:false});
+      mostrarRelatorio(rel,false); await carregar(true); await recarregarSkusCache();
+    }catch(e){ im('erro').textContent='Erro: '+(e.message||e); }
+    finally{ b.disabled=false; b.textContent='Confirmar importação'; }
+  }
+
+  // -------- EXPORT XLSX (no mesmo formato do template) --------
+  async function exportarXlsx(){ const b=f('exportar-xlsx'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
+    try{
+      const dados=await rpc('cn_exportar_produtos',{p_usuario_id:USER.id}); if(!dados||!dados.length){ alert('Nenhum produto para exportar.'); return; }
+      const porTipo={Simples:[],Kit:[],Combo:[],Fracionado:[]};
+      dados.forEach(p=>{ (porTipo[p.tipo_sku]=porTipo[p.tipo_sku]||[]).push(p); });
+      const wb=XLSX.utils.book_new();
+      // Simples
+      addAba(wb,'Simples',porTipo.Simples,p=>({
+        'SKU *':p.sku,'Categoria *':p.categoria,'Origem *':p.origem,'Descrição *':p.descricao,'NCM *':p.ncm,
+        'Unidade *':p.unidade_medida,'Quantidade *':p.quantidade,'EAN':p.ean||'','Peso (kg)':p.peso||'',
+        'Altura (cm)':p.dim_altura||'','Largura (cm)':p.dim_largura||'','Comprimento (cm)':p.dim_comprimento||'',
+        'Descrição Longa':p.descricao_longa||'','Características Técnicas':p.caracteristicas||'','Imagens (URLs separadas por ;)':p.imagens||''
+      }));
+      addAba(wb,'Kit',porTipo.Kit,p=>({
+        'SKU *':p.sku,'Categoria *':p.categoria,'Origem *':p.origem,'Descrição *':p.descricao,'NCM *':p.ncm,
+        'Unidade *':p.unidade_medida,'Quantidade *':p.quantidade,'Componentes (SKU:qtd separados por ;) *':p.componentes||'',
+        'EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
+      }));
+      addAba(wb,'Combo',porTipo.Combo,p=>({
+        'SKU':p.sku,'Categoria *':p.categoria,'Origem *':p.origem,'NCM *':p.ncm,'Unidade *':p.unidade_medida,
+        'Descrição':p.descricao,'Componentes (SKU:qtd)':p.componentes||'','EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
+      }));
+      addAba(wb,'Fracionado',porTipo.Fracionado,p=>({
+        'SKU':p.sku,'Categoria *':p.categoria,'Origem *':p.origem,'NCM *':p.ncm,'Unidade *':p.unidade_medida,
+        'Descrição':p.descricao,'Componentes (SKU:qtd)':p.componentes||'','EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
+      }));
+      XLSX.writeFile(wb,'produtos_carrinhos_net.xlsx');
+    }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; }
+  }
+  function addAba(wb,nome,lista,fn){ const arr=(lista||[]).map(fn); const ws=XLSX.utils.json_to_sheet(arr.length?arr:[fn({})]); XLSX.utils.book_append_sheet(wb,ws,nome); }
+
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
     ['tipo','categoria','origem','status','ativo','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true)));
@@ -238,6 +399,14 @@ const PD = (function(){
     f('e-unidade').addEventListener('change',recomputarAuto);
     f('add-comp').addEventListener('click',addComp);
     f('add-img').addEventListener('click',addImg);
+    // import/export
+    f('importar').addEventListener('click',abrirImport);
+    f('exportar-xlsx').addEventListener('click',exportarXlsx);
+    im('x').addEventListener('click',fecharImport);
+    im('processar').addEventListener('click',processarImport);
+    im('confirmar').addEventListener('click',confirmarImport);
+    im('voltar').addEventListener('click',()=>{ im('step2').style.display='none'; im('step1').style.display='block'; });
+    im('fechar2').addEventListener('click',fecharImport);
     recarregarSkusCache();
   }
 

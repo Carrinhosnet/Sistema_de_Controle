@@ -179,6 +179,7 @@
   button.mini.dg{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#f87171}
 
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -415,6 +416,8 @@
         <select id="pd-ordem"><option value="recentes">Mais recentes</option><option value="sku">SKU (A-Z)</option><option value="descricao">Descrição (A-Z)</option></select>
         <button class="act prim" id="pd-btn-filtrar">Filtrar</button>
         <button class="act prim" id="pd-novo">+ Novo produto</button>
+        <button class="act" id="pd-importar">Importar Excel</button>
+        <button class="act" id="pd-exportar-xlsx">Exportar Excel</button>
         <button class="act" id="pd-exportar">Exportar CSV</button>
         <span id="pd-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
@@ -746,6 +749,54 @@
   </div>
   <div class="foot"><button class="btn-cancel" id="pd-cancel">Cancelar</button><button class="btn-save" id="pd-save">Salvar</button></div>
 </aside>
+
+<!-- ===== MODAL IMPORTAÇÃO DE PRODUTOS (EXCEL) ===== -->
+<div class="modal" id="pdimp-modal"><div class="box" style="width:760px">
+  <h3>Importar produtos do Excel <button class="x" id="pdimp-x">×</button></h3>
+  <div class="content">
+    <div id="pdimp-step1">
+      <p style="font-size:13px;color:var(--muted);margin:0 0 12px">
+        Selecione um arquivo no formato do template (abas <b>Simples</b>, <b>Kit</b>, <b>Combo</b>, <b>Fracionado</b>).
+        A linha de exemplo do template é ignorada automaticamente.
+      </p>
+      <div class="grid">
+        <div class="fld full"><label>Arquivo Excel (.xlsx)</label>
+          <input type="file" id="pdimp-file" accept=".xlsx,.xls">
+        </div>
+        <div class="fld full"><label>Modo de importação</label>
+          <select id="pdimp-modo">
+            <option value="criar_ou_atualizar">Criar ou Atualizar (recomendado)</option>
+            <option value="somente_criar">Somente Criar (ignora SKUs existentes)</option>
+            <option value="somente_atualizar">Somente Atualizar (ignora SKUs novos)</option>
+          </select>
+        </div>
+        <div class="fld full">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="pdimp-sim" checked> Simular primeiro (não grava — só mostra o que faria)
+          </label>
+        </div>
+      </div>
+      <div id="pdimp-erro" class="drawer-erro"></div>
+      <div style="margin-top:14px;display:flex;gap:8px">
+        <button class="act prim" id="pdimp-processar">Processar</button>
+        <span id="pdimp-status" style="font-size:12px;color:var(--muted);align-self:center"></span>
+      </div>
+    </div>
+
+    <div id="pdimp-step2" style="display:none">
+      <div class="kpis" id="pdimp-resumo" style="margin-bottom:12px"></div>
+      <div class="tablewrap" style="max-height:340px;overflow:auto"><div class="scroll"><table>
+        <thead><tr><th>Aba</th><th>Linha</th><th>SKU</th><th>Ação</th><th>Mensagem</th></tr></thead>
+        <tbody id="pdimp-itens"></tbody>
+      </table></div></div>
+      <div style="margin-top:14px;display:flex;gap:8px">
+        <button class="act prim" id="pdimp-confirmar" style="display:none">Confirmar importação</button>
+        <button class="act" id="pdimp-voltar">Voltar</button>
+        <button class="act" id="pdimp-fechar2">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div></div>
 <script>
 // ================== CONFIG ==================
 const SUPABASE_URL = "https://mdscihxefuhozrvooqdf.supabase.co";
