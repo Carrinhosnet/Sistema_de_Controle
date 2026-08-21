@@ -417,6 +417,7 @@
         <button class="act prim" id="pd-btn-filtrar">Filtrar</button>
         <button class="act prim" id="pd-novo">+ Novo produto</button>
         <button class="act" id="pd-importar">Importar Excel</button>
+        <button class="act" id="pd-conferir">Conferir com Bling</button>
         <button class="act" id="pd-exportar-xlsx">Exportar Excel</button>
         <button class="act" id="pd-exportar">Exportar CSV</button>
         <span id="pd-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
@@ -794,6 +795,43 @@
         <button class="act" id="pdimp-voltar">Voltar</button>
         <button class="act" id="pdimp-fechar2">Fechar</button>
       </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ===== MODAL CONFERÊNCIA COM BLING ===== -->
+<div class="modal" id="pdconf-modal"><div class="box" style="width:820px">
+  <h3>Conferência de produtos com o Bling <button class="x" id="pdconf-x">×</button></h3>
+  <div class="content">
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">
+      Compara os SKUs cadastrados no sistema com os códigos do Bling. Não altera nenhum produto —
+      apenas mostra o que está em desacordo.
+    </p>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <button class="act prim" id="pdconf-rodar">Rodar conferência</button>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer">
+        <input type="checkbox" id="pdconf-ativos"> Considerar só produtos ativos no Bling
+      </label>
+      <span id="pdconf-status" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div id="pdconf-erro" class="drawer-erro"></div>
+
+    <div id="pdconf-resultado" style="display:none">
+      <div class="kpis" id="pdconf-kpis" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <select id="pdconf-filtro">
+          <option value="desacordo">Só em desacordo</option>
+          <option value="so_bling">Só no Bling (falta cadastrar)</option>
+          <option value="so_sistema">Só no sistema (não está no Bling)</option>
+          <option value="ambos">Existe nos dois</option>
+          <option value="todos">Todos</option>
+        </select>
+        <button class="act" id="pdconf-exportar">Exportar CSV</button>
+      </div>
+      <div class="tablewrap" style="max-height:360px;overflow:auto"><div class="scroll"><table>
+        <thead><tr><th>Situação</th><th>SKU</th><th>Descrição</th><th>Tipo</th><th>Ativo</th></tr></thead>
+        <tbody id="pdconf-itens"></tbody>
+      </table></div></div>
     </div>
   </div>
 </div></div>

@@ -386,6 +386,78 @@ const PD = (function(){
   }
   function addAba(wb,nome,lista,fn){ const arr=(lista||[]).map(fn); const ws=XLSX.utils.json_to_sheet(arr.length?arr:[fn({})]); XLSX.utils.book_append_sheet(wb,ws,nome); }
 
+  // =====================================================================
+  // CONFERÊNCIA COM O BLING (só existência por SKU — não altera dados)
+  // =====================================================================
+  let CONF_ITENS=[];
+  const cf=(id)=>$('pdconf-'+id);
+
+  function abrirConf(){ if(!temPermissao('produtos.sincronizar')){ alert('Sem permissão para conferir com o Bling.'); return; }
+    cf('erro').textContent=''; cf('status').textContent=''; cf('resultado').style.display='none'; CONF_ITENS=[];
+    $('pdconf-modal').classList.add('open');
+  }
+  function fecharConf(){ $('pdconf-modal').classList.remove('open'); }
+
+  async function rodarConf(){ const b=cf('rodar'); if(b.disabled)return; b.disabled=true; cf('erro').textContent='';
+    try{
+      cf('status').textContent='Buscando códigos no Bling…';
+      const sit = cf('ativos').checked ? 'ativos' : 'todas';
+      const resp = await chamarFuncao('bling-produtos-codigos',{situacao:sit});
+      const codigos = resp.codigos||[];
+      cf('status').textContent=`Comparando ${codigos.length} códigos do Bling…`;
+      const rel = await rpc('cn_conferir_produtos_bling',{p_usuario_id:USER.id,p_codigos:codigos,p_incluir_ambos:true});
+      CONF_ITENS = rel.itens||[];
+      renderConfKpis(rel); renderConfItens(); cf('resultado').style.display='block';
+      cf('status').textContent='Conferência concluída '+new Date().toLocaleTimeString('pt-BR');
+    }catch(e){ cf('erro').textContent='Erro: '+(e.message||e); cf('status').textContent=''; }
+    finally{ b.disabled=false; }
+  }
+
+  function renderConfKpis(rel){
+    const cards=[
+      ['Total no Bling',rel.total_bling||0],
+      ['Total no sistema',rel.total_sistema||0],
+      ['Em ambos',rel.qtd_ambos||0],
+      ['Só no Bling',rel.qtd_so_bling||0],
+      ['Só no sistema',rel.qtd_so_sistema||0]
+    ];
+    cf('kpis').innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${Number(c[1]).toLocaleString('pt-BR')}</div></div>`).join('');
+  }
+
+  function confSituacaoLabel(s){ return s==='so_bling'?'Só no Bling':(s==='so_sistema'?'Só no sistema':'Em ambos'); }
+  function confSituacaoCor(s){ return s==='so_bling'?'#3b82f6':(s==='so_sistema'?'#a855f7':'#22c55e'); }
+
+  function renderConfItens(){
+    const filtro=cf('filtro').value;
+    let lista=CONF_ITENS.slice();
+    if(filtro==='desacordo') lista=lista.filter(i=>i.situacao!=='ambos');
+    else if(filtro!=='todos') lista=lista.filter(i=>i.situacao===filtro);
+    const tb=cf('itens');
+    if(!lista.length){ tb.innerHTML='<tr><td colspan="5" class="empty">Nenhum item nesta categoria.</td></tr>'; return; }
+    tb.innerHTML=lista.map(i=>{
+      const cor=confSituacaoCor(i.situacao);
+      const ativo = i.situacao==='so_bling' ? (i.ativo_bling?'Sim':'Não')
+                  : i.situacao==='so_sistema' ? (i.ativo_sistema?'Sim':'Não')
+                  : (i.ativo_sistema?'Sim':'Não');
+      return `<tr>
+        <td><span class="pill" style="border-color:${cor};color:${cor}">${confSituacaoLabel(i.situacao)}</span></td>
+        <td><b>${i.sku||'—'}</b></td><td>${i.descricao||'—'}</td><td>${i.tipo_sku||'—'}</td><td>${ativo}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function exportarConf(){ if(!CONF_ITENS.length)return;
+    const filtro=cf('filtro').value; let lista=CONF_ITENS.slice();
+    if(filtro==='desacordo') lista=lista.filter(i=>i.situacao!=='ambos');
+    else if(filtro!=='todos') lista=lista.filter(i=>i.situacao===filtro);
+    const head=['Situacao','SKU','Descricao','Tipo','AtivoSistema','AtivoBling'];
+    const ls=lista.map(i=>[confSituacaoLabel(i.situacao),i.sku||'',i.descricao||'',i.tipo_sku||'',
+      (i.ativo_sistema==null?'':(i.ativo_sistema?'Sim':'Nao')),(i.ativo_bling==null?'':(i.ativo_bling?'Sim':'Nao'))]
+      .map(v=>{v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';'));
+    const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='conferencia_bling_carrinhos_net.csv'; a.click();
+  }
+
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
     ['tipo','categoria','origem','status','ativo','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true)));
@@ -407,6 +479,12 @@ const PD = (function(){
     im('confirmar').addEventListener('click',confirmarImport);
     im('voltar').addEventListener('click',()=>{ im('step2').style.display='none'; im('step1').style.display='block'; });
     im('fechar2').addEventListener('click',fecharImport);
+    // conferência bling
+    f('conferir').addEventListener('click',abrirConf);
+    cf('x').addEventListener('click',fecharConf);
+    cf('rodar').addEventListener('click',rodarConf);
+    cf('filtro').addEventListener('change',renderConfItens);
+    cf('exportar').addEventListener('click',exportarConf);
     recarregarSkusCache();
   }
 
