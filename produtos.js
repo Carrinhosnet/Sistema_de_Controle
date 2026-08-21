@@ -409,6 +409,7 @@ const PD = (function(){
       CONF_ITENS = rel.itens||[];
       renderConfKpis(rel); renderConfItens(); cf('resultado').style.display='block';
       cf('status').textContent='Conferência concluída '+new Date().toLocaleTimeString('pt-BR');
+      if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){ cf('erro').textContent='Erro: '+(e.message||e); cf('status').textContent=''; }
     finally{ b.disabled=false; }
   }

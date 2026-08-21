@@ -219,7 +219,7 @@
       <div class="navgroup" id="grp-cadastros">
         <div class="navtit navtit-toggle" data-grp="grp-cadastros">Cadastros<span class="caret">▾</span></div>
         <button data-tela="cadastro" id="nav-cadastro">Cadastros de Usuários</button>
-        <button data-tela="produtos" id="nav-produtos">Cadastro de Produtos</button>
+        <button data-tela="produtos" id="nav-produtos">Cadastro de Produtos<span class="badge-dot" id="badge-produtos" style="display:none"></span></button>
       </div>
     </nav>
     <div class="userbox"><span class="who" id="who"></span><button class="link" id="btn-sair">Sair</button></div>
@@ -883,6 +883,7 @@ async function atualizarBadges(){
   setDot('badge-reclamacoes',   temPermissao('reclamacoes.ver'),   'cn_reclamacoes_pendencias');
   setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias');
   setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias');
+  setDot('badge-produtos',      temPermissao('produtos.ver'),      'cn_produtos_pendencias');
 }
 // compatibilidade com chamadas existentes (boletos.js)
 async function atualizarBadgeBoletos(){ return atualizarBadges(); }
