@@ -237,14 +237,26 @@ const PD = (function(){
 
   // mapa: nome da aba -> {tipo, mapeamento de cabeçalho da planilha -> campo interno}
   // cabeçalhos são comparados de forma tolerante (minúsculo, sem acento, sem *).
-  function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\*/g,'').trim(); }
+  function norm(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\*/g,'').replace(/\s+/g,' ').trim(); }
 
-  const MAP_COMUM = {
-    'sku':'sku', 'categoria':'categoria', 'origem':'origem', 'descricao':'descricao',
-    'ncm':'ncm', 'unidade':'unidade_medida', 'quantidade':'quantidade', 'ean':'ean',
-    'peso (kg)':'peso', 'altura (cm)':'dim_altura', 'largura (cm)':'dim_largura',
-    'comprimento (cm)':'dim_comprimento', 'descricao longa':'descricao_longa',
-    'caracteristicas tecnicas':'caracteristicas'
+  // Cada campo interno tem uma lista de "casadores": funções que testam o
+  // cabeçalho normalizado. A ordem importa (mais específico primeiro).
+  // Assim aceitamos variações de nome (Quantidade / Quantidade Total / Qtd, etc.)
+  const CASADORES = {
+    sku:            n => n==='sku' || n==='codigo' || n==='sku (geral)',
+    categoria:      n => n==='categoria',
+    origem:         n => n==='origem',
+    descricao:      n => n==='descricao' || n==='descricao curta',
+    ncm:            n => n==='ncm',
+    unidade_medida: n => n==='unidade' || n==='unidade de medida' || n==='un' || n==='und' || n==='um',
+    quantidade:     n => n==='quantidade' || n==='quantidade total' || n==='qtd' || n==='qtde' || n==='qtd total',
+    ean:            n => n==='ean' || n==='ean/gtin' || n==='gtin',
+    peso:           n => n.startsWith('peso'),
+    dim_altura:     n => n.startsWith('altura'),
+    dim_largura:    n => n.startsWith('largura'),
+    dim_comprimento:n => n.startsWith('comprimento') || n.startsWith('profundidade'),
+    descricao_longa:n => n==='descricao longa' || n.startsWith('descricao complementar'),
+    caracteristicas:n => n.startsWith('caracteristicas'),
   };
   function mapImagens(k){ return norm(k).startsWith('imagens'); }
   function mapComponentes(k){ return norm(k).startsWith('componentes'); }
@@ -284,14 +296,14 @@ const PD = (function(){
   }
 
   function valCol(head,row,alvoTest){ for(let i=0;i<head.length;i++){ if(alvoTest(head[i])) return row[i]; } return ''; }
-  function getByMap(head,row,mapKey){ for(let i=0;i<head.length;i++){ if(MAP_COMUM[head[i]]===mapKey) return row[i]; } return ''; }
+  function getByMap(head,row,campo){ const teste=CASADORES[campo]; if(!teste) return ''; for(let i=0;i<head.length;i++){ if(teste(head[i])) return row[i]; } return ''; }
 
   // SKUs das linhas de exemplo do template — puladas automaticamente na importação
   const EXEMPLOS_TEMPLATE = new Set(['GE20','KIT-PD90-PD70','ABAR1200','CE8MM']);
 
   function montarObj(tipo,head,row,aba,linhaNum){
     const o={ tipo_sku:tipo, _aba:aba, _linha:linhaNum };
-    // campos comuns via MAP_COMUM
+    // campos comuns via CASADORES flexíveis
     for(const campo of ['sku','categoria','origem','descricao','ncm','unidade_medida','quantidade','ean','peso','dim_altura','dim_largura','dim_comprimento','descricao_longa','caracteristicas']){
       const v=getByMap(head,row,campo); if(v!=='' && v!=null) o[campo]=String(v).trim();
     }
