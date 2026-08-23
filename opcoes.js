@@ -97,16 +97,70 @@ const OPO = (function(){
   }
   function fecharDiag(){ $('opdiag-modal').classList.remove('open'); }
 
+  // ---- auditoria de cadastro (6 verificações) ----
+  let AUD_ALERTAS=[], AUD_DISPENSADOS=new Set();
+  const a=(id)=>$('opaud-'+id);
+  async function auditar(){ a('erro').textContent=''; a('kpis').innerHTML=''; a('itens').innerHTML='<tr><td colspan="5" class="loading">Analisando…</td></tr>';
+    AUD_DISPENSADOS=new Set(); $('opaud-modal').classList.add('open');
+    try{
+      const r=await rpc('cn_auditar_cadastro',{p_usuario_id:USER.id});
+      AUD_ALERTAS=r.alertas||[];
+      // popular filtro de tipos de problema
+      const tipos=[...new Set(AUD_ALERTAS.map(x=>x.problema))].sort();
+      a('filtro').innerHTML='<option value="">Todos os tipos de alerta</option>'+tipos.map(t=>`<option>${t}</option>`).join('');
+      renderAudKpis(); renderAud();
+    }catch(e){ a('erro').textContent='Erro: '+(e.message||e); a('itens').innerHTML=''; }
+  }
+  function renderAudKpis(){
+    const total=AUD_ALERTAS.length;
+    // conta por tipo de problema
+    const porTipo={}; AUD_ALERTAS.forEach(x=>{ porTipo[x.problema]=(porTipo[x.problema]||0)+1; });
+    const cards=[['Total de alertas',total], ...Object.entries(porTipo)];
+    a('kpis').innerHTML=cards.slice(0,6).map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${Number(c[1]).toLocaleString('pt-BR')}</div></div>`).join('');
+  }
+  function chaveAlerta(x,i){ return i+'|'+x.sku+'|'+x.problema; }
+  function renderAud(){
+    const filtro=a('filtro').value;
+    const tb=a('itens');
+    const visiveis=AUD_ALERTAS.map((x,i)=>({x,i})).filter(({x,i})=> !AUD_DISPENSADOS.has(chaveAlerta(x,i)) && (!filtro || x.problema===filtro));
+    if(!AUD_ALERTAS.length){ tb.innerHTML='<tr><td colspan="5" class="empty" style="color:#22c55e">✓ Nenhuma inconsistência encontrada!</td></tr>'; a('restantes').textContent=''; return; }
+    if(!visiveis.length){ tb.innerHTML='<tr><td colspan="5" class="empty">Nenhum alerta nesta visão (todos dispensados ou filtrados).</td></tr>'; }
+    else{
+      tb.innerHTML=visiveis.map(({x,i})=>`<tr>
+        <td><b>${x.sku||'—'}</b></td><td>${x.tipo||'—'}</td>
+        <td><span class="pill" style="border-color:#f59e0b;color:#f59e0b">${x.problema}</span></td>
+        <td style="font-size:12px">${x.detalhe||''}${x.sugestao?`<br><span style="color:var(--muted)">→ ${x.sugestao}</span>`:''}</td>
+        <td style="text-align:center"><input type="checkbox" onchange="OPO.dispensar('${chaveAlerta(x,i).replace(/'/g,"\\'")}')"></td>
+      </tr>`).join('');
+    }
+    const totalVisiveis=AUD_ALERTAS.filter((x,i)=>!AUD_DISPENSADOS.has(chaveAlerta(x,i))).length;
+    a('restantes').textContent=`${totalVisiveis} de ${AUD_ALERTAS.length} alerta(s) pendente(s)`;
+  }
+  function dispensar(chave){ AUD_DISPENSADOS.add(chave); renderAud(); }
+  function exportarAud(){ if(!AUD_ALERTAS.length)return;
+    const filtro=a('filtro').value;
+    const lista=AUD_ALERTAS.filter((x,i)=>!AUD_DISPENSADOS.has(chaveAlerta(x,i)) && (!filtro||x.problema===filtro));
+    const head=['SKU','Tipo','Problema','Detalhe','Sugestao'];
+    const ls=lista.map(x=>[x.sku||'',x.tipo||'',x.problema||'',x.detalhe||'',x.sugestao||''].map(v=>{v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';'));
+    const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+    const dl=document.createElement('a'); dl.href=URL.createObjectURL(blob); dl.download='auditoria_cadastro_carrinhos_net.csv'; dl.click();
+  }
+  function fecharAud(){ $('opaud-modal').classList.remove('open'); }
+
   function bind(){
     TIPOS.forEach(t=>o('tab-'+t).addEventListener('click',()=>subTab(t)));
     o('novo').addEventListener('click',novo);
     o('normalizar').addEventListener('click',normalizar);
     o('diagnostico').addEventListener('click',diagnostico);
     $('opdiag-x').addEventListener('click',fecharDiag);
+    o('auditar').addEventListener('click',auditar);
+    $('opaud-x').addEventListener('click',fecharAud);
+    a('filtro').addEventListener('change',renderAud);
+    a('exportar').addEventListener('click',exportarAud);
     o('x').addEventListener('click',fechar); o('cancel').addEventListener('click',fechar); o('overlay').addEventListener('click',fechar); o('save').addEventListener('click',salvar);
   }
 
-  return { init, editar, excluir };
+  return { init, editar, excluir, dispensar };
 })();
 window.OPO = OPO;
 registrarTela('opcoes', OPO);

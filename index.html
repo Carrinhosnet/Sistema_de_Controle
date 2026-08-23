@@ -445,6 +445,7 @@
         <button class="act prim" id="op-novo">+ Nova opção</button>
         <button class="act" id="op-normalizar" title="Corrige produtos já cadastrados que tenham grafia diferente das opções">Normalizar produtos existentes</button>
         <button class="act" id="op-diagnostico" title="Confere se todos os produtos têm categoria válida">Verificar categorias</button>
+        <button class="act" id="op-auditar" title="Cruza os dados e aponta inconsistências no cadastro">Auditar cadastro</button>
         <span id="op-msg" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
@@ -881,6 +882,29 @@
         Se a categoria não existe, cadastre-a nas opções ou edite os produtos para uma categoria válida.
       </p>
     </div>
+  </div>
+</div></div>
+
+<!-- ===== MODAL AUDITORIA DE CADASTRO ===== -->
+<div class="modal" id="opaud-modal"><div class="box" style="width:820px">
+  <h3>Auditoria de cadastro <button class="x" id="opaud-x">×</button></h3>
+  <div class="content">
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">
+      Cruza os dados e aponta possíveis inconsistências (NCM divergente, componente faltando, categoria/origem
+      diferente do produto base, etc.). Marque "OK" para tirar um item da lista nesta conferência —
+      a cada nova auditoria tudo é reconferido do zero.
+    </p>
+    <div id="opaud-erro" class="drawer-erro"></div>
+    <div class="kpis" id="opaud-kpis" style="margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+      <select id="opaud-filtro"><option value="">Todos os tipos de alerta</option></select>
+      <button class="act" id="opaud-exportar">Exportar CSV</button>
+      <span id="opaud-restantes" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div class="tablewrap" style="max-height:380px;overflow:auto"><div class="scroll"><table>
+      <thead><tr><th>SKU</th><th>Tipo</th><th>Problema</th><th>Detalhe</th><th>OK</th></tr></thead>
+      <tbody id="opaud-itens"></tbody>
+    </table></div></div>
   </div>
 </div></div>
 
