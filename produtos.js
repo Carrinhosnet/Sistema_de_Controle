@@ -388,18 +388,33 @@ const PD = (function(){
         'Unidade *':p.unidade_medida,'Quantidade *':p.quantidade,'Componentes (SKU:qtd separados por ;) *':p.componentes||'',
         'EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
       }));
-      addAba(wb,'Combo',porTipo.Combo,p=>({
-        'SKU':p.sku,'Categoria *':p.categoria,'Origem *':p.origem,'NCM *':p.ncm,'Unidade *':p.unidade_medida,
-        'Descrição':p.descricao,'Componentes (SKU:qtd)':p.componentes||'','EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
-      }));
-      addAba(wb,'Fracionado',porTipo.Fracionado,p=>({
-        'SKU':p.sku,'Categoria *':p.categoria,'Origem *':p.origem,'NCM *':p.ncm,'Unidade *':p.unidade_medida,
-        'Descrição':p.descricao,'Componentes (SKU:qtd)':p.componentes||'','EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
-      }));
+      addAba(wb,'Combo',porTipo.Combo,p=>{
+        const c=parseComponenteUnico(p.componentes);
+        return {
+          'SKU-Pai *':c.sku, 'Quantidade no Combo *':c.qtd,
+          'Categoria *':p.categoria,'Origem *':p.origem,'NCM *':p.ncm,'Unidade *':p.unidade_medida,
+          'SKU (deixe em branco p/ gerar automático)':p.sku,'Descrição (deixe em branco p/ gerar automático)':p.descricao,
+          'EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
+        };
+      });
+      addAba(wb,'Fracionado',porTipo.Fracionado,p=>{
+        const c=parseComponenteUnico(p.componentes);
+        return {
+          'SKU-Master *':c.sku, 'Quantidade Fracionada *':c.qtd,
+          'Categoria *':p.categoria,'Origem *':p.origem,'NCM *':p.ncm,'Unidade *':p.unidade_medida,
+          'SKU (deixe em branco p/ gerar automático)':p.sku,'Descrição (deixe em branco p/ gerar automático)':p.descricao,
+          'EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
+        };
+      });
       XLSX.writeFile(wb,'produtos_carrinhos_net.xlsx');
     }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; }
   }
   function addAba(wb,nome,lista,fn){ const arr=(lista||[]).map(fn); const ws=XLSX.utils.json_to_sheet(arr.length?arr:[fn({})]); XLSX.utils.book_append_sheet(wb,ws,nome); }
+  // extrai {sku, qtd} do 1º componente no formato "SKU:qtd;..." (combo/fracionado têm 1 só)
+  function parseComponenteUnico(componentes){ if(!componentes) return {sku:'',qtd:''};
+    const primeiro=String(componentes).split(';')[0]; const [sku,qtd]=primeiro.split(':');
+    return { sku:(sku||'').trim(), qtd:(qtd||'').trim().replace('.',',') };
+  }
 
   // =====================================================================
   // CONFERÊNCIA COM O BLING (só existência por SKU — não altera dados)
