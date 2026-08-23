@@ -444,6 +444,7 @@
       <div class="toolbar">
         <button class="act prim" id="op-novo">+ Nova opção</button>
         <button class="act" id="op-normalizar" title="Corrige produtos já cadastrados que tenham grafia diferente das opções">Normalizar produtos existentes</button>
+        <button class="act" id="op-diagnostico" title="Confere se todos os produtos têm categoria válida">Verificar categorias</button>
         <span id="op-msg" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
@@ -854,6 +855,31 @@
         <thead><tr><th>Situação</th><th>SKU</th><th>Descrição</th><th>Tipo</th><th>Ativo</th></tr></thead>
         <tbody id="pdconf-itens"></tbody>
       </table></div></div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ===== MODAL DIAGNÓSTICO DE CATEGORIAS ===== -->
+<div class="modal" id="opdiag-modal"><div class="box" style="width:640px">
+  <h3>Verificação de categorias <button class="x" id="opdiag-x">×</button></h3>
+  <div class="content">
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px">
+      Confere se todos os produtos têm uma categoria que existe nas opções do sistema.
+      Se a soma bater, está tudo certo. Se houver produtos em categorias inválidas, eles aparecem abaixo.
+    </p>
+    <div id="opdiag-erro" class="drawer-erro"></div>
+    <div class="kpis" id="opdiag-kpis" style="margin-bottom:12px"></div>
+    <div id="opdiag-conferencia" style="font-size:13px;margin-bottom:12px"></div>
+    <div id="opdiag-invalidas-wrap" style="display:none">
+      <div class="sec-tit">Categorias que precisam de atenção</div>
+      <div class="tablewrap" style="max-height:240px;overflow:auto"><div class="scroll"><table>
+        <thead><tr><th>Categoria no produto</th><th class="num">Qtd de produtos</th></tr></thead>
+        <tbody id="opdiag-invalidas"></tbody>
+      </table></div></div>
+      <p style="font-size:12px;color:var(--muted);margin-top:10px">
+        Dica: se for só diferença de grafia (ex.: "RODAS"), use "Normalizar produtos existentes".
+        Se a categoria não existe, cadastre-a nas opções ou edite os produtos para uma categoria válida.
+      </p>
     </div>
   </div>
 </div></div>

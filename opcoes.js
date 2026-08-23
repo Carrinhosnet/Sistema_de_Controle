@@ -68,10 +68,41 @@ const OPO = (function(){
     }catch(e){ alert('Erro ao normalizar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; }
   }
 
+  // ---- diagnóstico de categorias (o "teste" de sanidade) ----
+  const d=(id)=>$('opdiag-'+id);
+  async function diagnostico(){ d('erro').textContent=''; d('kpis').innerHTML=''; d('conferencia').innerHTML=''; d('invalidas-wrap').style.display='none';
+    $('opdiag-modal').classList.add('open');
+    try{
+      const r=await rpc('cn_diagnostico_categorias',{p_usuario_id:USER.id});
+      const cards=[
+        ['Total de produtos', r.total||0],
+        ['Em categorias válidas', r.em_categorias_validas||0],
+        ['Em categorias inválidas', r.em_categorias_invalidas||0],
+        ['Sem categoria', r.sem_categoria||0]
+      ];
+      d('kpis').innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${Number(c[1]).toLocaleString('pt-BR')}</div></div>`).join('');
+      // mensagem de conferência
+      const problemas=(r.em_categorias_invalidas||0)+(r.sem_categoria||0);
+      if(r.soma_confere && problemas===0){
+        d('conferencia').innerHTML='<span style="color:#22c55e;font-weight:600">✓ Tudo certo!</span> Todos os '+(r.total||0)+' produtos estão em categorias válidas.';
+      } else {
+        d('conferencia').innerHTML='<span style="color:#f59e0b;font-weight:600">⚠ Atenção:</span> '+problemas+' produto(s) estão sem categoria ou em categoria que não existe nas opções. Veja abaixo.';
+        const inv=r.categorias_invalidas||[];
+        if(inv.length){
+          d('invalidas-wrap').style.display='block';
+          d('invalidas').innerHTML=inv.map(x=>`<tr><td><b>${x.categoria}</b></td><td class="num">${x.quantidade}</td></tr>`).join('');
+        }
+      }
+    }catch(e){ d('erro').textContent='Erro: '+(e.message||e); }
+  }
+  function fecharDiag(){ $('opdiag-modal').classList.remove('open'); }
+
   function bind(){
     TIPOS.forEach(t=>o('tab-'+t).addEventListener('click',()=>subTab(t)));
     o('novo').addEventListener('click',novo);
     o('normalizar').addEventListener('click',normalizar);
+    o('diagnostico').addEventListener('click',diagnostico);
+    $('opdiag-x').addEventListener('click',fecharDiag);
     o('x').addEventListener('click',fechar); o('cancel').addEventListener('click',fechar); o('overlay').addEventListener('click',fechar); o('save').addEventListener('click',salvar);
   }
 
