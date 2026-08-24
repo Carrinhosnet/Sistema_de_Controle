@@ -153,16 +153,15 @@ const PD = (function(){
     const sku = skupai+'-'+fmtQtd(qtd)+unfrac;
     const desc = qtd ? (fmtQtd(qtd)+' '+unidadePorExtenso(unfrac)+' DO MODELO '+skupai) : '';
     if(qtd){ f('e-sku').value=sku; f('e-descricao').value=desc; }
-    // consumo = (quantidade_master / rendimento) * qtd
+    // Mostra o consumo/fator ATUAL (informativo) — não é gravado; é calculado
+    // sempre a partir do rendimento atual do master, usado depois na precificação.
     if(qtd){
       const consumoUnit = master.quantidade / master.rendimento;
       const consumo = consumoUnit * Number(qtd);
-      hintEl.textContent=`— consumo: ${fmtQtd(qtd)} ${unidadePorExtenso(unfrac)} = ${consumo.toLocaleString('pt-BR',{maximumFractionDigits:4})} ${master.unidade_medida} do master`;
+      hintEl.textContent=`— consome hoje: ${consumo.toLocaleString('pt-BR',{maximumFractionDigits:4})} ${master.unidade_medida} do master (fator recalculado na precificação)`;
       f('e-unidade').value = unfrac; // a unidade do fracionado é a de fracionamento do master
-      FRAC_CONSUMO = consumo;
     }
   }
-  let FRAC_CONSUMO=null;
   let MASTERS_CACHE={};   // sku -> {quantidade, unidade_medida, eh_fracionavel, unidade_fracionamento, rendimento}
 
   // ---- componentes (kit) ----
@@ -219,14 +218,8 @@ const PD = (function(){
     f('e-skupai').value=''; f('e-qtdpai').value='';
     if(p.tipo_sku==='Combo' && COMPONENTES.length===1){ f('e-skupai').value=COMPONENTES[0].sku||''; f('e-qtdpai').value=COMPONENTES[0].qtd??''; }
     if(p.tipo_sku==='Fracionado' && COMPONENTES.length===1){
-      const msku=COMPONENTES[0].sku||''; f('e-skupai').value=msku;
-      // a composição guarda o CONSUMO; derivar a quantidade original a partir do master
-      const master=MASTERS_CACHE[msku];
-      if(master && master.rendimento && master.quantidade){
-        const consumoUnit = master.quantidade / master.rendimento;
-        const qtdOrig = consumoUnit ? (COMPONENTES[0].qtd / consumoUnit) : '';
-        f('e-qtdpai').value = qtdOrig ? Number(qtdOrig.toFixed(4)) : '';
-      }
+      // a composição já guarda a quantidade usada (ex.: 5 metros), direto
+      f('e-skupai').value=COMPONENTES[0].sku||''; f('e-qtdpai').value=COMPONENTES[0].qtd??'';
     }
     // imagens
     IMAGENS=(p.imagens||[]).map(im=>({url:im.url,padrao:im.eh_padrao}));
@@ -247,8 +240,9 @@ const PD = (function(){
       if(!sku) return []; return [{componente_sku:sku, quantidade:(q===''?1:Number(q)), ordem:0}]; }
     if(t==='Fracionado'){ const sku=f('e-skupai').value.trim();
       if(!sku) return [];
-      // a quantidade da composição = consumo do master calculado (quantidade_master/rendimento * qtd)
-      const q = (FRAC_CONSUMO!=null ? FRAC_CONSUMO : Number(f('e-qtdpai').value||0));
+      // a composição guarda a QUANTIDADE que o fracionado usa (ex.: 5 metros), fixa.
+      // O consumo/fator do master é calculado só na precificação, nunca gravado aqui.
+      const q = Number(f('e-qtdpai').value||0);
       return [{componente_sku:sku, quantidade:q, ordem:0}]; }
     if(t==='Kit'){ return COMPONENTES.filter(c=>c.sku&&c.sku.trim()).map((c,i)=>({componente_sku:c.sku.trim(), quantidade:(c.qtd==null?1:Number(c.qtd)), ordem:i})); }
     return [];
@@ -483,23 +477,9 @@ const PD = (function(){
         };
       });
       addAba(wb,'Fracionado',porTipo.Fracionado,p=>{
-        const c=parseComponenteUnico(p.componentes);   // c.sku=master, c.qtd=consumo gravado
-        // derivar a quantidade ORIGINAL (ex.: 1 metro) a partir do consumo e do rendimento do master
-        let qtdOriginal=c.qtd;
-        const master=MASTERS_CACHE[c.sku];
-        if(master && master.rendimento && master.quantidade){
-          const consumoUnit = master.quantidade / master.rendimento;
-          const consumoNum = Number(String(c.qtd).replace(',','.'));
-          if(consumoUnit && !isNaN(consumoNum)){
-            let q = consumoNum / consumoUnit;
-            // limpa ruído de arredondamento: se muito perto de um valor com 2 casas, usa ele
-            const q2 = Math.round(q*100)/100;
-            if(Math.abs(q-q2) < 0.005) q = q2;
-            qtdOriginal = String(Number(q.toFixed(4))).replace('.',',');
-          }
-        }
+        const c=parseComponenteUnico(p.componentes);   // c.sku=master, c.qtd=quantidade em metros (já é o valor certo)
         return {
-          'SKU-Master *':c.sku, 'Quantidade Fracionada *':qtdOriginal,
+          'SKU-Master *':c.sku, 'Quantidade Fracionada *':c.qtd,
           'Categoria *':p.categoria,'Origem *':p.origem,'NCM *':p.ncm,'Unidade *':p.unidade_medida,
           'SKU (deixe em branco p/ gerar automático)':p.sku,'Descrição (deixe em branco p/ gerar automático)':p.descricao,
           'EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
