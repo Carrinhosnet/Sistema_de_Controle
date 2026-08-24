@@ -102,6 +102,9 @@ const PD = (function(){
     const bloco=f('bloco-composicao'), kitLista=f('kit-lista'), fldQtdPai=f('fld-qtdpai');
     const lblPai=f('lbl-pai'), lblQtdPai=f('lbl-qtdpai'), hint=f('comp-hint');
     const blocoFrac=f('bloco-fracionamento');
+    // campo "Quantidade *" da Identificação: só faz sentido no Simples
+    // (nos outros a quantidade vem da composição). Esconde p/ Kit/Combo/Fracionado.
+    f('fld-qtd').style.display = (t==='Simples'||!t) ? 'block' : 'none';
     // bloco de fracionamento (só Simples)
     blocoFrac.style.display = (t==='Simples') ? 'block' : 'none';
     if(t==='Simples') ajustarFracionavel();
@@ -254,11 +257,17 @@ const PD = (function(){
   async function salvar(){ f('erro').textContent=''; const b=f('save'); b.disabled=true; b.textContent='Salvando...';
     const num=(id)=>{const v=f(id).value;return v===''?null:Number(v);};
     try{
+      const tp=f('e-tipo').value;
+      // quantidade base do produto: Simples usa o campo; nos outros vem da composição
+      let qtdBase;
+      if(tp==='Combo'||tp==='Fracionado'){ const q=f('e-qtdpai').value; qtdBase=(q===''?null:Number(q)); }
+      else if(tp==='Kit'){ qtdBase=1; }
+      else { qtdBase=num('e-qtd'); }
       const args={
         p_usuario_id:USER.id, p_id:EDIT_ID,
-        p_sku:f('e-sku').value.trim(), p_tipo_sku:f('e-tipo').value, p_categoria:f('e-categoria').value,
+        p_sku:f('e-sku').value.trim(), p_tipo_sku:tp, p_categoria:f('e-categoria').value,
         p_origem:f('e-origem').value, p_descricao:f('e-descricao').value.trim(), p_ncm:f('e-ncm').value.trim(),
-        p_unidade_medida:f('e-unidade').value, p_quantidade:num('e-qtd'),
+        p_unidade_medida:f('e-unidade').value, p_quantidade:qtdBase,
         p_descricao_longa:f('e-desclonga').value.trim()||null, p_ncm_opt:null,
         p_dim_altura:num('e-altura'), p_dim_largura:num('e-largura'), p_dim_comprimento:num('e-comprimento'),
         p_peso:num('e-peso'), p_caracteristicas:f('e-caract').value.trim()||null, p_ean:f('e-ean').value.trim()||null,
@@ -445,6 +454,8 @@ const PD = (function(){
   async function exportarXlsx(){ const b=f('exportar-xlsx'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
     try{
       const dados=await rpc('cn_exportar_produtos',{p_usuario_id:USER.id}); if(!dados||!dados.length){ alert('Nenhum produto para exportar.'); return; }
+      // garante o cache dos masters (p/ derivar a quantidade original dos fracionados)
+      if(!Object.keys(MASTERS_CACHE).length){ try{ const m=await rpc('cn_listar_masters_fracionamento',{p_usuario_id:USER.id}); (m||[]).forEach(x=>{ MASTERS_CACHE[x.sku]=x; }); }catch(e){} }
       const porTipo={Simples:[],Kit:[],Combo:[],Fracionado:[]};
       dados.forEach(p=>{ (porTipo[p.tipo_sku]=porTipo[p.tipo_sku]||[]).push(p); });
       const wb=XLSX.utils.book_new();
@@ -472,9 +483,23 @@ const PD = (function(){
         };
       });
       addAba(wb,'Fracionado',porTipo.Fracionado,p=>{
-        const c=parseComponenteUnico(p.componentes);
+        const c=parseComponenteUnico(p.componentes);   // c.sku=master, c.qtd=consumo gravado
+        // derivar a quantidade ORIGINAL (ex.: 1 metro) a partir do consumo e do rendimento do master
+        let qtdOriginal=c.qtd;
+        const master=MASTERS_CACHE[c.sku];
+        if(master && master.rendimento && master.quantidade){
+          const consumoUnit = master.quantidade / master.rendimento;
+          const consumoNum = Number(String(c.qtd).replace(',','.'));
+          if(consumoUnit && !isNaN(consumoNum)){
+            let q = consumoNum / consumoUnit;
+            // limpa ruído de arredondamento: se muito perto de um valor com 2 casas, usa ele
+            const q2 = Math.round(q*100)/100;
+            if(Math.abs(q-q2) < 0.005) q = q2;
+            qtdOriginal = String(Number(q.toFixed(4))).replace('.',',');
+          }
+        }
         return {
-          'SKU-Master *':c.sku, 'Quantidade Fracionada *':c.qtd,
+          'SKU-Master *':c.sku, 'Quantidade Fracionada *':qtdOriginal,
           'Categoria *':p.categoria,'Origem *':p.origem,'NCM *':p.ncm,'Unidade *':p.unidade_medida,
           'SKU (deixe em branco p/ gerar automático)':p.sku,'Descrição (deixe em branco p/ gerar automático)':p.descricao,
           'EAN':p.ean||'','Peso (kg)':p.peso||'','Imagens (URLs separadas por ;)':p.imagens||''
