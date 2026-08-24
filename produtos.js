@@ -39,6 +39,7 @@ const PD = (function(){
     fillSel('e-categoria',OPC.categoria_produto);
     fillSel('e-origem',OPC.origem_produto);
     fillSel('e-unidade',OPC.unidade_medida);
+    fillSel('e-unidfrac',OPC.unidade_medida);
   }
   function addOpt(id,v){ const o=document.createElement('option'); o.value=v;o.textContent=v; f(id).appendChild(o); }
   function fillSel(id,arr){ const s=f(id); if(!s)return; s.innerHTML=arr.map(v=>`<option value="${v}">${v}</option>`).join(''); }
@@ -100,6 +101,10 @@ const PD = (function(){
   function ajustarPorTipo(){ const t=tipoAtual();
     const bloco=f('bloco-composicao'), kitLista=f('kit-lista'), fldQtdPai=f('fld-qtdpai');
     const lblPai=f('lbl-pai'), lblQtdPai=f('lbl-qtdpai'), hint=f('comp-hint');
+    const blocoFrac=f('bloco-fracionamento');
+    // bloco de fracionamento (só Simples)
+    blocoFrac.style.display = (t==='Simples') ? 'block' : 'none';
+    if(t==='Simples') ajustarFracionavel();
     if(t==='Simples'||!t){ bloco.style.display='none'; return; }
     bloco.style.display='block';
     if(t==='Kit'){
@@ -112,20 +117,50 @@ const PD = (function(){
       hint.textContent='— SKU e descrição gerados automaticamente';
     } else if(t==='Fracionado'){
       kitLista.style.display='none'; fldQtdPai.style.display='block';
-      lblPai.textContent='SKU do produto-master'; lblQtdPai.textContent='Quantidade fracionada (ex.: 0,5)';
-      hint.textContent='— SKU e descrição gerados automaticamente';
+      lblPai.textContent='SKU do produto-master'; lblQtdPai.textContent='Quantidade (ex.: 1, 2)';
+      hint.textContent='— SKU, descrição e consumo vêm do master';
     }
     recomputarAuto();
   }
 
-  // Recalcula SKU/descrição sugeridos para Combo/Fracionado (não sobrescreve edição manual do usuário em Kit)
+  // mostra/esconde unidade+rendimento conforme "será fracionado?" (Simples)
+  function ajustarFracionavel(){ const sim = f('e-fracionavel').value==='true';
+    f('fld-unidfrac').style.display = sim ? 'block' : 'none';
+    f('fld-rendimento').style.display = sim ? 'block' : 'none';
+  }
+
+  // Recalcula SKU/descrição sugeridos para Combo/Fracionado; para Fracionado
+  // usa a unidade de fracionamento do MASTER e mostra o consumo calculado.
   function recomputarAuto(){ const t=tipoAtual();
     if(t!=='Combo'&&t!=='Fracionado')return;
-    const skupai=f('e-skupai').value.trim(); const qtd=f('e-qtdpai').value; const un=f('e-unidade').value;
-    const sku=sugerirSku(t,skupai,qtd,un); const desc=sugerirDescricao(t,skupai,qtd,un);
-    if(sku){ f('e-sku').value=sku; }
-    if(desc){ f('e-descricao').value=desc; }
+    const skupai=f('e-skupai').value.trim(); const qtd=f('e-qtdpai').value;
+    if(t==='Combo'){
+      const un=f('e-unidade').value;
+      const sku=sugerirSku(t,skupai,qtd,un); const desc=sugerirDescricao(t,skupai,qtd,un);
+      if(sku) f('e-sku').value=sku; if(desc) f('e-descricao').value=desc;
+      return;
+    }
+    // Fracionado: buscar dados do master no cache e calcular
+    const master = MASTERS_CACHE[skupai];
+    const hintEl=f('comp-hint');
+    if(!skupai){ return; }
+    if(!master){ hintEl.textContent='— master não encontrado no sistema'; return; }
+    if(!master.eh_fracionavel || !master.rendimento){ hintEl.textContent='— ⚠ o master não está marcado como fracionável com rendimento'; return; }
+    const unfrac = master.unidade_fracionamento || '';
+    const sku = skupai+'-'+fmtQtd(qtd)+unfrac;
+    const desc = qtd ? (fmtQtd(qtd)+' '+unidadePorExtenso(unfrac)+' DO MODELO '+skupai) : '';
+    if(qtd){ f('e-sku').value=sku; f('e-descricao').value=desc; }
+    // consumo = (quantidade_master / rendimento) * qtd
+    if(qtd){
+      const consumoUnit = master.quantidade / master.rendimento;
+      const consumo = consumoUnit * Number(qtd);
+      hintEl.textContent=`— consumo: ${fmtQtd(qtd)} ${unidadePorExtenso(unfrac)} = ${consumo.toLocaleString('pt-BR',{maximumFractionDigits:4})} ${master.unidade_medida} do master`;
+      f('e-unidade').value = unfrac; // a unidade do fracionado é a de fracionamento do master
+      FRAC_CONSUMO = consumo;
+    }
   }
+  let FRAC_CONSUMO=null;
+  let MASTERS_CACHE={};   // sku -> {quantidade, unidade_medida, eh_fracionavel, unidade_fracionamento, rendimento}
 
   // ---- componentes (kit) ----
   function renderComponentes(){ const box=f('componentes');
@@ -157,7 +192,8 @@ const PD = (function(){
     EDIT_ID=null; f('erro').textContent=''; f('titulo').textContent='Novo produto';
     f('e-tipo').value='Simples'; f('e-ativo').value='true';
     f('e-categoria').selectedIndex=0; f('e-origem').selectedIndex=0; f('e-unidade').selectedIndex=0;
-    ['e-sku','e-descricao','e-ncm','e-ean','e-qtd','e-altura','e-largura','e-comprimento','e-peso','e-desclonga','e-caract','e-skupai','e-qtdpai'].forEach(id=>{ if(f(id))f(id).value=''; });
+    ['e-sku','e-descricao','e-ncm','e-ean','e-qtd','e-altura','e-largura','e-comprimento','e-peso','e-desclonga','e-caract','e-skupai','e-qtdpai','e-rendimento'].forEach(id=>{ if(f(id))f(id).value=''; });
+    f('e-fracionavel').value='false';
     COMPONENTES=[]; IMAGENS=[]; renderComponentes(); renderImagens();
     ajustarPorTipo(); f('c-status').value='Básico (novo)';
     f('excluir').style.display='none';   // novo produto ainda não existe, nada a excluir
@@ -172,10 +208,23 @@ const PD = (function(){
     f('e-sku').value=p.sku||''; f('e-descricao').value=p.descricao||''; f('e-ncm').value=p.ncm||''; f('e-ean').value=p.ean||'';
     f('e-qtd').value=p.quantidade??''; f('e-altura').value=p.dim_altura??''; f('e-largura').value=p.dim_largura??''; f('e-comprimento').value=p.dim_comprimento??''; f('e-peso').value=p.peso??'';
     f('e-desclonga').value=p.descricao_longa||''; f('e-caract').value=p.caracteristicas||'';
+    // fracionamento (Simples)
+    f('e-fracionavel').value=String(!!p.eh_fracionavel);
+    setSelSafe('e-unidfrac',p.unidade_fracionamento); f('e-rendimento').value=p.rendimento??'';
     // composição
     COMPONENTES=(p.componentes||[]).map(c=>({sku:c.componente_sku,qtd:c.quantidade}));
     f('e-skupai').value=''; f('e-qtdpai').value='';
-    if((p.tipo_sku==='Combo'||p.tipo_sku==='Fracionado') && COMPONENTES.length===1){ f('e-skupai').value=COMPONENTES[0].sku||''; f('e-qtdpai').value=COMPONENTES[0].qtd??''; }
+    if(p.tipo_sku==='Combo' && COMPONENTES.length===1){ f('e-skupai').value=COMPONENTES[0].sku||''; f('e-qtdpai').value=COMPONENTES[0].qtd??''; }
+    if(p.tipo_sku==='Fracionado' && COMPONENTES.length===1){
+      const msku=COMPONENTES[0].sku||''; f('e-skupai').value=msku;
+      // a composição guarda o CONSUMO; derivar a quantidade original a partir do master
+      const master=MASTERS_CACHE[msku];
+      if(master && master.rendimento && master.quantidade){
+        const consumoUnit = master.quantidade / master.rendimento;
+        const qtdOrig = consumoUnit ? (COMPONENTES[0].qtd / consumoUnit) : '';
+        f('e-qtdpai').value = qtdOrig ? Number(qtdOrig.toFixed(4)) : '';
+      }
+    }
     // imagens
     IMAGENS=(p.imagens||[]).map(im=>({url:im.url,padrao:im.eh_padrao}));
     renderComponentes(); renderImagens();
@@ -191,8 +240,13 @@ const PD = (function(){
 
   // monta o array de componentes conforme o tipo
   function montarComponentes(){ const t=tipoAtual();
-    if(t==='Combo'||t==='Fracionado'){ const sku=f('e-skupai').value.trim(); const q=f('e-qtdpai').value;
+    if(t==='Combo'){ const sku=f('e-skupai').value.trim(); const q=f('e-qtdpai').value;
       if(!sku) return []; return [{componente_sku:sku, quantidade:(q===''?1:Number(q)), ordem:0}]; }
+    if(t==='Fracionado'){ const sku=f('e-skupai').value.trim();
+      if(!sku) return [];
+      // a quantidade da composição = consumo do master calculado (quantidade_master/rendimento * qtd)
+      const q = (FRAC_CONSUMO!=null ? FRAC_CONSUMO : Number(f('e-qtdpai').value||0));
+      return [{componente_sku:sku, quantidade:q, ordem:0}]; }
     if(t==='Kit'){ return COMPONENTES.filter(c=>c.sku&&c.sku.trim()).map((c,i)=>({componente_sku:c.sku.trim(), quantidade:(c.qtd==null?1:Number(c.qtd)), ordem:i})); }
     return [];
   }
@@ -210,7 +264,10 @@ const PD = (function(){
         p_peso:num('e-peso'), p_caracteristicas:f('e-caract').value.trim()||null, p_ean:f('e-ean').value.trim()||null,
         p_ativo:f('e-ativo').value==='true',
         p_componentes:montarComponentes(),
-        p_imagens:IMAGENS.filter(im=>im.url&&im.url.trim()).map((im,i)=>({url:im.url.trim(),eh_padrao:!!im.padrao,ordem:i}))
+        p_imagens:IMAGENS.filter(im=>im.url&&im.url.trim()).map((im,i)=>({url:im.url.trim(),eh_padrao:!!im.padrao,ordem:i})),
+        p_eh_fracionavel: f('e-fracionavel').value==='true',
+        p_unidade_fracionamento: f('e-unidfrac').value||null,
+        p_rendimento: (f('e-rendimento').value===''?null:Number(f('e-rendimento').value))
       };
       await rpc('cn_salvar_produto',args);
       fechar(); await carregar(true); await recarregarSkusCache();
@@ -218,7 +275,10 @@ const PD = (function(){
   }
 
   // cache de SKUs (para autocomplete de componentes)
-  async function recarregarSkusCache(){ try{ const r=await rpc('cn_listar_produtos',{p_usuario_id:USER.id,p_limite:1000,p_offset:0,p_ordem:'sku'}); SKUS_CACHE=(r||[]).map(x=>x.sku); const dl=$('pd-datalist-skus'); if(dl) dl.innerHTML=SKUS_CACHE.map(s=>`<option value="${s}">`).join(''); }catch(e){} }
+  async function recarregarSkusCache(){ try{ const r=await rpc('cn_listar_produtos',{p_usuario_id:USER.id,p_limite:1000,p_offset:0,p_ordem:'sku'}); SKUS_CACHE=(r||[]).map(x=>x.sku); const dl=$('pd-datalist-skus'); if(dl) dl.innerHTML=SKUS_CACHE.map(s=>`<option value="${s}">`).join(''); }catch(e){}
+    // cache dos masters com dados de fracionamento (p/ o drawer do Fracionado)
+    try{ const m=await rpc('cn_listar_masters_fracionamento',{p_usuario_id:USER.id}); MASTERS_CACHE={}; (m||[]).forEach(x=>{ MASTERS_CACHE[x.sku]=x; }); }catch(e){}
+  }
 
   async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
     try{ const fl=filtros(); const todas=await rpc('cn_listar_produtos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return;
@@ -257,6 +317,9 @@ const PD = (function(){
     dim_comprimento:n => n.startsWith('comprimento') || n.startsWith('profundidade'),
     descricao_longa:n => n==='descricao longa' || n.startsWith('descricao complementar'),
     caracteristicas:n => n.startsWith('caracteristicas'),
+    eh_fracionavel: n => n==='sera fracionado' || n==='fracionavel' || n==='sera fracionado?' || n.startsWith('sera fracionad'),
+    unidade_fracionamento: n => n==='unidade de fracionamento' || n==='unidade fracionamento' || n.startsWith('unidade de fracion'),
+    rendimento:     n => n==='rendimento' || n.startsWith('rendimento'),
   };
   function mapImagens(k){ return norm(k).startsWith('imagens'); }
   function mapComponentes(k){ return norm(k).startsWith('componentes'); }
@@ -299,7 +362,7 @@ const PD = (function(){
   function getByMap(head,row,campo){ const teste=CASADORES[campo]; if(!teste) return ''; for(let i=0;i<head.length;i++){ if(teste(head[i])) return row[i]; } return ''; }
 
   // SKUs das linhas de exemplo do template — puladas automaticamente na importação
-  const EXEMPLOS_TEMPLATE = new Set(['GE20','KIT-PD90-PD70','ABAR1200','CE8MM']);
+  const EXEMPLOS_TEMPLATE = new Set(['GE20','KIT-PD90-PD70','ABAR1200','CE8MM','CORR-EXEMPLO']);
 
   function montarObj(tipo,head,row,aba,linhaNum){
     const o={ tipo_sku:tipo, _aba:aba, _linha:linhaNum };
@@ -311,7 +374,16 @@ const PD = (function(){
     const imgs=valCol(head,row,mapImagens);
     if(imgs){ o.imagens=String(imgs).split(';').map(s=>s.trim()).filter(Boolean); }
     // por tipo
-    if(tipo==='Kit'){
+    if(tipo==='Simples'){
+      // fracionamento: "Será Fracionado" (Sim/Não), unidade e rendimento
+      const fracRaw=String(getByMap(head,row,'eh_fracionavel')||'').trim().toLowerCase();
+      const ehFrac = fracRaw==='sim'||fracRaw==='true'||fracRaw==='s'||fracRaw==='1'||fracRaw==='x';
+      o.eh_fracionavel = ehFrac;
+      if(ehFrac){
+        const uf=String(getByMap(head,row,'unidade_fracionamento')||'').trim(); if(uf) o.unidade_fracionamento=uf;
+        const rd=String(getByMap(head,row,'rendimento')||'').trim(); if(rd) o.rendimento=rd;
+      }
+    } else if(tipo==='Kit'){
       const comp=valCol(head,row,mapComponentes);
       if(comp){ o.componentes=String(comp).split(';').map(par=>{ const [sku,q]=par.split(':'); return {sku:(sku||'').trim(), quantidade:(q||'1').trim()}; }).filter(c=>c.sku); }
     } else if(tipo==='Combo' || tipo==='Fracionado'){
@@ -327,7 +399,7 @@ const PD = (function(){
     }
     // pula a linha de exemplo do template (SKU ou SKU-pai de exemplo, exatamente na 2ª linha)
     const skuRef = o.sku || o.sku_pai;
-    if(linhaNum===2 && EXEMPLOS_TEMPLATE.has(skuRef)) return null;
+    if((linhaNum===2||linhaNum===3) && EXEMPLOS_TEMPLATE.has(skuRef)) return null;
     return o;
   }
 
@@ -379,7 +451,9 @@ const PD = (function(){
       // Simples
       addAba(wb,'Simples',porTipo.Simples,p=>({
         'SKU *':p.sku,'Categoria *':p.categoria,'Origem *':p.origem,'Descrição *':p.descricao,'NCM *':p.ncm,
-        'Unidade *':p.unidade_medida,'Quantidade *':p.quantidade,'EAN':p.ean||'','Peso (kg)':p.peso||'',
+        'Unidade *':p.unidade_medida,'Quantidade *':p.quantidade,
+        'Será Fracionado':p.eh_fracionavel?'Sim':'Não','Unidade de Fracionamento':p.unidade_fracionamento||'','Rendimento':p.rendimento||'',
+        'EAN':p.ean||'','Peso (kg)':p.peso||'',
         'Altura (cm)':p.dim_altura||'','Largura (cm)':p.dim_largura||'','Comprimento (cm)':p.dim_comprimento||'',
         'Descrição Longa':p.descricao_longa||'','Características Técnicas':p.caracteristicas||'','Imagens (URLs separadas por ;)':p.imagens||''
       }));
@@ -499,6 +573,7 @@ const PD = (function(){
     f('x').addEventListener('click',fechar); f('cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('save').addEventListener('click',salvar);
     f('excluir').addEventListener('click',excluirAtual);
     f('e-tipo').addEventListener('change',ajustarPorTipo);
+    f('e-fracionavel').addEventListener('change',ajustarFracionavel);
     ['e-skupai','e-qtdpai'].forEach(id=>f(id).addEventListener('input',recomputarAuto));
     f('e-unidade').addEventListener('change',recomputarAuto);
     f('add-comp').addEventListener('click',addComp);
