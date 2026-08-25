@@ -220,6 +220,7 @@
         <div class="navtit navtit-toggle" data-grp="grp-produtos">Controle de Produtos<span class="caret">▾</span></div>
         <button data-tela="entradas" id="nav-entradas">Lançamento de Entradas</button>
         <button data-tela="custos" id="nav-custos">Custo</button>
+        <button data-tela="frete" id="nav-frete">Custo de Frete<span class="badge-dot" id="badge-frete" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-cadastros">
         <div class="navtit navtit-toggle" data-grp="grp-cadastros">Cadastros<span class="caret">▾</span></div>
@@ -508,6 +509,52 @@
       <div class="foot"><span id="cst-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
         <button class="act" id="cst-prev" style="padding:4px 10px">‹ Anterior</button><span id="cst-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="cst-next" style="padding:4px 10px">Próxima ›</button>
       </span></div></div>
+    </section>
+
+    <!-- =================== TELA CUSTO DE FRETE =================== -->
+    <section class="tela" id="scr-frete">
+      <div class="toolbar">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="frt-busca" placeholder="Buscar por SKU ou descrição…" />
+        </div>
+        <select id="frt-tipo"><option value="">Todos os tipos</option></select>
+        <select id="frt-categoria"><option value="">Todas as categorias</option></select>
+        <select id="frt-status">
+          <option value="">Todos os status</option>
+          <option value="pendentes">Com pendência</option>
+          <option value="conferidos">Conferidos (sem pendência)</option>
+          <option value="fora">Possuem casos fora do padrão</option>
+          <option value="incompletos">Frete incompleto</option>
+        </select>
+        <select id="frt-ordem">
+          <option value="pendencia">Pendências primeiro</option>
+          <option value="mais_fora">Mais casos fora do padrão</option>
+          <option value="sku">SKU (A-Z)</option>
+          <option value="sku_desc">SKU (Z-A)</option>
+          <option value="categoria">Categoria</option>
+          <option value="tipo">Tipo de SKU</option>
+        </select>
+        <button class="act prim" id="frt-btn-filtrar">Filtrar</button>
+        <button class="act" id="frt-importar">Importar Excel</button>
+        <button class="act" id="frt-exportar">Exportar CSV</button>
+        <span id="frt-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="kpis" id="frt-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table class="frt-table"><thead>
+        <tr>
+          <th rowspan="2">Tipo</th><th rowspan="2">SKU</th><th rowspan="2" class="num">Qtd</th><th rowspan="2">Un.</th><th rowspan="2">Descrição</th>
+          <th colspan="4" class="frt-grp">Site / Venda Direta</th>
+          <th colspan="4" class="frt-grp">ML Clássico</th>
+          <th colspan="4" class="frt-grp">ML Premium</th>
+        </tr>
+        <tr>
+          <th class="frt-sub">Frete</th><th class="frt-sub num">Dentro</th><th class="frt-sub num">Fora</th><th class="frt-sub">Conf.</th>
+          <th class="frt-sub">Frete</th><th class="frt-sub num">Dentro</th><th class="frt-sub num">Fora</th><th class="frt-sub">Conf.</th>
+          <th class="frt-sub">Frete</th><th class="frt-sub num">Dentro</th><th class="frt-sub num">Fora</th><th class="frt-sub">Conf.</th>
+        </tr>
+      </thead><tbody id="frt-tbody"></tbody></table></div>
+      <div class="foot"><span id="frt-contagem">—</span></div></div>
     </section>
   </main></div>
 </div>
@@ -1017,6 +1064,15 @@
   .det-mods{margin-top:8px;font-size:12px}
   .det-mods ul{margin:4px 0 0 16px;padding:0}
   .det-mods s{color:var(--muted)}
+  /* tela custo de frete: grupos de colunas por canal */
+  .frt-table th.frt-grp{text-align:center;border-left:2px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface2)}
+  .frt-table th.frt-sub{font-size:11px;font-weight:500;color:var(--muted)}
+  .frt-table td.frt-cel{border-left:2px solid var(--border);white-space:nowrap}
+  .frt-table td.frt-vazio{color:var(--muted)}
+  .frt-table td.frt-pend{background:rgba(245,158,11,.06)}
+  .frt-table td.frt-fora b{color:var(--danger)}
+  .kpi.kpi-click{cursor:pointer}
+  .kpi.kpi-click:hover{border-color:var(--accent)}
 </style>
 
 <!-- ===== MODAL: NOVO LANÇAMENTO DE ENTRADA ===== -->
@@ -1098,6 +1154,33 @@
   <div class="body" id="cst-h-corpo"></div>
 </aside>
 
+<!-- ===== DRAWER: EDITAR FRETE AGUARDADO (tela Custo de Frete) ===== -->
+<div class="overlay" id="frt-overlay"></div>
+<aside class="drawer" id="frt-drawer" style="max-width:420px">
+  <h2 id="frt-d-titulo">Frete aguardado <button class="x" id="frt-drawer-x">×</button></h2>
+  <div class="drawer-erro" id="frt-d-erro"></div>
+  <div class="body">
+    <p id="frt-d-info" style="font-size:13px;margin-bottom:10px"></p>
+    <div class="grid">
+      <div class="fld full"><label>Valor do frete aguardado (R$) *</label><input type="number" step="0.01" id="frt-d-valor" placeholder="0,00"></div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px">Ao salvar, a contagem de casos dentro/fora deste SKU + canal reinicia a partir de agora.</p>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="frt-d-cancel">Cancelar</button><button class="btn-save" id="frt-d-save">Salvar</button></div>
+</aside>
+
+<!-- ===== MODAL: IMPORTAR FRETES (tela Custo de Frete) ===== -->
+<div class="modal" id="frt-imp-modal"><div class="box" style="width:640px">
+  <h3>Importar fretes aguardados <button class="x" id="frt-imp-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
+  <div class="content">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Planilha .xlsx com as colunas: <b>SKU</b>, <b>Site</b>, <b>ML Clássico</b>, <b>ML Premium</b>. Valores em branco são ignorados. Cada valor gravado reinicia o ciclo daquele SKU + canal.</p>
+    <div class="field"><input type="file" id="frt-imp-file" accept=".xlsx,.xls" style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+    <div class="drawer-erro" id="frt-imp-erro" style="padding:6px 0"></div>
+    <div id="frt-imp-res"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn-save" id="frt-imp-processar" style="padding:9px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer">Processar</button></div>
+  </div>
+</div></div>
+
 <script>
 // ================== CONFIG ==================
 const SUPABASE_URL = "https://mdscihxefuhozrvooqdf.supabase.co";
@@ -1147,6 +1230,7 @@ async function atualizarBadges(){
   setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias');
   setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias');
   setDot('badge-produtos',      temPermissao('produtos.ver'),      'cn_produtos_pendencias');
+  setDot('badge-frete',         temPermissao('frete.ver'),         'cn_frete_pendencias');
 }
 // compatibilidade com chamadas existentes (boletos.js)
 async function atualizarBadgeBoletos(){ return atualizarBadges(); }
@@ -1183,6 +1267,7 @@ async function abrirApp(){
   $('nav-opcoes').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
   $('nav-entradas').style.display = temPermissao('entradas.ver') ? '' : 'none';
   $('nav-custos').style.display = temPermissao('custos.ver') ? '' : 'none';
+  $('nav-frete').style.display = temPermissao('frete.ver') ? '' : 'none';
   // esconde a categoria inteira se nenhuma tela dela estiver visível
   ['grp-comercial','grp-financeiro','grp-produtos','grp-cadastros'].forEach(function(gid){
     const g=$(gid); if(!g) return;
@@ -1222,6 +1307,7 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 <script src="opcoes.js"></script>
 <script src="entradas.js"></script>
 <script src="custos.js"></script>
+<script src="custo_frete.js"></script>
 
 <!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
 <script>
