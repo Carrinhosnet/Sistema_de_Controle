@@ -92,6 +92,7 @@ const EST = (function(){
   function fecharImport(){ f('imp-modal').classList.remove('open'); }
 
   let LINHAS_IMPORT=null;  // linhas lidas do Excel, guardadas entre conferir e importar
+  let SALDOS_OK=null;      // saldos por SKU confirmados no Bling (só esses entram no import)
 
   // lê o Excel e mapeia colunas do relatório do Bling
   async function lerExcel(){
@@ -125,26 +126,27 @@ const EST = (function(){
     try{
       const linhas=await lerExcel();
       LINHAS_IMPORT=linhas;
-      // pega ids_bling dos SKUs
       const skus=linhas.map(l=>l.sku);
-      const mapa=await rpc('cn_estoque_ids_bling',{p_usuario_id:USER.id,p_skus:skus}); // [{sku,id_bling}]
-      if(!mapa.length){ f('imp-erro').textContent='Nenhum dos SKUs do arquivo existe no Bling (sem id_bling). Nada a conferir.'; return; }
-      const idPorSku={}, skuPorId={};
-      mapa.forEach(m=>{ idPorSku[m.sku]=m.id_bling; skuPorId[String(m.id_bling)]=m.sku; });
-      const ids=mapa.map(m=>m.id_bling);
-      // busca saldos no Bling via edge
-      const resp=await chamarFuncao('bling-estoque-saldos',{ids});
-      const saldos=resp.saldos||{};
-      // compara: estoque do Excel vs saldo Bling (fisico), só para SKUs com id_bling
-      const diverg=[];
-      let conferidos=0;
+      // busca saldos no Bling via edge (a edge resolve SKU->id do Bling ao vivo)
+      const resp=await chamarFuncao('bling-estoque-saldos',{skus});
+      if(resp && resp.ok===false){ f('imp-erro').textContent='Bling: '+(resp.erro||'falha ao consultar'); f('imp-confirmar').style.display='none'; return; }
+      const saldos=(resp&&resp.saldos)||{};
+      const naoEnc=new Set((resp&&resp.nao_encontrados)||[]);
+      const up=(s)=>String(s||'').trim().toUpperCase();
+      // compara: estoque do Excel vs saldo Bling (fisico), por SKU
+      const diverg=[]; let conferidos=0;
       for(const l of linhas){
-        const idb=idPorSku[l.sku]; if(idb==null) continue;  // sem id_bling: não confere
-        const s=saldos[String(idb)];
-        if(!s){ diverg.push({sku:l.sku, excel:l.estoque, bling:'(sem retorno)'}); continue; }
+        const s=saldos[up(l.sku)];
+        if(!s){ continue; } // SKU não existe no Bling: ignorado da conferência (e do import depois)
         conferidos++;
         if(Number(l.estoque)!==Number(s.fisico)){ diverg.push({sku:l.sku, excel:l.estoque, bling:s.fisico}); }
       }
+      if(conferidos===0){
+        f('imp-erro').textContent='Nenhum dos SKUs do arquivo foi encontrado no Bling. Verifique se os códigos batem com o cadastro do Bling.';
+        f('imp-confirmar').style.display='none'; return;
+      }
+      // guarda só as linhas que existem no Bling (regra: só itens do Bling entram)
+      SALDOS_OK = saldos;
       if(diverg.length){
         f('imp-res').innerHTML=`<div style="color:var(--danger);font-weight:600;margin:8px 0">⚠ ${diverg.length} SKU(s) divergem entre o Excel e o Bling. A importação está bloqueada até o estoque bater.</div>`+
           '<table class="res"><thead><tr><th>SKU</th><th class="num">Estoque no Excel</th><th class="num">Estoque no Bling (agora)</th></tr></thead><tbody>'+
@@ -152,7 +154,8 @@ const EST = (function(){
           '<p style="color:var(--muted);font-size:12px;margin-top:8px">Gere um relatório novo no Bling e tente de novo, ou confira esses SKUs.</p>';
         f('imp-confirmar').style.display='none';
       }else{
-        f('imp-res').innerHTML=`<div style="color:var(--ok);font-weight:600;margin:8px 0">✓ Estoque confere com o Bling (${conferidos} SKU(s) verificados). Pronto para importar.</div>`;
+        const ignTxt = naoEnc.size ? ` (${naoEnc.size} SKU(s) do arquivo não existem no Bling e serão ignorados)` : '';
+        f('imp-res').innerHTML=`<div style="color:var(--ok);font-weight:600;margin:8px 0">✓ Estoque confere com o Bling (${conferidos} SKU(s) verificados)${ignTxt}. Pronto para importar.</div>`;
         f('imp-confirmar').style.display='';
       }
     }catch(e){ f('imp-erro').textContent='Erro: '+(e.message||e); f('imp-confirmar').style.display='none'; }
@@ -163,8 +166,11 @@ const EST = (function(){
   async function importar(){ if(!LINHAS_IMPORT){ f('imp-erro').textContent='Confira o arquivo antes de importar.'; return; }
     const b=f('imp-confirmar'); b.disabled=true; const t=b.textContent; b.textContent='Importando…';
     try{
+      const up=(s)=>String(s||'').trim().toUpperCase();
+      // só importa SKUs que existem no Bling (confirmados na conferência)
+      const linhasImp = SALDOS_OK ? LINHAS_IMPORT.filter(l=>SALDOS_OK[up(l.sku)]) : LINHAS_IMPORT;
       const cobertura={ 'Importados':parseInt(f('imp-cob-imp').value)||120, 'Fabricação Própria':parseInt(f('imp-cob-fab').value)||30, 'Nacionais':parseInt(f('imp-cob-nac').value)||15 };
-      const rep=await rpc('cn_importar_estoque',{p_usuario_id:USER.id,p_linhas:LINHAS_IMPORT,p_cobertura:cobertura});
+      const rep=await rpc('cn_importar_estoque',{p_usuario_id:USER.id,p_linhas:linhasImp,p_cobertura:cobertura});
       const ign=(rep.itens_ignorados||[]);
       f('imp-res').innerHTML=`<div class="kpis" style="margin:10px 0">
           <div class="kpi"><div class="lbl">Linhas</div><div class="val">${rep.total}</div></div>
