@@ -216,6 +216,11 @@
         <div class="navtit navtit-toggle" data-grp="grp-financeiro">Financeiro<span class="caret">▾</span></div>
         <button data-tela="boletos" id="nav-boletos">Controle de Boletos<span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
       </div>
+      <div class="navgroup" id="grp-produtos">
+        <div class="navtit navtit-toggle" data-grp="grp-produtos">Controle de Produtos<span class="caret">▾</span></div>
+        <button data-tela="entradas" id="nav-entradas">Lançamento de Entradas</button>
+        <button data-tela="custos" id="nav-custos">Custo</button>
+      </div>
       <div class="navgroup" id="grp-cadastros">
         <div class="navtit navtit-toggle" data-grp="grp-cadastros">Cadastros<span class="caret">▾</span></div>
         <button data-tela="cadastro" id="nav-cadastro">Cadastros de Usuários</button>
@@ -451,6 +456,58 @@
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
         <th>Valor</th><th class="num">Ordem</th><th>Situação</th><th class="num">Em uso</th><th></th>
       </tr></thead><tbody id="op-tbody"></tbody></table></div></div>
+    </section>
+
+    <!-- =================== TELA LANÇAMENTO DE ENTRADAS =================== -->
+    <section class="tela" id="scr-entradas">
+      <div class="toolbar">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="ent-busca" placeholder="Buscar NF, SKU ou responsável…" />
+        </div>
+        <select id="ent-ftipo">
+          <option value="">Todos os tipos</option>
+          <option>Pedido de Fabricação</option>
+          <option>Importação</option>
+          <option>Compra Nacional</option>
+          <option>Transferência</option>
+        </select>
+        <button class="act prim" id="ent-btn-filtrar">Filtrar</button>
+        <button class="act prim" id="ent-novo">+ Novo lançamento</button>
+        <span id="ent-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Data Lançamento</th><th>Tipo</th><th>Nº NF</th><th>Emissão NF</th><th>Responsável</th><th>SKUs lançados</th><th>Ações</th>
+      </tr></thead><tbody id="ent-tbody"></tbody></table></div>
+      <div class="foot"><span id="ent-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="ent-prev" style="padding:4px 10px">‹ Anterior</button><span id="ent-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="ent-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
+    </section>
+
+    <!-- =================== TELA CUSTO (consulta) =================== -->
+    <section class="tela" id="scr-custos">
+      <div class="toolbar">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="cst-busca" placeholder="Buscar por SKU ou descrição…" />
+        </div>
+        <select id="cst-tipo"><option value="">Todos os tipos</option></select>
+        <select id="cst-ordem">
+          <option value="sku">SKU (A-Z)</option>
+          <option value="tipo">Tipo de SKU</option>
+          <option value="custo">Maior custo primeiro</option>
+          <option value="data">Entrada mais recente</option>
+        </select>
+        <button class="act prim" id="cst-btn-filtrar">Filtrar</button>
+        <button class="act" id="cst-exportar">Exportar CSV</button>
+        <span id="cst-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Tipo</th><th>SKU</th><th class="num">Quantidade</th><th>Unidade</th><th>Descrição</th><th class="num">Custo de Compra</th><th>Última Entrada</th>
+      </tr></thead><tbody id="cst-tbody"></tbody></table></div>
+      <div class="foot"><span id="cst-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="cst-prev" style="padding:4px 10px">‹ Anterior</button><span id="cst-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="cst-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
     </section>
   </main></div>
 </div>
@@ -938,6 +995,109 @@
   </div>
   <div class="foot"><button class="btn-cancel" id="op-cancel">Cancelar</button><button class="btn-save" id="op-save">Salvar</button></div>
 </aside>
+
+<!-- ============ ESTILOS ESPECÍFICOS: ENTRADAS / CUSTO ============ -->
+<style>
+  /* linhas de conferência de SKU no lançamento de entrada */
+  .conf-row{display:grid;grid-template-columns:150px 1fr 210px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}
+  .conf-row .conf-lbl{font-size:12px;color:var(--muted)}
+  .conf-row .conf-input{width:100%;padding:7px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
+  .conf-row .conf-input:disabled{opacity:.55}
+  .conf-row .conf-tog{display:flex;gap:12px;font-size:12px;color:var(--muted)}
+  .conf-row .conf-tog label{display:flex;align-items:center;gap:4px;cursor:pointer}
+  .custo-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-top:12px}
+  .custo-total{font-size:20px;font-weight:700;color:var(--ok)}
+  .custo-obs{font-size:11px;color:var(--muted);margin-top:6px}
+  /* detalhe da entrada (drawer somente leitura) */
+  .det-cab{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px}
+  .det-cab .lbl{display:block;font-size:11px;color:var(--muted)}
+  .det-item{border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px}
+  .det-item-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .det-item-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;font-size:12px;color:var(--muted)}
+  .det-mods{margin-top:8px;font-size:12px}
+  .det-mods ul{margin:4px 0 0 16px;padding:0}
+  .det-mods s{color:var(--muted)}
+</style>
+
+<!-- ===== MODAL: NOVO LANÇAMENTO DE ENTRADA ===== -->
+<div class="modal" id="ent-modal"><div class="box" style="width:860px">
+  <h3>Novo lançamento de entrada <button class="x" id="ent-modal-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
+  <div class="content">
+    <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:6px">
+      <div class="fld"><label>Tipo de entrada *</label>
+        <select id="ent-m-tipo">
+          <option>Pedido de Fabricação</option>
+          <option>Importação</option>
+          <option>Compra Nacional</option>
+          <option>Transferência</option>
+        </select>
+      </div>
+      <div class="fld" id="ent-m-bloco-nf-num"><label>Nº da NF *</label><input id="ent-m-nf" placeholder="Ex.: 12345"></div>
+      <div class="fld" id="ent-m-bloco-nf-data"><label>Data de emissão da NF *</label><input type="date" id="ent-m-nfdata"></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px">
+      <h4 style="margin:0">SKUs deste lançamento</h4>
+      <button class="act prim" id="ent-m-add">+ Adicionar SKU</button>
+    </div>
+    <div id="ent-m-itens"></div>
+
+    <div class="drawer-erro" id="ent-m-erro" style="padding:8px 0"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+      <button class="btn-cancel" id="ent-m-cancelar">Cancelar</button>
+      <button class="btn-save" id="ent-m-confirmar" style="padding:9px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer" disabled>Confirmar lançamento</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- ===== SUB-MODAL: ADICIONAR/CONFERIR UM SKU ===== -->
+<div class="modal" id="ent-item-modal"><div class="box" style="width:820px">
+  <h3 id="ent-i-titulo">Adicionar SKU <button class="x" id="ent-item-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
+  <div class="content">
+    <!-- passo 1: buscar SKU -->
+    <div id="ent-i-step-busca">
+      <div class="field"><input id="ent-i-busca" placeholder="Buscar SKU ou descrição" style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+      <div class="drawer-erro" id="ent-i-erro" style="padding:6px 0"></div>
+      <div id="ent-i-res"></div>
+    </div>
+    <!-- passo 2: conferência + custo -->
+    <div id="ent-i-conf" style="display:none">
+      <p style="color:var(--muted);font-size:12px;margin:0 0 8px">Confira cada dado do cadastro. Marque “Sem alteração” ou “Editar” para corrigir. O que você editar aqui atualiza o cadastro do produto ao confirmar o lançamento.</p>
+      <div id="ent-i-campos"></div>
+
+      <div class="custo-box">
+        <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:12px">
+          <div class="fld"><label>Custo de chegada (R$) *</label><input type="number" step="0.0001" id="ent-i-custo" placeholder="0,00"></div>
+          <div class="fld"><label>Alíquota IPI (%)</label><input type="number" step="0.01" id="ent-i-ipi" value="0"></div>
+          <div class="fld"><label>Alíquota ICMS (%)</label><input type="number" step="0.01" id="ent-i-icms" value="0"></div>
+          <div class="fld" id="ent-i-fator-bloco"><label>Fator de importação</label><input type="number" step="0.0001" id="ent-i-fator" value="1"></div>
+        </div>
+        <div style="margin-top:10px">Custo total calculado: <span class="custo-total" id="ent-i-custototal">R$ 0,00</span></div>
+        <div class="custo-obs" id="ent-i-obs"></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin-top:12px">
+        <button class="act" id="ent-i-voltar">‹ Voltar</button>
+        <button class="btn-save" id="ent-i-confirmar" style="padding:9px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer">Adicionar ao lançamento</button>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ===== DRAWER: DETALHE DA ENTRADA (somente leitura) ===== -->
+<div class="overlay" id="ent-det-overlay"></div>
+<aside class="drawer" id="ent-det-drawer">
+  <h2>Detalhe do lançamento <button class="x" id="ent-det-x">×</button></h2>
+  <div class="body" id="ent-det-corpo"></div>
+</aside>
+
+<!-- ===== DRAWER: HISTÓRICO DE CUSTO DO SKU (tela Custo) ===== -->
+<div class="overlay" id="cst-h-overlay"></div>
+<aside class="drawer" id="cst-h-drawer" style="max-width:520px">
+  <h2 id="cst-h-titulo">Histórico de custo <button class="x" id="cst-h-x">×</button></h2>
+  <div class="body" id="cst-h-corpo"></div>
+</aside>
+
 <script>
 // ================== CONFIG ==================
 const SUPABASE_URL = "https://mdscihxefuhozrvooqdf.supabase.co";
@@ -1021,8 +1181,10 @@ async function abrirApp(){
   $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
   $('nav-produtos').style.display = temPermissao('produtos.ver') ? '' : 'none';
   $('nav-opcoes').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
+  $('nav-entradas').style.display = temPermissao('entradas.ver') ? '' : 'none';
+  $('nav-custos').style.display = temPermissao('custos.ver') ? '' : 'none';
   // esconde a categoria inteira se nenhuma tela dela estiver visível
-  ['grp-comercial','grp-financeiro','grp-cadastros'].forEach(function(gid){
+  ['grp-comercial','grp-financeiro','grp-produtos','grp-cadastros'].forEach(function(gid){
     const g=$(gid); if(!g) return;
     const vis=[...g.querySelectorAll('button')].some(b=>b.style.display!=='none');
     g.style.display = vis ? '' : 'none';
@@ -1058,6 +1220,8 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 <script src="usuarios.js"></script>
 <script src="produtos.js"></script>
 <script src="opcoes.js"></script>
+<script src="entradas.js"></script>
+<script src="custos.js"></script>
 
 <!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
 <script>
