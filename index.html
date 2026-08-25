@@ -1228,7 +1228,7 @@
 <div class="modal" id="est-imp-modal"><div class="box" style="width:720px">
   <h3>Importar estoque do Bling <button class="x" id="est-imp-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
   <div class="content">
-    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Suba o relatório de estoque exportado do Bling (colunas Código, Produto, Saídas e Saldo em…). O sistema confere o estoque de cada SKU contra o Bling ao vivo; se tudo bater, a importação é liberada.</p>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Suba o relatório de estoque exportado do Bling (colunas Código, Produto, Saídas e Saldo em…). O estoque atual e as vendas vêm direto do arquivo; SKUs que não estiverem no cadastro do sistema são ignorados e listados.</p>
     <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
       <div class="fld"><label>Cobertura Importados (dias)</label><input type="number" id="est-imp-cob-imp" value="120"></div>
       <div class="fld"><label>Cobertura Fabricação (dias)</label><input type="number" id="est-imp-cob-fab" value="30"></div>
@@ -1238,7 +1238,7 @@
     <div class="drawer-erro" id="est-imp-erro" style="padding:6px 0"></div>
     <div id="est-imp-res"></div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
-      <button class="act prim" id="est-imp-conferir">Conferir com o Bling</button>
+      <button class="act prim" id="est-imp-conferir">Ler arquivo</button>
       <button class="btn-save" id="est-imp-confirmar" style="padding:9px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer;display:none">Importar</button>
     </div>
   </div>
