@@ -8,7 +8,7 @@
 // registrarTela, atualizarBadges.
 // =====================================================================
 const FRT = (function(){
-  let LINHAS=[], TOTAL=0;
+  let LINHAS=[], TOTAL=0, PAGINA=0; const POR=100;
   let EDIT=null;   // {sku, canal, valorAtual}
   const f=(id)=>$('frt-'+id);
   const CANAIS=[['site','Site / Venda Direta'],['ml_classico','ML Clássico'],['ml_premium','ML Premium']];
@@ -32,37 +32,23 @@ const FRT = (function(){
   }
   function addOpt(id,v){ const o=document.createElement('option'); o.value=v;o.textContent=v; f(id).appendChild(o); }
 
-  async function carregar(){ f('tbody').innerHTML='<tr><td colspan="17" class="loading">Carregando…</td></tr>';
+  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="17" class="loading">Carregando…</td></tr>';
     try{
       const [res,kpis]=await Promise.all([
-        rpc('cn_listar_fretes',{...filtros(),p_ordem:'pendencia',p_limite:100000,p_offset:0}),
+        rpc('cn_listar_fretes',{...filtros(),p_ordem:f('ordem').value||'pendencia',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_frete_kpis',{p_usuario_id:USER.id})
       ]);
       LINHAS=(res&&res.linhas)||[]; TOTAL=(res&&res.total)||0;
-      ordenar();
-      renderKpis(kpis); renderTabela();
+      renderKpis(kpis); renderTabela(); renderPag();
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="17" class="empty">Erro: '+(e.message||e)+'</td></tr>'; }
   }
 
-  function ordenar(){ const o=f('ordem').value;
-    const foraTotal=(l)=>CANAIS.reduce((s,[c])=>s+((l.canais[c]&&l.canais[c].fora)||0),0);
-    LINHAS.sort((a,b)=>{
-      switch(o){
-        case 'sku': return a.sku.localeCompare(b.sku);
-        case 'sku_desc': return b.sku.localeCompare(a.sku);
-        case 'categoria': return (a.categoria||'').localeCompare(b.categoria||'')||a.sku.localeCompare(b.sku);
-        case 'tipo': return (a.tipo_sku||'').localeCompare(b.tipo_sku||'')||a.sku.localeCompare(b.sku);
-        case 'mais_fora': return foraTotal(b)-foraTotal(a)||a.sku.localeCompare(b.sku);
-        default: // pendencia: pendentes, depois incompletos, depois sku
-          const pa=(a.tem_pendencia?0:1), pb=(b.tem_pendencia?0:1);
-          if(pa!==pb) return pa-pb;
-          const ia=(a.incompleto?0:1), ib=(b.incompleto?0:1);
-          if(ia!==ib) return ia-ib;
-          return a.sku.localeCompare(b.sku);
-      }
-    });
+  function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL);
+    f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`;
+    f('paginfo').textContent=`Página ${p} de ${tp}`;
+    f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
   }
 
   function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
@@ -71,7 +57,7 @@ const FRT = (function(){
       `<div class="kpi kpi-click" onclick="FRT.filtrarStatus('incompletos')"><div class="lbl">Frete incompleto</div><div class="val">${Number(k.incompletos||0).toLocaleString('pt-BR')}</div></div>`+
       `<div class="kpi kpi-click" onclick="FRT.filtrarStatus('pendentes')"><div class="lbl">Pendências de conferência</div><div class="val">${Number(k.pendentes||0).toLocaleString('pt-BR')}</div></div>`;
   }
-  function filtrarStatus(s){ f('status').value=s; carregar(); }
+  function filtrarStatus(s){ f('status').value=s; carregar(true); }
 
   function celCanal(l,canalCod){ const d=l.canais[canalCod]||{};
     const podeEditar=temPermissao('frete.editar');
@@ -83,13 +69,14 @@ const FRT = (function(){
       return `<td class="frt-cel frt-vazio">${valorTxt} ${editBtn}</td><td class="num">—</td><td class="num">—</td><td class="frt-conf">—</td>`;
     }
     const dentro=d.dentro||0, fora=d.fora||0, pend=d.pendente;
-    const confBtn = pend
-      ? (podeConf?`<button class="mini dg" onclick="event.stopPropagation();FRT.conferir('${l.sku.replace(/'/g,"\\'")}','${canalCod}')">Conferir</button>`:'<span class="pill" style="border-color:var(--warn);color:var(--warn)">Pendente</span>')
-      : '<span class="pill" style="border-color:var(--ok);color:var(--ok)">✓</span>';
+    // checkbox: marcado = OK (sem venda fora); desmarcado = pendente (há venda fora).
+    // Marcar quando pendente => zera o ciclo (conferir). Sem frete não tem checkbox.
+    const chk = `<input type="checkbox" class="frt-chk" ${pend?'':'checked'} ${podeConf?'':'disabled'} `+
+                `onclick="event.stopPropagation();FRT.toggleConf(this,'${l.sku.replace(/'/g,"\\'")}','${canalCod}',${pend})">`;
     return `<td class="frt-cel ${pend?'frt-pend':''}">${valorTxt} ${editBtn}</td>`+
            `<td class="num frt-dentro">${dentro}</td>`+
            `<td class="num frt-fora">${fora>0?'<b style=\"color:var(--danger)\">'+fora+'</b>':fora}</td>`+
-           `<td class="frt-conf">${confBtn}</td>`;
+           `<td class="frt-conf">${chk}</td>`;
   }
 
   function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="17" class="empty">Nenhum produto encontrado.</td></tr>'; f('contagem').textContent='0 registros'; return; }
@@ -126,10 +113,23 @@ const FRT = (function(){
     }catch(e){ f('d-erro').textContent='Erro: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; }
   }
 
-  async function conferir(sku,canal){ if(!temPermissao('frete.conferir'))return;
-    if(!confirm('Marcar como conferido?\n\nA pendência atual some. Se surgirem novas vendas fora do padrão depois de agora, a pendência volta.')) return;
-    try{ await rpc('cn_conferir_frete',{p_usuario_id:USER.id,p_sku:sku,p_canal:canal}); await carregar(); f('msg').textContent='Conferido.'; }
-    catch(e){ alert('Não foi possível conferir: '+(e.message||e)); }
+  // Clique no checkbox de conferência.
+  //  - Se estava PENDENTE (desmarcado) e o usuário marca => zera o ciclo (conferir).
+  //  - Se estava OK (marcado) e o usuário tenta desmarcar => não há ação de
+  //    "desconferir"; devolve o check para marcado (sem efeito no banco).
+  async function toggleConf(el, sku, canal, estavaPendente){
+    if(!temPermissao('frete.conferir')){ el.checked=!el.checked; return; }
+    if(!estavaPendente){
+      // estava OK; desmarcar manual não faz nada — reverte visual
+      el.checked=true;
+      return;
+    }
+    // estava pendente e agora marcou => confere (zera contagem a partir de agora)
+    el.disabled=true;
+    try{ await rpc('cn_conferir_frete',{p_usuario_id:USER.id,p_sku:sku,p_canal:canal});
+      f('msg').textContent='Conferido — contagem reiniciada.';
+      await carregar();
+    }catch(e){ el.checked=false; el.disabled=false; alert('Não foi possível conferir: '+(e.message||e)); }
   }
 
   // ---- importação Excel ----
@@ -178,16 +178,18 @@ const FRT = (function(){
   }
 
   function bind(){
-    let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(carregar,400); });
-    f('tipo').addEventListener('change',carregar); f('categoria').addEventListener('change',carregar);
-    f('status').addEventListener('change',carregar); f('ordem').addEventListener('change',()=>{ ordenar(); renderTabela(); });
-    f('btn-filtrar').addEventListener('click',carregar);
+    let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
+    f('tipo').addEventListener('change',()=>carregar(true)); f('categoria').addEventListener('change',()=>carregar(true));
+    f('status').addEventListener('change',()=>carregar(true)); f('ordem').addEventListener('change',()=>carregar(true));
+    f('btn-filtrar').addEventListener('click',()=>carregar(true));
     f('importar').addEventListener('click',abrirImport); f('exportar').addEventListener('click',exportar);
+    f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } });
+    f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     f('drawer-x').addEventListener('click',fechar); f('d-cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('d-save').addEventListener('click',salvar);
     f('imp-x').addEventListener('click',fecharImport); f('imp-processar').addEventListener('click',processarImport);
   }
 
-  return { init, editar, conferir, filtrarStatus };
+  return { init, editar, toggleConf, filtrarStatus };
 })();
 window.FRT = FRT;
 registrarTela('frete', FRT);

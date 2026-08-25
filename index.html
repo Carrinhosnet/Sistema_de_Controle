@@ -554,7 +554,9 @@
           <th class="frt-sub">Frete</th><th class="frt-sub num">Dentro</th><th class="frt-sub num">Fora</th><th class="frt-sub">Conf.</th>
         </tr>
       </thead><tbody id="frt-tbody"></tbody></table></div>
-      <div class="foot"><span id="frt-contagem">—</span></div></div>
+      <div class="foot"><span id="frt-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="frt-prev" style="padding:4px 10px">‹ Anterior</button><span id="frt-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="frt-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
     </section>
   </main></div>
 </div>
@@ -1073,6 +1075,8 @@
   .frt-table td.frt-fora b{color:var(--danger)}
   .kpi.kpi-click{cursor:pointer}
   .kpi.kpi-click:hover{border-color:var(--accent)}
+  .frt-table td.frt-conf{text-align:center}
+  .frt-table input.frt-chk{width:16px;height:16px;cursor:pointer;accent-color:var(--ok)}
 </style>
 
 <!-- ===== MODAL: NOVO LANÇAMENTO DE ENTRADA ===== -->
