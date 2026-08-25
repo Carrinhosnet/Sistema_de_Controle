@@ -221,6 +221,7 @@
         <button data-tela="entradas" id="nav-entradas">Lançamento de Entradas</button>
         <button data-tela="custos" id="nav-custos">Custo</button>
         <button data-tela="frete" id="nav-frete">Custo de Frete<span class="badge-dot" id="badge-frete" style="display:none"></span></button>
+        <button data-tela="estoque" id="nav-estoque">Análise de Estoque</button>
       </div>
       <div class="navgroup" id="grp-cadastros">
         <div class="navtit navtit-toggle" data-grp="grp-cadastros">Cadastros<span class="caret">▾</span></div>
@@ -556,6 +557,44 @@
       </thead><tbody id="frt-tbody"></tbody></table></div>
       <div class="foot"><span id="frt-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
         <button class="act" id="frt-prev" style="padding:4px 10px">‹ Anterior</button><span id="frt-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="frt-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
+    </section>
+
+    <!-- =================== TELA ANÁLISE DE ESTOQUE =================== -->
+    <section class="tela" id="scr-estoque">
+      <div class="toolbar">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="est-busca" placeholder="Buscar por SKU ou descrição…" />
+        </div>
+        <select id="est-tipo"><option value="">Todos os tipos</option></select>
+        <select id="est-origem"><option value="">Todas as origens</option></select>
+        <select id="est-status">
+          <option value="">Todos</option>
+          <option value="comprar">A comprar / fabricar</option>
+          <option value="critico">Estoque crítico</option>
+          <option value="sem_venda">Sem venda (120d)</option>
+        </select>
+        <select id="est-ordem">
+          <option value="comprar">Maior compra sugerida</option>
+          <option value="dias_restantes">Menos dias restantes</option>
+          <option value="vendas">Mais vendidos</option>
+          <option value="estoque">Maior estoque</option>
+          <option value="sku">SKU (A-Z)</option>
+        </select>
+        <button class="act prim" id="est-btn-filtrar">Filtrar</button>
+        <button class="act prim" id="est-importar">Importar do Bling</button>
+        <button class="act" id="est-exportar">Exportar CSV</button>
+        <span id="est-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="kpis" id="est-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Tipo</th><th>SKU</th><th class="num">Qtd</th><th>Un.</th><th>Descrição</th>
+        <th class="num">Estoque Atual</th><th class="num">Vendas 120d</th><th class="num">Média Diária</th>
+        <th class="num">Dias Cob.</th><th class="num">Estoque Mín.</th><th class="num">Comprar/Fabricar</th><th class="num">Dias Restantes</th>
+      </tr></thead><tbody id="est-tbody"></tbody></table></div>
+      <div class="foot"><span id="est-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="est-prev" style="padding:4px 10px">‹ Anterior</button><span id="est-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="est-next" style="padding:4px 10px">Próxima ›</button>
       </span></div></div>
     </section>
   </main></div>
@@ -1185,6 +1224,26 @@
   </div>
 </div></div>
 
+<!-- ===== MODAL: IMPORTAR ANÁLISE DE ESTOQUE ===== -->
+<div class="modal" id="est-imp-modal"><div class="box" style="width:720px">
+  <h3>Importar estoque do Bling <button class="x" id="est-imp-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
+  <div class="content">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Suba o relatório de estoque exportado do Bling (colunas Código, Produto, Saídas e Saldo em…). O sistema confere o estoque de cada SKU contra o Bling ao vivo; se tudo bater, a importação é liberada.</p>
+    <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+      <div class="fld"><label>Cobertura Importados (dias)</label><input type="number" id="est-imp-cob-imp" value="120"></div>
+      <div class="fld"><label>Cobertura Fabricação (dias)</label><input type="number" id="est-imp-cob-fab" value="30"></div>
+      <div class="fld"><label>Cobertura Nacionais (dias)</label><input type="number" id="est-imp-cob-nac" value="15"></div>
+    </div>
+    <div class="field"><input type="file" id="est-imp-file" accept=".xlsx,.xls" style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+    <div class="drawer-erro" id="est-imp-erro" style="padding:6px 0"></div>
+    <div id="est-imp-res"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+      <button class="act prim" id="est-imp-conferir">Conferir com o Bling</button>
+      <button class="btn-save" id="est-imp-confirmar" style="padding:9px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer;display:none">Importar</button>
+    </div>
+  </div>
+</div></div>
+
 <script>
 // ================== CONFIG ==================
 const SUPABASE_URL = "https://mdscihxefuhozrvooqdf.supabase.co";
@@ -1272,6 +1331,7 @@ async function abrirApp(){
   $('nav-entradas').style.display = temPermissao('entradas.ver') ? '' : 'none';
   $('nav-custos').style.display = temPermissao('custos.ver') ? '' : 'none';
   $('nav-frete').style.display = temPermissao('frete.ver') ? '' : 'none';
+  $('nav-estoque').style.display = temPermissao('estoque.ver') ? '' : 'none';
   // esconde a categoria inteira se nenhuma tela dela estiver visível
   ['grp-comercial','grp-financeiro','grp-produtos','grp-cadastros'].forEach(function(gid){
     const g=$(gid); if(!g) return;
@@ -1312,6 +1372,7 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 <script src="entradas.js"></script>
 <script src="custos.js"></script>
 <script src="custo_frete.js"></script>
+<script src="estoque.js"></script>
 
 <!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
 <script>
