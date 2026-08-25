@@ -9,6 +9,13 @@ const CST = (function(){
   let LINHAS=[], PAGINA=0, TOTAL=0; const POR=100;
   const f=(id)=>$('cst-'+id);
 
+  // formata timestamp ISO (com hora) em dd/mm/aaaa hh:mm; aceita também data pura
+  function dataHora(v){ if(!v) return '—';
+    const dt=new Date(v); if(isNaN(dt)) return '—';
+    const p=n=>String(n).padStart(2,'0');
+    return `${p(dt.getDate())}/${p(dt.getMonth()+1)}/${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+  }
+
   function filtros(){ return {
     p_usuario_id:USER.id,
     p_tipo:f('tipo').value||null,
@@ -44,7 +51,7 @@ const CST = (function(){
         <td>${l.unidade_medida||'—'}</td>
         <td>${l.descricao_curta||'—'}</td>
         <td class="num">${semCusto?'<span style="color:var(--muted)">sem entrada</span>':brl(l.custo_unitario)}</td>
-        <td>${l.data_ultima_entrada?dataBr(l.data_ultima_entrada):'—'}</td>
+        <td>${dataHora(l.data_ultima_entrada)}</td>
       </tr>`;
     }).join('');
   }
@@ -56,7 +63,7 @@ const CST = (function(){
     try{ const r=await rpc('cn_historico_custo_sku',{p_usuario_id:USER.id,p_sku:sku,p_limite:5});
       if(!r||!r.length){ f('h-corpo').innerHTML='<p style="color:var(--muted)">Nenhum lançamento de custo para este SKU.</p>'; return; }
       f('h-corpo').innerHTML='<table class="res"><thead><tr><th>Data</th><th>Tipo</th><th>Por</th><th class="num">Custo</th></tr></thead><tbody>'+
-        r.map(h=>`<tr><td>${dataBr(h.registrado_em)}</td><td>${h.tipo_entrada||'—'}</td><td>${h.usuario_nome||'—'}</td><td class="num"><b>${brl(h.custo_unitario)}</b></td></tr>`).join('')+
+        r.map(h=>`<tr><td>${dataHora(h.registrado_em)}</td><td>${h.tipo_entrada||'—'}</td><td>${h.usuario_nome||'—'}</td><td class="num"><b>${brl(h.custo_unitario)}</b></td></tr>`).join('')+
         '</tbody></table><p style="color:var(--muted);font-size:11px;margin-top:8px">Exibindo os 5 lançamentos mais recentes.</p>';
     }catch(e){ f('h-corpo').innerHTML='<p class="empty">Erro: '+(e.message||e)+'</p>'; } }
   function fecharHist(){ f('h-overlay').classList.remove('open'); f('h-drawer').classList.remove('open'); }

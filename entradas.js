@@ -22,6 +22,13 @@ const ENT = (function(){
   let SKU_ATUAL=null;     // dados do SKU sendo conferido no modal de item
   const f=(id)=>$('ent-'+id);
 
+  // formata timestamp ISO (com hora) em dd/mm/aaaa hh:mm; aceita também data pura
+  function dataHora(v){ if(!v) return '—';
+    const dt=new Date(v); if(isNaN(dt)) return '—';
+    const p=n=>String(n).padStart(2,'0');
+    return `${p(dt.getDate())}/${p(dt.getMonth()+1)}/${dt.getFullYear()} ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+  }
+
   // Campos do cadastro que entram na conferência (chave -> rótulo)
   const CAMPOS_CONF=[
     ['categoria','Categoria'],
@@ -70,7 +77,7 @@ const ENT = (function(){
         ? `<button class="mini dg" onclick="event.stopPropagation();ENT.excluir(${l.id})">Excluir</button>`
         : `<span style="color:var(--muted);font-size:11px">${l.pode_excluir?'':'fixado'}</span>`;
       return `<tr style="cursor:pointer" onclick="ENT.detalhar(${l.id})">
-        <td>${dataBr(l.data_lancamento)}</td>
+        <td>${dataHora(l.data_lancamento)}</td>
         <td><span class="pill">${l.tipo_entrada}</span></td>
         <td>${l.numero_nf||'—'}</td>
         <td>${l.data_emissao_nf?dataBr(l.data_emissao_nf):'—'}</td>
@@ -93,7 +100,7 @@ const ENT = (function(){
         <div><span class="lbl">Tipo</span><b>${d.tipo_entrada}</b></div>
         <div><span class="lbl">NF</span><b>${d.numero_nf||'—'}</b></div>
         <div><span class="lbl">Emissão NF</span><b>${d.data_emissao_nf?dataBr(d.data_emissao_nf):'—'}</b></div>
-        <div><span class="lbl">Lançado em</span><b>${dataBr(d.data_lancamento)}</b></div>
+        <div><span class="lbl">Lançado em</span><b>${dataHora(d.data_lancamento)}</b></div>
         <div><span class="lbl">Por</span><b>${d.usuario_nome||'—'}</b></div>
       </div>`;
       const itens=(d.itens||[]).map(it=>{
@@ -172,6 +179,7 @@ const ENT = (function(){
 
   // ---------------- ADICIONAR ITEM (sub-modal de conferência) ----------------
   function abrirItem(){ SKU_ATUAL=null; f('i-erro').textContent='';
+    f('i-titulo').textContent='Adicionar SKU';
     f('i-busca').value=''; f('i-res').innerHTML=''; f('i-conf').style.display='none';
     f('i-step-busca').style.display='block';
     f('item-modal').classList.add('open'); f('i-busca').focus();
@@ -251,7 +259,7 @@ const ENT = (function(){
     ITENS.push({ sku:SKU_ATUAL.sku, custo_chegada:c, ipi_aliquota:ipi, icms_aliquota:icms, fator_importacao:fator, custo_total:Math.round(total*10000)/10000, dados_conferidos, modificacoes });
     renderItens(); fecharItem();
   }
-  function voltarBuscaItem(){ f('i-conf').style.display='none'; f('i-step-busca').style.display='block'; SKU_ATUAL=null; }
+  function voltarBuscaItem(){ f('i-conf').style.display='none'; f('i-step-busca').style.display='block'; f('i-titulo').textContent='Adicionar SKU'; SKU_ATUAL=null; }
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
