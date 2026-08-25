@@ -154,8 +154,15 @@ const EST = (function(){
           '<p style="color:var(--muted);font-size:12px;margin-top:8px">Gere um relatório novo no Bling e tente de novo, ou confira esses SKUs.</p>';
         f('imp-confirmar').style.display='none';
       }else{
-        const ignTxt = naoEnc.size ? ` (${naoEnc.size} SKU(s) do arquivo não existem no Bling e serão ignorados)` : '';
-        f('imp-res').innerHTML=`<div style="color:var(--ok);font-weight:600;margin:8px 0">✓ Estoque confere com o Bling (${conferidos} SKU(s) verificados)${ignTxt}. Pronto para importar.</div>`;
+        let ignBloco='';
+        if(naoEnc.size){
+          const lista=[...naoEnc].sort();
+          ignBloco='<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--warn)">'+
+            `${naoEnc.size} SKU(s) do arquivo não existem no Bling — serão ignorados (clique para ver)</summary>`+
+            '<table class="res" style="margin-top:6px"><thead><tr><th>SKU ignorado</th></tr></thead><tbody>'+
+            lista.map(s=>`<tr><td>${s}</td></tr>`).join('')+'</tbody></table></details>';
+        }
+        f('imp-res').innerHTML=`<div style="color:var(--ok);font-weight:600;margin:8px 0">✓ Estoque confere com o Bling (${conferidos} SKU(s) verificados). Pronto para importar.</div>`+ignBloco;
         f('imp-confirmar').style.display='';
       }
     }catch(e){ f('imp-erro').textContent='Erro: '+(e.message||e); f('imp-confirmar').style.display='none'; }
