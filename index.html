@@ -35,12 +35,17 @@
   #app{display:none}
   #app.on{display:flex;min-height:100vh;align-items:stretch}
   .sidebar{width:290px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:8px;padding:16px 12px;height:100vh;position:sticky;top:0}
-  .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:6px}
-  .brand .logo{width:32px;height:32px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700}
+  .brand{display:flex;align-items:center;gap:8px;padding:4px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:6px;flex-shrink:0}
+  .brand .logo{width:32px;height:32px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;overflow:hidden}
+  .brand .logo img{width:100%;height:100%;object-fit:contain}
+  .brand .logo-full{flex:1;min-width:0;max-height:46px;object-fit:contain;object-position:left center;display:block}
   .brand .t1{font-weight:600;font-size:14px}
   .brand .t2{font-size:11px;color:var(--muted)}
   .navtit{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 10px 2px}
-  nav{display:flex;flex-direction:column;gap:4px}
+  nav{display:flex;flex-direction:column;gap:4px;overflow-y:auto;flex:1 1 auto;min-height:0;margin:0 -4px;padding:0 4px}
+  nav::-webkit-scrollbar{width:8px}
+  nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+  nav::-webkit-scrollbar-track{background:transparent}
   nav button{position:relative;padding:10px 34px 10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   nav button:hover{color:var(--text);background:var(--surface2)}
   nav button.active{color:#fff;background:var(--accent-soft);border-color:var(--accent)}
@@ -51,7 +56,7 @@
   .navtit .caret{font-size:10px;transition:transform .15s ease}
   .navgroup.collapsed .caret{transform:rotate(-90deg)}
   .navgroup.collapsed button{display:none !important}
-  .userbox{margin-top:auto;display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:13px;padding-top:12px;border-top:1px solid var(--border)}
+  .userbox{margin-top:auto;display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:13px;padding-top:12px;border-top:1px solid var(--border);flex-shrink:0}
   .userbox .who{color:var(--muted)}
   .link{color:var(--accent);cursor:pointer;background:none;border:none;font-size:13px;padding:0}
   .content{flex:1;min-width:0}
@@ -200,31 +205,30 @@
   <button class="floating-toggle" id="btn-expand" title="Mostrar menu">☰</button>
   <aside class="sidebar">
     <div class="brand">
-      <div class="logo">CN</div>
-      <div style="flex:1"><div class="t1">Carrinhos_Net</div><div class="t2">Sistema de controle</div></div>
+      <img src="logo.svg" alt="Carrinhos_Net — Sistema de controle" class="logo-full" />
       <button class="toggle-btn" id="btn-collapse" title="Esconder menu">‹</button>
     </div>
     <nav id="nav">
       <div class="navgroup" id="grp-comercial">
-        <div class="navtit navtit-toggle" data-grp="grp-comercial">Comercial<span class="caret">▾</span></div>
+        <div class="navtit navtit-toggle" data-grp="grp-comercial">Controle Comercial<span class="caret">▾</span></div>
         <button data-tela="vendas" id="nav-vendas">Controle de Vendas<span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
         <button data-tela="ocorrencias" id="nav-ocorrencias">Cancelamentos e Devoluções<span class="badge-dot" id="badge-ocorrencias" style="display:none"></span></button>
         <button data-tela="reclamacoes" id="nav-reclamacoes">Controle de Reclamações<span class="badge-dot" id="badge-reclamacoes" style="display:none"></span></button>
         <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-financeiro">
-        <div class="navtit navtit-toggle" data-grp="grp-financeiro">Financeiro<span class="caret">▾</span></div>
+        <div class="navtit navtit-toggle" data-grp="grp-financeiro">Controle Financeiro<span class="caret">▾</span></div>
         <button data-tela="boletos" id="nav-boletos">Controle de Boletos<span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-produtos">
         <div class="navtit navtit-toggle" data-grp="grp-produtos">Controle de Produtos<span class="caret">▾</span></div>
         <button data-tela="entradas" id="nav-entradas">Lançamento de Entradas</button>
-        <button data-tela="custos" id="nav-custos">Custo</button>
-        <button data-tela="frete" id="nav-frete">Custo de Frete<span class="badge-dot" id="badge-frete" style="display:none"></span></button>
+        <button data-tela="custos" id="nav-custos">Controle de Custo de Compra</button>
+        <button data-tela="frete" id="nav-frete">Controle de Custo de Frete<span class="badge-dot" id="badge-frete" style="display:none"></span></button>
         <button data-tela="estoque" id="nav-estoque">Análise de Estoque</button>
       </div>
       <div class="navgroup" id="grp-cadastros">
-        <div class="navtit navtit-toggle" data-grp="grp-cadastros">Cadastros<span class="caret">▾</span></div>
+        <div class="navtit navtit-toggle" data-grp="grp-cadastros">Controle de Cadastros<span class="caret">▾</span></div>
         <button data-tela="cadastro" id="nav-cadastro">Cadastros de Usuários</button>
         <button data-tela="produtos" id="nav-produtos">Cadastro de Produtos<span class="badge-dot" id="badge-produtos" style="display:none"></span></button>
         <button data-tela="opcoes" id="nav-opcoes">Opções de Produtos</button>
@@ -1356,7 +1360,14 @@ function mostrarTela(t){
   document.querySelectorAll('.tela').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   const scr=$('scr-'+t); if(scr) scr.classList.add('active');
-  const nb=$('nav-'+t); if(nb) nb.classList.add('active');
+  const nb=$('nav-'+t); if(nb){ nb.classList.add('active');
+    // garante que o grupo pai esteja expandido ao acessar a tela
+    const grp=nb.closest('.navgroup');
+    if(grp && grp.classList.contains('collapsed')){
+      grp.classList.remove('collapsed');
+      try{ const st=JSON.parse(sessionStorage.getItem('cn_navcollapse')||'{}'); st[grp.id]=false; sessionStorage.setItem('cn_navcollapse',JSON.stringify(st)); }catch(e){}
+    }
+  }
   if(TELAS[t] && !CARREGADO[t]){ CARREGADO[t]=true; TELAS[t].init(); }
   if(typeof atualizarBadges==='function') atualizarBadges();
 }

@@ -214,18 +214,47 @@ const EST = (function(){
     const escopo = temFiltro ? 'com os filtros atuais aplicados' : '(análise completa, sem filtros)';
     if(!confirm(`Enviar o estoque mínimo de ${itens.length} produto(s) ao Bling ${escopo}?\n\nIsso vai sobrescrever o estoque mínimo desses produtos no Bling com os valores calculados aqui (itens sem venda recebem mínimo 1). Confirmar?`)) return;
 
-    const b=f('enviar-bling'); b.disabled=true; const t=b.textContent; b.textContent='Enviando ao Bling…';
-    f('msg').textContent='Enviando estoque mínimo ao Bling (pode levar alguns minutos)…';
+    const b=f('enviar-bling'); b.disabled=true; const t=b.textContent;
+    const up=(s)=>String(s||'').trim().toUpperCase();
+    const minPorSku={}; itens.forEach(i=>{ minPorSku[up(i.sku)]=i.minimo; });
+
     try{
-      const resp=await chamarFuncao('bling-estoque-minimo',{itens});
-      if(resp && resp.ok===false){ alert('Bling: '+(resp.erro||'falha ao enviar')); return; }
-      const falhas=(resp&&resp.itens_falha)||[];
+      // 1) resolve SKU -> id do Bling (uma vez só, via edge de saldos)
+      b.textContent='Localizando produtos no Bling…';
+      f('msg').textContent='Localizando produtos no Bling…';
+      const skus=itens.map(i=>i.sku);
+      const resp=await chamarFuncao('bling-estoque-saldos',{skus});
+      if(resp && resp.ok===false) throw new Error('Bling: '+(resp.erro||'falha ao localizar produtos'));
+      const saldos=(resp&&resp.saldos)||{};
       const naoEnc=(resp&&resp.nao_encontrados)||[];
-      let msg=`✓ Estoque mínimo enviado ao Bling.\n\nAtualizados: ${resp.atualizados} de ${resp.total}`;
+
+      // monta a lista {id, minimo, sku} só dos que têm id no Bling
+      const paraEnviar=[];
+      for(const sku of skus){ const s=saldos[up(sku)]; if(s&&s.id) paraEnviar.push({id:s.id, minimo:minPorSku[up(sku)], sku}); }
+      if(!paraEnviar.length){ alert('Nenhum dos produtos foi encontrado no Bling.'); return; }
+
+      // 2) envia em LOTES (cada lote é uma invocação curta -> não estoura o limite)
+      const LOTE=30;
+      let atualizados=0, falhas=0; const falhaDet=[];
+      const totalLotes=Math.ceil(paraEnviar.length/LOTE);
+      for(let i=0;i<paraEnviar.length;i+=LOTE){
+        const parte=paraEnviar.slice(i,i+LOTE);
+        const nLote=Math.floor(i/LOTE)+1;
+        b.textContent=`Enviando ${nLote}/${totalLotes}…`;
+        f('msg').textContent=`Enviando ao Bling: lote ${nLote} de ${totalLotes} (${atualizados} atualizados até agora)…`;
+        const r=await chamarFuncao('bling-estoque-minimo',{itens:parte});
+        if(r && r.ok===false){ falhas+=parte.length; parte.forEach(p=>falhaDet.push({sku:p.sku,motivo:r.erro||'falha no lote'})); continue; }
+        atualizados+=(r.atualizados||0);
+        falhas+=(r.falhas||0);
+        (r.itens_falha||[]).forEach(x=>falhaDet.push(x));
+      }
+
+      let msg=`✓ Estoque mínimo enviado ao Bling.\n\nAtualizados: ${atualizados} de ${paraEnviar.length}`;
       if(naoEnc.length) msg+=`\nNão encontrados no Bling: ${naoEnc.length}`;
-      if(falhas.length) msg+=`\nFalhas: ${falhas.length}`;
+      if(falhas) msg+=`\nFalhas: ${falhas}`;
+      if(falhaDet.length){ const amostra=falhaDet.slice(0,5).map(x=>x.sku||x.id).join(', '); msg+=`\n(ex.: ${amostra}${falhaDet.length>5?'…':''})`; }
       alert(msg);
-      f('msg').textContent=`Estoque mínimo enviado: ${resp.atualizados}/${resp.total} atualizados.`;
+      f('msg').textContent=`Estoque mínimo enviado: ${atualizados}/${paraEnviar.length} atualizados.`;
     }catch(e){ alert('Erro ao enviar ao Bling: '+(e.message||e)); f('msg').textContent='Falha ao enviar ao Bling.'; }
     finally{ b.disabled=false; b.textContent=t; }
   }
