@@ -21,7 +21,10 @@ const EST = (function(){
     p_status:f('status').value||null
   }; }
 
-  async function init(){ await carregarOpcoes(); carregar(); bind(); }
+  async function init(){
+    const be=f('enviar-bling'); if(be) be.style.display = temPermissao('estoque.enviar_bling') ? '' : 'none';
+    await carregarOpcoes(); carregar(); bind();
+  }
 
   async function carregarOpcoes(){
     try{ const r=await rpc('cn_listar_opcoes_produto',{p_usuario_id:USER.id,p_tipo:null});
@@ -51,11 +54,25 @@ const EST = (function(){
 
   function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
     const dt = k.importado_em ? new Date(k.importado_em).toLocaleString('pt-BR') : '—';
+    const vencida = !!k.importacao_vencida && k.total>0;
+    const dias = k.dias_desde_import;
+    const cardImport = vencida
+      ? `<div class="kpi" style="border-color:var(--danger)"><div class="lbl" style="color:var(--danger)">Última importação ⚠</div><div class="val" style="font-size:13px;color:var(--danger)">${dt}</div></div>`
+      : `<div class="kpi"><div class="lbl">Última importação</div><div class="val" style="font-size:13px">${dt}</div></div>`;
     box.innerHTML=
       `<div class="kpi"><div class="lbl">SKUs na análise</div><div class="val">${Number(k.total||0).toLocaleString('pt-BR')}</div></div>`+
       `<div class="kpi kpi-click" onclick="EST.filtrarStatus('comprar')"><div class="lbl">A comprar / fabricar</div><div class="val">${Number(k.a_comprar||0).toLocaleString('pt-BR')}</div></div>`+
       `<div class="kpi kpi-click" onclick="EST.filtrarStatus('sem_venda')"><div class="lbl">Sem venda (120d)</div><div class="val">${Number(k.sem_venda||0).toLocaleString('pt-BR')}</div></div>`+
-      `<div class="kpi"><div class="lbl">Última importação</div><div class="val" style="font-size:13px">${dt}</div></div>`;
+      cardImport;
+    // faixa de aviso quando a importação está vencida (>3 dias) ou nunca houve
+    const aviso=f('aviso'); if(aviso){
+      if(vencida){
+        const txt = k.importado_em
+          ? `A última importação de estoque foi há ${dias} dia(s). Os dados podem estar desatualizados — importe um relatório novo do Bling.`
+          : 'Nenhuma importação de estoque ainda. Importe o relatório do Bling para começar.';
+        aviso.innerHTML=`<div class="est-aviso">⚠ ${txt}</div>`; aviso.style.display='';
+      }else{ aviso.style.display='none'; aviso.innerHTML=''; }
+    }
   }
   function filtrarStatus(s){ f('status').value=s; carregar(true); }
 
@@ -186,6 +203,33 @@ const EST = (function(){
     finally{ b.disabled=false; b.textContent=t; }
   }
 
+  // ---------------- enviar estoque mínimo ao Bling ----------------
+  async function enviarMinimo(){ if(!temPermissao('estoque.enviar_bling')){ alert('Você não tem permissão para enviar ao Bling.'); return; }
+    if(!TOTAL){ alert('Importe o estoque antes de enviar ao Bling.'); return; }
+    let itens;
+    try{ itens=await rpc('cn_estoque_minimo_para_bling',{...filtros()}); }
+    catch(e){ alert('Erro ao montar a lista: '+(e.message||e)); return; }
+    if(!itens||!itens.length){ alert('Nenhum item corresponde aos filtros atuais. Ajuste os filtros e tente de novo.'); return; }
+    const temFiltro = f('tipo').value||f('origem').value||f('busca').value.trim()||f('status').value;
+    const escopo = temFiltro ? 'com os filtros atuais aplicados' : '(análise completa, sem filtros)';
+    if(!confirm(`Enviar o estoque mínimo de ${itens.length} produto(s) ao Bling ${escopo}?\n\nIsso vai sobrescrever o estoque mínimo desses produtos no Bling com os valores calculados aqui (itens sem venda recebem mínimo 1). Confirmar?`)) return;
+
+    const b=f('enviar-bling'); b.disabled=true; const t=b.textContent; b.textContent='Enviando ao Bling…';
+    f('msg').textContent='Enviando estoque mínimo ao Bling (pode levar alguns minutos)…';
+    try{
+      const resp=await chamarFuncao('bling-estoque-minimo',{itens});
+      if(resp && resp.ok===false){ alert('Bling: '+(resp.erro||'falha ao enviar')); return; }
+      const falhas=(resp&&resp.itens_falha)||[];
+      const naoEnc=(resp&&resp.nao_encontrados)||[];
+      let msg=`✓ Estoque mínimo enviado ao Bling.\n\nAtualizados: ${resp.atualizados} de ${resp.total}`;
+      if(naoEnc.length) msg+=`\nNão encontrados no Bling: ${naoEnc.length}`;
+      if(falhas.length) msg+=`\nFalhas: ${falhas.length}`;
+      alert(msg);
+      f('msg').textContent=`Estoque mínimo enviado: ${resp.atualizados}/${resp.total} atualizados.`;
+    }catch(e){ alert('Erro ao enviar ao Bling: '+(e.message||e)); f('msg').textContent='Falha ao enviar ao Bling.'; }
+    finally{ b.disabled=false; b.textContent=t; }
+  }
+
   // ---------------- export CSV ----------------
   async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
     try{ const res=await rpc('cn_listar_estoque',{...filtros(),p_ordem:f('ordem').value||'comprar',p_limite:100000,p_offset:0}); const all=(res&&res.linhas)||[];
@@ -202,6 +246,7 @@ const EST = (function(){
     f('status').addEventListener('change',()=>carregar(true)); f('ordem').addEventListener('change',()=>carregar(true));
     f('btn-filtrar').addEventListener('click',()=>carregar(true));
     f('importar').addEventListener('click',abrirImport); f('exportar').addEventListener('click',exportar);
+    const be=f('enviar-bling'); if(be) be.addEventListener('click',enviarMinimo);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } });
     f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     f('imp-x').addEventListener('click',fecharImport);

@@ -584,9 +584,11 @@
         </select>
         <button class="act prim" id="est-btn-filtrar">Filtrar</button>
         <button class="act prim" id="est-importar">Importar do Bling</button>
+        <button class="act" id="est-enviar-bling">Enviar estoque mínimo ao Bling</button>
         <button class="act" id="est-exportar">Exportar CSV</button>
         <span id="est-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
+      <div id="est-aviso" style="display:none"></div>
       <div class="kpis" id="est-kpis"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
         <th>Tipo</th><th>SKU</th><th class="num">Qtd</th><th>Un.</th><th>Descrição</th>
@@ -1116,6 +1118,7 @@
   .kpi.kpi-click:hover{border-color:var(--accent)}
   .frt-table td.frt-conf{text-align:center}
   .frt-table input.frt-chk{width:16px;height:16px;cursor:pointer;accent-color:var(--ok)}
+  .est-aviso{margin:0 0 12px;padding:10px 14px;border:1px solid var(--danger);border-radius:8px;background:rgba(239,68,68,.08);color:var(--danger);font-size:13px;font-weight:500}
 </style>
 
 <!-- ===== MODAL: NOVO LANÇAMENTO DE ENTRADA ===== -->
