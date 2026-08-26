@@ -79,10 +79,10 @@
   .kpi .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
   .kpi .val{font-size:22px;font-weight:600;letter-spacing:-.01em}
 
-  .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
-  .scroll{overflow-x:auto}
+  .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+  .scroll{overflow-x:auto;overflow-y:visible}
   table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
-  thead th{text-align:left;padding:11px 14px;background:var(--surface2);color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);position:sticky;top:0}
+  thead th{text-align:left;padding:11px 14px;background:var(--surface2);color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
   tbody td{padding:10px 14px;border-bottom:1px solid var(--border)}
   tbody tr:hover{background:var(--surface2)}
   td.num{text-align:right;font-variant-numeric:tabular-nums}
@@ -1112,8 +1112,9 @@
   .det-mods ul{margin:4px 0 0 16px;padding:0}
   .det-mods s{color:var(--muted)}
   /* tela custo de frete: grupos de colunas por canal */
-  .frt-table th.frt-grp{text-align:center;border-left:2px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface2)}
-  .frt-table th.frt-sub{font-size:11px;font-weight:500;color:var(--muted)}
+  .frt-table th.frt-grp{text-align:center;border-left:2px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface2);position:sticky;top:0;z-index:6}
+  .frt-table th.frt-sub{font-size:11px;font-weight:500;color:var(--muted);position:sticky;top:39px;z-index:5}
+  .frt-table thead th[rowspan="2"]{position:sticky;top:0;z-index:6}
   .frt-table td.frt-cel{border-left:2px solid var(--border);white-space:nowrap}
   .frt-table td.frt-vazio{color:var(--muted)}
   .frt-table td.frt-pend{background:rgba(245,158,11,.06)}
