@@ -80,7 +80,9 @@
   .kpi .val{font-size:22px;font-weight:600;letter-spacing:-.01em}
 
   .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
-  .scroll{overflow-x:auto;overflow-y:visible}
+  .scroll{overflow:auto;max-height:calc(100vh - 220px)}
+  /* tabelas em modais/drawers já têm max-height no .tablewrap: o .scroll não impõe outro */
+  .tablewrap[style*="max-height"] > .scroll{max-height:none;overflow:visible}
   table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
   thead th{text-align:left;padding:11px 14px;background:var(--surface2);color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
   tbody td{padding:10px 14px;border-bottom:1px solid var(--border)}
