@@ -80,7 +80,14 @@
   .kpi .val{font-size:22px;font-weight:600;letter-spacing:-.01em}
 
   .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
-  .scroll{overflow:auto;max-height:calc(100vh - 220px)}
+  .scroll{overflow:auto;max-height:calc(100vh - 220px);overscroll-behavior:contain}
+  /* barra de rolagem mais grossa e visível nas tabelas */
+  .scroll::-webkit-scrollbar{width:14px;height:14px}
+  .scroll::-webkit-scrollbar-thumb{background:var(--muted);border-radius:8px;border:3px solid var(--surface);background-clip:padding-box}
+  .scroll::-webkit-scrollbar-thumb:hover{background:var(--text);border:3px solid var(--surface);background-clip:padding-box}
+  .scroll::-webkit-scrollbar-track{background:var(--surface2);border-radius:8px}
+  .scroll::-webkit-scrollbar-corner{background:var(--surface2)}
+  .scroll{scrollbar-width:auto;scrollbar-color:var(--muted) var(--surface2)}
   /* tabelas em modais/drawers já têm max-height no .tablewrap: o .scroll não impõe outro */
   .tablewrap[style*="max-height"] > .scroll{max-height:none;overflow:visible}
   table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
@@ -1410,18 +1417,19 @@ document.querySelectorAll('.navtit-toggle').forEach(function(t){
 });
 try{ const st=JSON.parse(sessionStorage.getItem('cn_navcollapse')||'{}'); Object.keys(st).forEach(function(gid){ if(st[gid]){ const g=$(gid); if(g) g.classList.add('collapsed'); } }); }catch(e){}
 
-// ===== Scroll do mouse => navegação horizontal dentro do painel da tabela =====
-// Só afeta os containers .scroll (as tabelas). Fora deles, o scroll segue normal.
-// Nos limites (início/fim) o giro seguinte libera o scroll vertical da página.
+// ===== Scroll do mouse dentro do painel da tabela =====
+// Sobre a tabela (.scroll): a roda rola VERTICAL normalmente (comportamento
+// nativo do overflow:auto — não precisa de código). Se o usuário segurar
+// SHIFT, a roda rola na HORIZONTAL (padrão universal). Fora da tabela, tudo normal.
 document.addEventListener('wheel', function(e){
   const sc = e.target.closest && e.target.closest('.scroll');
-  if(!sc) return;                                   // fora da tabela: comportamento normal
-  if(sc.scrollWidth <= sc.clientWidth) return;      // tabela sem overflow horizontal: normal
-  const delta = (e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY); // linhas -> pixels
+  if(!sc) return;
+  if(!e.shiftKey) return;                           // sem Shift: deixa o vertical nativo rolar
+  if(sc.scrollWidth <= sc.clientWidth) return;      // sem overflow horizontal: nada a fazer
+  const delta = (e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY);
   if(delta === 0) return;
-  // dentro do painel: SEMPRE lateral (mesmo nos limites) — a página não rola.
-  sc.scrollLeft += delta;                           // scrollLeft satura sozinho no início/fim
-  e.preventDefault();                               // trava o scroll vertical da página
+  sc.scrollLeft += delta;                           // Shift+roda => horizontal
+  e.preventDefault();
 }, { passive:false });
 
 (function init(){ const s=sessionStorage.getItem('cn_user'); if(s){ try{ USER=JSON.parse(s); abrirApp(); }catch{} } })();
