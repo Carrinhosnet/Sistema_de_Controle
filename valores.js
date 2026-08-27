@@ -225,4 +225,5 @@ const VAL = (function(){
 
   return { init, editar, filtrarStatus, conferir, abrirNotif };
 })();
+window.VAL = VAL;
 registrarTela('valores', VAL);

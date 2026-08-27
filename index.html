@@ -1239,22 +1239,15 @@
   /* drawer: grade de 2 colunas (venda + mínimo) */
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px}
   /* ===== tela Controle de Valores ===== */
+  /* cabeçalho de 2 níveis fica fixo no topo ao rolar VERTICAL; nada fixo na horizontal (tudo rola junto) */
   .val-table th.val-grp{text-align:center;border-left:2px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface2);position:sticky;top:0;z-index:6}
-  .val-table th.val-sub{font-size:11px;font-weight:500;color:var(--muted);position:sticky;top:39px;z-index:5;background:var(--surface2)}
-  .val-table thead th.val-h[rowspan="2"]{position:sticky;top:0;z-index:7}
+  .val-table th.val-sub{font-size:11px;font-weight:500;color:var(--muted);position:sticky;top:39px;z-index:6;background:var(--surface2)}
+  .val-table thead th.val-fix{position:sticky;top:0;z-index:6;background:var(--surface2)}
   .val-table td.val-grp-start, .val-table th.val-grp-start{border-left:2px solid var(--border)}
   .val-vazio{color:var(--muted)}
   .val-badge-sem{display:inline-block;font-size:10px;color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:middle}
-  /* colunas de identificação FIXAS à esquerda ao rolar horizontal */
-  .val-table td.val-fix, .val-table th.val-fix{position:sticky;background:var(--surface);z-index:4}
-  .val-table thead th.val-fix{background:var(--surface2);z-index:8}
-  .val-table .val-fix1{left:0;min-width:90px}
-  .val-table .val-fix2{left:90px;min-width:130px}
-  .val-table .val-fix3{left:220px;min-width:56px}
-  .val-table .val-fix4{left:276px;min-width:50px}
-  .val-table .val-fix5{left:326px;min-width:220px;max-width:260px;overflow:hidden;text-overflow:ellipsis;border-right:2px solid var(--border)}
-  .val-table td.val-fix-r, .val-table th.val-fix-r{position:sticky;right:18px;background:var(--surface);z-index:4;border-left:2px solid var(--border)}
-  .val-table thead th.val-fix-r{background:var(--surface2);z-index:8}
+  .val-table .val-fix5{min-width:200px;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+  .val-table td.val-fix-r, .val-table th.val-fix-r{border-left:2px solid var(--border)}
   /* contadores e conferência (vendas fora do padrão) */
   .val-fora{color:var(--danger)}
   .val-table td.val-cfora{text-align:center;white-space:nowrap}
