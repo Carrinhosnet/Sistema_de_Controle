@@ -235,6 +235,7 @@
         <button data-tela="custos" id="nav-custos">Controle de Custo de Compra</button>
         <button data-tela="frete" id="nav-frete">Controle de Custo de Frete<span class="badge-dot" id="badge-frete" style="display:none"></span></button>
         <button data-tela="estoque" id="nav-estoque">Análise de Estoque</button>
+        <button data-tela="valores" id="nav-valores">Controle de Valores<span class="badge-dot" id="badge-valores" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-cadastros">
         <div class="navtit navtit-toggle" data-grp="grp-cadastros">Controle de Cadastros<span class="caret">▾</span></div>
@@ -612,8 +613,110 @@
         <button class="act" id="est-prev" style="padding:4px 10px">‹ Anterior</button><span id="est-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="est-next" style="padding:4px 10px">Próxima ›</button>
       </span></div></div>
     </section>
+
+    <!-- =================== TELA CONTROLE DE VALORES =================== -->
+    <section class="tela" id="scr-valores">
+      <div class="toolbar">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="val-busca" placeholder="Buscar por SKU ou descrição…" />
+        </div>
+        <select id="val-tipo"><option value="">Todos os tipos</option></select>
+        <select id="val-status">
+          <option value="">Todos os status</option>
+          <option value="sem_valores">Sem valores cadastrados</option>
+          <option value="pendentes">Com venda fora do padrão</option>
+        </select>
+        <select id="val-ordem">
+          <option value="sku">SKU (A-Z)</option>
+          <option value="sku_desc">SKU (Z-A)</option>
+          <option value="tipo">Tipo de produto</option>
+          <option value="descricao">Descrição</option>
+          <option value="mais_fora">Mais vendas fora</option>
+        </select>
+        <button class="act prim" id="val-btn-filtrar">Filtrar</button>
+        <button class="act" id="val-limpar">Limpar filtros</button>
+        <button class="act" id="val-notificacoes">🔔 Notificações</button>
+        <span id="val-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="kpis" id="val-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table class="val-table"><thead>
+        <tr>
+          <th rowspan="2" class="val-fix val-fix1 val-h">Tipo</th>
+          <th rowspan="2" class="val-fix val-fix2 val-h">SKU</th>
+          <th rowspan="2" class="val-fix val-fix3 val-h num">Qtd</th>
+          <th rowspan="2" class="val-fix val-fix4 val-h">Un.</th>
+          <th rowspan="2" class="val-fix val-fix5 val-h">Descrição</th>
+          <th colspan="4" class="val-grp">Site</th>
+          <th colspan="4" class="val-grp">ML Clássico</th>
+          <th colspan="4" class="val-grp">ML Premium</th>
+          <th colspan="4" class="val-grp">Shopee</th>
+          <th colspan="4" class="val-grp">Amazon</th>
+          <th rowspan="2" class="val-fix-r val-h"></th>
+        </tr>
+        <tr>
+          <th class="val-sub val-grp-start num">Padrão</th><th class="val-sub num">Mínimo</th><th class="val-sub num">Fora</th><th class="val-sub">Conf.</th>
+          <th class="val-sub val-grp-start num">Padrão</th><th class="val-sub num">Mínimo</th><th class="val-sub num">Fora</th><th class="val-sub">Conf.</th>
+          <th class="val-sub val-grp-start num">Padrão</th><th class="val-sub num">Mínimo</th><th class="val-sub num">Fora</th><th class="val-sub">Conf.</th>
+          <th class="val-sub val-grp-start num">Padrão</th><th class="val-sub num">Mínimo</th><th class="val-sub num">Fora</th><th class="val-sub">Conf.</th>
+          <th class="val-sub val-grp-start num">Padrão</th><th class="val-sub num">Mínimo</th><th class="val-sub num">Fora</th><th class="val-sub">Conf.</th>
+        </tr>
+      </thead><tbody id="val-tbody"></tbody></table></div>
+      <div class="foot"><span id="val-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="val-prev" style="padding:4px 10px">‹ Anterior</button><span id="val-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="val-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
+    </section>
   </main></div>
-</div>
+
+<!-- ===== DRAWER CONTROLE DE VALORES ===== -->
+<div class="overlay" id="val-overlay"></div>
+<aside class="drawer" id="val-drawer">
+  <h2 id="val-ed-titulo">Valores <button class="x" id="val-ed-cancelar">×</button></h2>
+  <div style="font-size:12px;color:var(--muted);padding:0 0 8px" id="val-ed-sub"></div>
+  <div class="drawer-erro" id="val-ed-erro"></div>
+  <div class="body">
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Deixe em branco os canais onde o produto não é vendido. Valor Mín. Promo é o menor preço permitido em promoção.</p>
+    <div class="sec-tit">Site</div>
+    <div class="grid2">
+      <div class="fld"><label>Valor de venda</label><input id="val-ed-site_venda" inputmode="decimal" placeholder="0,00"></div>
+      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-site_min" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="sec-tit">ML Clássico</div>
+    <div class="grid2">
+      <div class="fld"><label>Valor de venda</label><input id="val-ed-mlc_venda" inputmode="decimal" placeholder="0,00"></div>
+      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-mlc_min" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="sec-tit">ML Premium</div>
+    <div class="grid2">
+      <div class="fld"><label>Valor de venda</label><input id="val-ed-mlp_venda" inputmode="decimal" placeholder="0,00"></div>
+      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-mlp_min" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="sec-tit">Shopee</div>
+    <div class="grid2">
+      <div class="fld"><label>Valor de venda</label><input id="val-ed-shopee_venda" inputmode="decimal" placeholder="0,00"></div>
+      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-shopee_min" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div class="sec-tit">Amazon</div>
+    <div class="grid2">
+      <div class="fld"><label>Valor de venda</label><input id="val-ed-amazon_venda" inputmode="decimal" placeholder="0,00"></div>
+      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-amazon_min" inputmode="decimal" placeholder="0,00"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="act" id="val-ed-cancelar2" onclick="document.getElementById('val-overlay').click()">Cancelar</button>
+      <button class="btn-save" id="val-ed-salvar" style="padding:9px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer">Salvar</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ===== PAINEL DE NOTIFICAÇÕES (vendas fora do padrão) ===== -->
+<div class="overlay" id="val-notif-overlay"></div>
+<aside class="drawer drawer-wide" id="val-notif">
+  <h2 id="val-notif-titulo">Vendas fora do padrão <button class="x" id="val-notif-x">×</button></h2>
+  <div class="body">
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Vendas com valor fora do intervalo permitido [mínimo, padrão] no ciclo atual de cada produto. Confira um produto na tabela para reiniciar sua contagem.</p>
+    <div id="val-notif-corpo"></div>
+  </div>
+</aside>
 
 <!-- ===== DRAWER VENDAS ===== -->
 <div class="overlay" id="vd-overlay"></div>
@@ -1133,6 +1236,38 @@
   .frt-table td.frt-conf{text-align:center}
   .frt-table input.frt-chk{width:16px;height:16px;cursor:pointer;accent-color:var(--ok)}
   .est-aviso{margin:0 0 12px;padding:10px 14px;border:1px solid var(--danger);border-radius:8px;background:rgba(239,68,68,.08);color:var(--danger);font-size:13px;font-weight:500}
+  /* drawer: grade de 2 colunas (venda + mínimo) */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px}
+  /* ===== tela Controle de Valores ===== */
+  .val-table th.val-grp{text-align:center;border-left:2px solid var(--border);border-bottom:1px solid var(--border);background:var(--surface2);position:sticky;top:0;z-index:6}
+  .val-table th.val-sub{font-size:11px;font-weight:500;color:var(--muted);position:sticky;top:39px;z-index:5;background:var(--surface2)}
+  .val-table thead th.val-h[rowspan="2"]{position:sticky;top:0;z-index:7}
+  .val-table td.val-grp-start, .val-table th.val-grp-start{border-left:2px solid var(--border)}
+  .val-vazio{color:var(--muted)}
+  .val-badge-sem{display:inline-block;font-size:10px;color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:middle}
+  /* colunas de identificação FIXAS à esquerda ao rolar horizontal */
+  .val-table td.val-fix, .val-table th.val-fix{position:sticky;background:var(--surface);z-index:4}
+  .val-table thead th.val-fix{background:var(--surface2);z-index:8}
+  .val-table .val-fix1{left:0;min-width:90px}
+  .val-table .val-fix2{left:90px;min-width:130px}
+  .val-table .val-fix3{left:220px;min-width:56px}
+  .val-table .val-fix4{left:276px;min-width:50px}
+  .val-table .val-fix5{left:326px;min-width:220px;max-width:260px;overflow:hidden;text-overflow:ellipsis;border-right:2px solid var(--border)}
+  .val-table td.val-fix-r, .val-table th.val-fix-r{position:sticky;right:18px;background:var(--surface);z-index:4;border-left:2px solid var(--border)}
+  .val-table thead th.val-fix-r{background:var(--surface2);z-index:8}
+  /* contadores e conferência (vendas fora do padrão) */
+  .val-fora{color:var(--danger)}
+  .val-table td.val-cfora{text-align:center;white-space:nowrap}
+  .val-table td.val-conf{text-align:center}
+  .val-chk{width:16px;height:16px;cursor:pointer;accent-color:var(--ok)}
+  /* painel de notificações */
+  .drawer.drawer-wide{width:min(560px,94vw)}
+  .val-notif-item{border:1px solid var(--border);border-left-width:4px;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px}
+  .val-notif-item.nabaixo{border-left-color:var(--danger)}
+  .val-notif-item.nacima{border-left-color:var(--warn)}
+  .val-notif-h{font-size:13px;margin-bottom:2px}
+  .val-notif-dt{color:var(--muted);font-size:11px;font-weight:400;margin-left:6px}
+  .val-notif-desc{color:var(--muted);font-size:12px;margin-bottom:4px}
 </style>
 
 <!-- ===== MODAL: NOVO LANÇAMENTO DE ENTRADA ===== -->
@@ -1311,6 +1446,7 @@ async function atualizarBadges(){
   setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias');
   setDot('badge-produtos',      temPermissao('produtos.ver'),      'cn_produtos_pendencias');
   setDot('badge-frete',         temPermissao('frete.ver'),         'cn_frete_pendencias');
+  setDot('badge-valores',       temPermissao('valores.ver'),       'cn_valores_pendencias');
 }
 // compatibilidade com chamadas existentes (boletos.js)
 async function atualizarBadgeBoletos(){ return atualizarBadges(); }
@@ -1349,6 +1485,7 @@ async function abrirApp(){
   $('nav-custos').style.display = temPermissao('custos.ver') ? '' : 'none';
   $('nav-frete').style.display = temPermissao('frete.ver') ? '' : 'none';
   $('nav-estoque').style.display = temPermissao('estoque.ver') ? '' : 'none';
+  $('nav-valores').style.display = temPermissao('valores.ver') ? '' : 'none';
   // esconde a categoria inteira se nenhuma tela dela estiver visível
   ['grp-comercial','grp-financeiro','grp-produtos','grp-cadastros'].forEach(function(gid){
     const g=$(gid); if(!g) return;
@@ -1383,6 +1520,7 @@ function mostrarTela(t){
 }
 function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new Set(); Object.keys(CARREGADO).forEach(k=>CARREGADO[k]=false); $('app').classList.remove('on'); $('login').style.display='flex'; $('in-senha').value=''; }
 </script>
+</div>
 
 <!-- ============ TELAS (uma por arquivo) ============ -->
 <script src="vendas.js"></script>
@@ -1397,6 +1535,7 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 <script src="custos.js"></script>
 <script src="custo_frete.js"></script>
 <script src="estoque.js"></script>
+<script src="valores.js"></script>
 
 <!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
 <script>
