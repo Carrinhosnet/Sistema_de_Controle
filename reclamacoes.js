@@ -10,7 +10,7 @@ const REC = (function(){
 
   function filtros(){ return { p_usuario_id:USER.id, p_mes:f('mes').value||null, p_canal:f('canal').value||null, p_status:f('status').value||null, p_busca:f('busca').value.trim()||null }; }
 
-  async function init(){ await carregarOpcoes(); await carregarFiltros(); carregar(); bind(); }
+  async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarOpcoes(); await carregarFiltros(); carregar(); bind(); }
 
   async function carregarOpcoes(){
     try{ const r=await rpc('cn_listar_opcoes',{p_usuario_id:USER.id,p_tipo:'status_reclamacao'}); STATUS_OPC=(r||[]).map(o=>o.valor); }catch(e){ STATUS_OPC=[]; }
@@ -28,7 +28,7 @@ const REC = (function(){
         rpc('cn_kpis_reclamacoes',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal,p_status:fl.p_status})
       ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
-      f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
+      msgAtualizado('rc-msg','reclamacoes');
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="14" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp; }

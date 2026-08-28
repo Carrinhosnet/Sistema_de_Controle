@@ -14,7 +14,7 @@ const OC = (function(){
 
   function filtros(){ return { p_usuario_id:USER.id, p_mes:f('mes').value||null, p_canal:f('canal').value||null, p_tipo:f('tipo').value||null, p_busca:f('busca').value.trim()||null }; }
 
-  async function init(){ await carregarOpcoes(); await carregarFiltros(); carregar(); bind(); }
+  async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarOpcoes(); await carregarFiltros(); carregar(); bind(); }
 
   async function carregarOpcoes(){
     try{ const r=await rpc('cn_listar_opcoes',{p_usuario_id:USER.id,p_tipo:'status_devolucao'}); STATUS_OPC=(r||[]).map(o=>o.valor); }catch(e){ STATUS_OPC=[]; }
@@ -31,7 +31,7 @@ const OC = (function(){
         rpc('cn_kpis_ocorrencias',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal,p_tipo:fl.p_tipo})
       ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
-      f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
+      msgAtualizado('oc-msg','ocorrencias');
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="16" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp; }
@@ -109,7 +109,7 @@ const OC = (function(){
         if(g>800) break; }
       f('msg').textContent='Processando devoluções…'; await rpc('cn_processar_devolucoes',{p_usuario_id:USER.id});
       await carregar(true); if(typeof atualizarBadges==='function') atualizarBadges();
-      f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
+      msgAtualizado('oc-msg','ocorrencias');
     }catch(e){ alert('Erro ao buscar: '+(e.message||e)); f('msg').textContent=''; }
     finally{ b.disabled=false; b.textContent=t; }
   }

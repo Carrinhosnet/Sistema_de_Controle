@@ -10,7 +10,7 @@ const EN = (function(){
 
   function filtros(){ return { p_usuario_id:USER.id, p_mes:f('mes').value||null, p_canal:f('canal').value||null, p_status:f('status').value||null, p_transportadora:f('transp').value||null, p_pagamento_frete:f('pgto').value||null, p_conferido:f('conf').value===''?null:(f('conf').value==='true'), p_busca:f('busca').value.trim()||null }; }
 
-  async function init(){ await carregarOpcoes(); await carregarFiltros(); carregar(); bind(); }
+  async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarOpcoes(); await carregarFiltros(); carregar(); bind(); }
 
   async function carregarOpcoes(){ OPC={transportadora:[],pagamento_frete:[],tempo_entrega:[],status_envio:[]}; try{ const r=await rpc('cn_listar_opcoes',{p_usuario_id:USER.id,p_tipo:null}); (r||[]).forEach(o=>{ if(!OPC[o.tipo])OPC[o.tipo]=[]; OPC[o.tipo].push(o.valor); }); }catch(e){} OPC.status_envio.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; f('status').appendChild(o); }); OPC.transportadora.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; f('transp').appendChild(o); }); OPC.pagamento_frete.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; f('pgto').appendChild(o); }); }
 
@@ -20,7 +20,7 @@ const EN = (function(){
     try{ await rpc('cn_promover_envios_atrasados',{p_usuario_id:USER.id}); }catch(e){}   // À Caminho vencido -> Atrasado (não bloqueia a listagem)
     const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([ rpc('cn_listar_envios',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}), rpc('cn_contar_envios',fl), rpc('cn_kpis_envios',fl)]);
-      LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag(); f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
+      LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag(); msgAtualizado('en-msg','envios');
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="20" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp; }

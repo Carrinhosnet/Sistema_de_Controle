@@ -9,7 +9,7 @@ const VD = (function(){
 
   function filtros(){ return { p_usuario_id:USER.id, p_mes:f('mes').value||null, p_canal:f('canal').value||null, p_editado:f('edit').value===''?null:(f('edit').value==='true'), p_busca:f('busca').value.trim()||null }; }
 
-  async function init(){ await carregarFiltros(); carregar(); bind(); }
+  async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarFiltros(); carregar(); bind(); }
 
   async function carregarFiltros(){
     try{ const meses=await rpc('cn_meses_vendas',{p_usuario_id:USER.id}); (meses||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); }); }catch(e){}
@@ -29,7 +29,7 @@ const VD = (function(){
       ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0;
       renderKpis(kpis&&kpis[0], kconf&&kconf[0]); renderTabela(); renderPag();
-      f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
+      msgAtualizado('vd-msg','vendas');
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="21" class="empty">Erro: '+(e.message||e)+'</td></tr>'; }
   }
 

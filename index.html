@@ -1401,6 +1401,40 @@ async function atualizarBadges(){
 // compatibilidade com chamadas existentes (boletos.js)
 async function atualizarBadgeBoletos(){ return atualizarBadges(); }
 
+// ================== ULTIMA ATUALIZACAO AUTOMATICA ==================
+// A rotina diaria (03:00 SP) grava em sync_log; cn_ultima_atualizacao
+// devolve, por tela, quando rodou pela ultima vez e se deu erro.
+// O resultado e cacheado em ULTIMA_AUTO e reaproveitado pelas telas.
+let ULTIMA_AUTO = null;
+
+async function carregarUltimaAuto(){
+  try{ ULTIMA_AUTO = await rpc('cn_ultima_atualizacao',{p_usuario_id:USER.id}) || null; }
+  catch(e){ ULTIMA_AUTO = null; }
+  return ULTIMA_AUTO;
+}
+
+// Monta o trecho " - Ultima atualizacao automatica: dd/mm/aaaa as hh:mm".
+// Devolve HTML (vermelho quando a ultima execucao terminou com erro).
+function textoUltimaAuto(chave){
+  const d = ULTIMA_AUTO && ULTIMA_AUTO[chave];
+  if(!d || !d.em) return '';
+  const dt = new Date(d.em); if(isNaN(dt)) return '';
+  const p = n => String(n).padStart(2,'0');
+  const q = `${p(dt.getDate())}/${p(dt.getMonth()+1)}/${dt.getFullYear()} às ${p(dt.getHours())}:${p(dt.getMinutes())}`;
+  if(d.status === 'erro'){
+    const det = d.resumo ? String(d.resumo).replace(/"/g,'&quot;') : '';
+    return ` · <span style="color:var(--danger)" title="${det}">Última atualização automática: ${q} — com erro</span>`;
+  }
+  return ` · <span style="color:var(--muted)">Última atualização automática: ${q}</span>`;
+}
+
+// Escreve no elemento de mensagem da tela: hora do carregamento manual
+// + a informacao da ultima rodada automatica.
+function msgAtualizado(elId, chave){
+  const el = $(elId); if(!el) return;
+  el.innerHTML = 'Atualizado ' + new Date().toLocaleTimeString('pt-BR') + textoUltimaAuto(chave);
+}
+
 // ================== LOGIN / NAV ==================
 async function entrar(){
   const login=$('in-login').value.trim(), senha=$('in-senha').value;
@@ -1443,6 +1477,7 @@ async function abrirApp(){
     g.style.display = vis ? '' : 'none';
   });
   atualizarBadges();
+  carregarUltimaAuto();
   const primeira = temPermissao('vendas.ver') ? 'vendas'
     : (temPermissao('cancelamentos.ver')||temPermissao('devolucoes.ver')) ? 'ocorrencias'
     : temPermissao('reclamacoes.ver') ? 'reclamacoes'
