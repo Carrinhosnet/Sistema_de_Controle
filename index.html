@@ -668,44 +668,20 @@
     </section>
   </main></div>
 
-<!-- ===== DRAWER CONTROLE DE VALORES ===== -->
+<!-- ===== DRAWER CONTROLE DE VALORES (edição de 1 canal) ===== -->
 <div class="overlay" id="val-overlay"></div>
-<aside class="drawer" id="val-drawer">
-  <h2 id="val-ed-titulo">Valores <button class="x" id="val-ed-cancelar">×</button></h2>
-  <div style="font-size:12px;color:var(--muted);padding:0 0 8px" id="val-ed-sub"></div>
-  <div class="drawer-erro" id="val-ed-erro"></div>
+<aside class="drawer" id="val-drawer" style="max-width:420px">
+  <h2>Valores de venda <button class="x" id="val-d-cancel">×</button></h2>
+  <div class="drawer-erro" id="val-d-erro"></div>
   <div class="body">
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Deixe em branco os canais onde o produto não é vendido. Valor Mín. Promo é o menor preço permitido em promoção.</p>
-    <div class="sec-tit">Site</div>
-    <div class="grid2">
-      <div class="fld"><label>Valor de venda</label><input id="val-ed-site_venda" inputmode="decimal" placeholder="0,00"></div>
-      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-site_min" inputmode="decimal" placeholder="0,00"></div>
+    <p id="val-d-info" style="font-size:13px;margin-bottom:10px"></p>
+    <div class="grid">
+      <div class="fld full"><label>Valor padrão (R$)</label><input inputmode="decimal" id="val-d-padrao" placeholder="0,00"></div>
+      <div class="fld full"><label>Valor mínimo em promoção (R$)</label><input inputmode="decimal" id="val-d-min" placeholder="0,00"></div>
     </div>
-    <div class="sec-tit">ML Clássico</div>
-    <div class="grid2">
-      <div class="fld"><label>Valor de venda</label><input id="val-ed-mlc_venda" inputmode="decimal" placeholder="0,00"></div>
-      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-mlc_min" inputmode="decimal" placeholder="0,00"></div>
-    </div>
-    <div class="sec-tit">ML Premium</div>
-    <div class="grid2">
-      <div class="fld"><label>Valor de venda</label><input id="val-ed-mlp_venda" inputmode="decimal" placeholder="0,00"></div>
-      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-mlp_min" inputmode="decimal" placeholder="0,00"></div>
-    </div>
-    <div class="sec-tit">Shopee</div>
-    <div class="grid2">
-      <div class="fld"><label>Valor de venda</label><input id="val-ed-shopee_venda" inputmode="decimal" placeholder="0,00"></div>
-      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-shopee_min" inputmode="decimal" placeholder="0,00"></div>
-    </div>
-    <div class="sec-tit">Amazon</div>
-    <div class="grid2">
-      <div class="fld"><label>Valor de venda</label><input id="val-ed-amazon_venda" inputmode="decimal" placeholder="0,00"></div>
-      <div class="fld"><label>Mínimo (promoção)</label><input id="val-ed-amazon_min" inputmode="decimal" placeholder="0,00"></div>
-    </div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
-      <button class="act" id="val-ed-cancelar2" onclick="document.getElementById('val-overlay').click()">Cancelar</button>
-      <button class="btn-save" id="val-ed-salvar" style="padding:9px 18px;border:none;border-radius:8px;font-weight:600;cursor:pointer">Salvar</button>
-    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px">O intervalo permitido de venda é [mínimo, padrão]. Ao salvar, a contagem de vendas fora deste SKU + canal reinicia a partir de agora. Deixe ambos em branco se o produto não é vendido neste canal.</p>
   </div>
+  <div class="foot"><button class="btn-cancel" id="val-d-cancel2" onclick="document.getElementById('val-overlay').click()">Cancelar</button><button class="btn-save" id="val-d-save">Salvar</button></div>
 </aside>
 
 <!-- ===== PAINEL DE NOTIFICAÇÕES (vendas fora do padrão) ===== -->
