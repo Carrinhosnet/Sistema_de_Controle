@@ -13,8 +13,9 @@ const VAL = (function(){
   let LINHAS=[], TOTAL=0, PAGINA=0; const POR=100;
   let EDIT=null;   // sku em edição
   const f=(id)=>$('val-'+id);
-  // canais: [chave_json, rótulo]. chave_json bate com o objeto retornado pelo SQL.
-  const CANAIS=[['site','Site'],['mlc','ML Clássico'],['mlp','ML Premium'],['shopee','Shopee'],['amazon','Amazon']];
+  // canais: [chave_json, rótulo, canal_logico_sql]. chave_json bate com o objeto do SQL;
+  // canal_logico é o código que cn_conferir_valores espera (site|ml_classico|ml_premium|shopee|amazon).
+  const CANAIS=[['site','Site','site'],['mlc','ML Clássico','ml_classico'],['mlp','ML Premium','ml_premium'],['shopee','Shopee','shopee'],['amazon','Amazon','amazon']];
 
   function filtros(){ return {
     p_usuario_id:USER.id,
@@ -87,10 +88,11 @@ const VAL = (function(){
       const ch=l.canais||{};
       const semTag = l.sem_valores ? '<span class="val-badge-sem">sem valores</span>' : '';
       let cels='';
-      for(const [ck,] of CANAIS){
+      for(const [ck,,clog] of CANAIS){
         const c=ch[ck]||{};
         const temValores = (c.padrao!=null && c.min!=null);
         const fora=(Number(c.abaixo||0)+Number(c.acima||0));
+        const pend = fora>0;
         // Padrão | Mínimo | Fora | Conf
         cels+=
           `<td class="num val-grp-start">${moeda(c.padrao)}</td>`+
@@ -98,7 +100,7 @@ const VAL = (function(){
           `<td class="num val-cfora">${celFora(c)}</td>`+
           `<td class="val-conf">`+
             (temValores && podeConf
-              ? `<input type="checkbox" class="val-chk" ${fora===0?'checked':''} onclick="VAL.conferir(event,'${l.sku}',${fora})">`
+              ? `<input type="checkbox" class="val-chk" ${pend?'':'checked'} onclick="event.stopPropagation();VAL.conferir(this,'${l.sku.replace(/'/g,"\\'")}','${clog}',${pend})">`
               : '<span class="val-vazio">—</span>')+
           `</td>`;
       }
@@ -115,15 +117,18 @@ const VAL = (function(){
     f('tbody').innerHTML=html;
   }
 
-  // conferir: marca o SKU como conferido (zera ciclo). Só age quando havia pendência.
-  async function conferir(ev, sku, foraAtual){
-    const el=ev.target;
-    if(foraAtual===0){ el.checked=true; return; }   // já estava OK: não faz nada
+  // Clique no checkbox de conferência (por canal).
+  //  - Estava PENDENTE (desmarcado) e marca => confere (zera o ciclo daquele canal).
+  //  - Estava OK (marcado) e tenta desmarcar => sem ação; devolve o check (nada no banco).
+  async function conferir(el, sku, canal, estavaPendente){
+    if(!temPermissao('valores.conferir')){ el.checked=!el.checked; return; }
+    if(!estavaPendente){ el.checked=true; return; }   // estava OK: desmarcar manual não faz nada
     el.disabled=true;
     try{
-      await rpc('cn_conferir_valores',{p_usuario_id:USER.id, p_sku:sku});
+      await rpc('cn_conferir_valores',{p_usuario_id:USER.id, p_sku:sku, p_canal:canal});
+      f('msg').textContent='Conferido — contagem reiniciada.';
       carregar();
-    }catch(e){ el.checked=false; el.disabled=false; alert('Erro ao conferir: '+(e.message||e)); }
+    }catch(e){ el.checked=false; el.disabled=false; alert('Não foi possível conferir: '+(e.message||e)); }
   }
 
   // ------- edição via drawer -------
