@@ -178,33 +178,6 @@ const VAL = (function(){
     }catch(e){ el.checked=false; el.disabled=false; alert('Não foi possível conferir: '+(e.message||e)); }
   }
 
-  // ---- painel de notificações (vendas fora do padrão) ----
-  async function abrirNotif(sku){
-    $('val-notif-overlay').classList.add('open'); $('val-notif').classList.add('open');
-    f('notif-corpo').innerHTML='<p style="color:var(--muted)">Carregando…</p>';
-    f('notif-titulo').textContent = sku ? `Vendas fora do padrão — ${sku}` : 'Vendas fora do padrão';
-    try{
-      const oc=await rpc('cn_valores_ocorrencias',{p_usuario_id:USER.id, p_sku:sku||null, p_limite:200});
-      renderNotif(oc||[]);
-    }catch(e){ f('notif-corpo').innerHTML='<p style="color:var(--danger)">Erro: '+(e.message||e)+'</p>'; }
-  }
-  function fecharNotif(){ $('val-notif-overlay').classList.remove('open'); $('val-notif').classList.remove('open'); }
-  function renderNotif(oc){
-    if(!oc.length){ f('notif-corpo').innerHTML='<p style="color:var(--muted)">Nenhuma venda fora do padrão no ciclo atual. 🎉</p>'; return; }
-    f('notif-corpo').innerHTML=oc.map(o=>{
-      const dt=o.data? new Date(o.data+'T00:00:00').toLocaleDateString('pt-BR') : '—';
-      const abaixo=o.tipo==='abaixo';
-      const frase=abaixo
-        ? `Vendido por <b>${brl(o.valor)}</b> — <b style="color:var(--danger)">${brl(o.diferenca)} abaixo do mínimo</b>.`
-        : `Vendido por <b>${brl(o.valor)}</b> — <b style="color:var(--danger)">${brl(o.diferenca)} acima do padrão</b>.`;
-      return `<div class="val-notif-item ${abaixo?'nabaixo':'nacima'}">`+
-        `<div class="val-notif-h"><b>${o.sku}</b> · ${o.canal} <span class="val-notif-dt">${dt}${o.id_pedido?' · Pedido '+o.id_pedido:''}</span></div>`+
-        `<div class="val-notif-desc">${o.descricao||''}</div>`+
-        `<div>${frase} Intervalo permitido: ${brl(o.min)} a ${brl(o.padrao)}.</div>`+
-      `</div>`;
-    }).join('');
-  }
-
   function limparFiltros(){ f('tipo').value=''; f('busca').value=''; f('status').value=''; f('ordem').value='sku'; carregar(true); }
 
   function bind(){
@@ -214,7 +187,6 @@ const VAL = (function(){
     f('status').addEventListener('change',()=>carregar(true));
     f('ordem').addEventListener('change',()=>carregar(true));
     f('limpar').addEventListener('click',limparFiltros);
-    f('notificacoes').addEventListener('click',()=>abrirNotif(null));
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){PAGINA--;carregar();} });
     f('next').addEventListener('click',()=>{ if((PAGINA+1)*POR<TOTAL){PAGINA++;carregar();} });
     f('d-save').addEventListener('click',salvar);
@@ -222,11 +194,9 @@ const VAL = (function(){
     f('d-padrao').addEventListener('keydown',e=>{ if(e.key==='Enter')salvar(); });
     f('d-min').addEventListener('keydown',e=>{ if(e.key==='Enter')salvar(); });
     $('val-overlay').addEventListener('click',fecharDrawer);
-    $('val-notif-overlay').addEventListener('click',fecharNotif);
-    f('notif-x').addEventListener('click',fecharNotif);
   }
 
-  return { init, editar, filtrarStatus, conferir, abrirNotif };
+  return { init, editar, filtrarStatus, conferir };
 })();
 window.VAL = VAL;
 registrarTela('valores', VAL);
