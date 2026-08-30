@@ -1331,7 +1331,22 @@
 <div class="modal" id="est-imp-modal"><div class="box" style="width:720px">
   <h3>Importar estoque do Bling <button class="x" id="est-imp-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
   <div class="content">
-    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Suba o relatório de estoque exportado do Bling (colunas Código, Produto, Saídas e Saldo em…). O estoque atual e as vendas vêm direto do arquivo; SKUs que não estiverem no cadastro do sistema são ignorados e listados.</p>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;padding:10px 12px;margin-bottom:12px">
+      <div style="font-weight:600;font-size:12px;margin-bottom:6px">Como gerar o relatório no Bling</div>
+      <ol style="color:var(--muted);font-size:12px;margin:0;padding-left:18px;line-height:1.65">
+        <li>No Bling, abra a aba <b>Estoque</b> e vá em <b>Relatórios</b>.</li>
+        <li>Escolha o relatório <b>Entradas e Saídas de Estoque</b>.</li>
+        <li>Em período, selecione a opção por <b>data</b> e informe
+            de <b id="est-imp-dtini">—</b> até <b id="est-imp-dtfim">—</b>.</li>
+        <li>Exporte em Excel e suba o arquivo aqui.</li>
+      </ol>
+      <div style="color:var(--warn);font-size:11px;margin-top:8px">
+        O período de <b>120 dias</b> não é opcional: a média diária de vendas é
+        calculada dividindo as saídas por 120. Um período diferente distorce o
+        estoque mínimo e a sugestão de compra.
+      </div>
+    </div>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:10px">O arquivo deve trazer as colunas Código, Produto, Saídas e Saldo em… O estoque atual e as vendas vêm direto dele; SKUs que não estiverem no cadastro do sistema são ignorados e listados ao final.</p>
     <div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
       <div class="fld"><label>Cobertura Importados (dias)</label><input type="number" id="est-imp-cob-imp" value="120"></div>
       <div class="fld"><label>Cobertura Fabricação (dias)</label><input type="number" id="est-imp-cob-fab" value="30"></div>

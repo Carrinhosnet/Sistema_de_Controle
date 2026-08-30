@@ -100,10 +100,24 @@ const EST = (function(){
   function fmt(v){ if(v==null)return '—'; const n=Number(v); return Number.isInteger(n)?n.toLocaleString('pt-BR'):n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:4}); }
 
   // ---------------- importação ----------------
+  // Mostra o periodo exato que o relatorio do Bling precisa cobrir.
+  // Calculado toda vez que o modal abre — assim a data nunca envelhece.
+  // Os 120 dias acompanham o divisor fixo da media diaria (saidas/120).
+  function preencherPeriodoRelatorio(){
+    const p=n=>String(n).padStart(2,'0');
+    const br=d=>`${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()}`;
+    const hoje=new Date();
+    const ini=new Date(); ini.setDate(hoje.getDate()-120);
+    const a=$('est-imp-dtini'), b=$('est-imp-dtfim');
+    if(a) a.textContent=br(ini);
+    if(b) b.textContent=br(hoje);
+  }
+
   function abrirImport(){ if(!temPermissao('estoque.importar')){ alert('Você não tem permissão para importar.'); return; }
     f('imp-erro').textContent=''; f('imp-res').innerHTML=''; f('imp-file').value='';
     // preenche dias de cobertura padrão
     f('imp-cob-imp').value=120; f('imp-cob-fab').value=30; f('imp-cob-nac').value=15;
+    preencherPeriodoRelatorio();
     f('imp-confirmar').style.display='none';
     LINHAS_IMPORT=null;
     f('imp-modal').classList.add('open');
