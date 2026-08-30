@@ -199,6 +199,8 @@ const EST = (function(){
           ign.map(i=>`<tr><td>${i.linha}</td><td>${i.sku||'—'}</td><td>${i.motivo}</td></tr>`).join('')+'</tbody></table></details>':'');
       f('imp-confirmar').style.display='none';
       await carregar(true);
+      // some com o badge de aviso no menu assim que a importacao entra
+      if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){ f('imp-erro').textContent='Erro ao importar: '+(e.message||e); }
     finally{ b.disabled=false; b.textContent=t; }
   }

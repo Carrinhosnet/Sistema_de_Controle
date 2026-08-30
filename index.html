@@ -234,7 +234,7 @@
         <button data-tela="entradas" id="nav-entradas">Lançamento de Entradas</button>
         <button data-tela="custos" id="nav-custos">Controle de Custo de Compra</button>
         <button data-tela="frete" id="nav-frete">Controle de Custo de Frete<span class="badge-dot" id="badge-frete" style="display:none"></span></button>
-        <button data-tela="estoque" id="nav-estoque">Análise de Estoque</button>
+        <button data-tela="estoque" id="nav-estoque">Análise de Estoque<span class="badge-dot" id="badge-estoque" style="display:none"></span></button>
         <button data-tela="valores" id="nav-valores">Controle de Valores<span class="badge-dot" id="badge-valores" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-cadastros">
@@ -1388,6 +1388,24 @@ async function setDot(dotId, permitido, fn){
   try{ const n=Number(await rpc(fn,{p_usuario_id:USER.id}))||0; dot.textContent = n>99 ? '99+' : String(n); dot.style.display = n>0 ? 'inline-flex' : 'none'; }
   catch(e){ dot.style.display='none'; }
 }
+// Badge de AVISO (não é contagem de itens): mostra "!" e explica no
+// tooltip. Usado pela Análise de Estoque, cuja pendência é binária
+// (importação vencida), não uma fila de registros.
+async function setDotAviso(id, permitido, fn, montarTitulo){
+  const dot=$(id); if(!dot) return;
+  if(!permitido){ dot.style.display='none'; return; }
+  try{
+    const n=Number(await rpc(fn,{p_usuario_id:USER.id}))||0;
+    if(n>0){
+      dot.textContent='!';
+      dot.title=montarTitulo?montarTitulo(n):'';
+      dot.style.display='inline-flex';
+    } else {
+      dot.style.display='none'; dot.title='';
+    }
+  }catch(e){ dot.style.display='none'; }
+}
+
 async function atualizarBadges(){
   setDot('badge-vendas',        temPermissao('vendas.ver'),        'cn_vendas_pendencias');
   setDot('badge-ocorrencias', temPermissao('cancelamentos.ver')||temPermissao('devolucoes.ver'), 'cn_ocorrencias_pendencias');
@@ -1397,6 +1415,10 @@ async function atualizarBadges(){
   setDot('badge-produtos',      temPermissao('produtos.ver'),      'cn_produtos_pendencias');
   setDot('badge-frete',         temPermissao('frete.ver'),         'cn_frete_pendencias');
   setDot('badge-valores',       temPermissao('valores.ver'),       'cn_valores_pendencias');
+  setDotAviso('badge-estoque',  temPermissao('estoque.ver'),       'cn_estoque_pendencias',
+    (n)=> n>=999
+      ? 'Nenhum relatório de estoque foi importado ainda — importe um relatório do Bling.'
+      : `A última importação de estoque foi há ${n} dia(s). Importe um relatório novo do Bling.`);
 }
 // compatibilidade com chamadas existentes (boletos.js)
 async function atualizarBadgeBoletos(){ return atualizarBadges(); }
