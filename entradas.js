@@ -22,6 +22,46 @@ const ENT = (function(){
   let SKU_ATUAL=null;     // dados do SKU sendo conferido no modal de item
   const f=(id)=>$('ent-'+id);
 
+  // Opcoes cadastradas no sistema (tela "Opcoes de Produtos").
+  // A conferencia NAO pode criar opcao nova: os campos abaixo viram
+  // <select> preenchido com o que ja existe, nunca campo livre.
+  let OPC={ categoria_produto:[], origem_produto:[], unidade_medida:[] };
+  // campo do cadastro -> tipo de opcao que o alimenta
+  // (unidade_fracionamento usa a MESMA lista de unidade_medida, igual ao
+  //  Cadastro de Produtos, onde e-unidfrac e preenchido com OPC.unidade_medida)
+  const CAMPO_OPCAO={
+    categoria:              'categoria_produto',
+    origem:                 'origem_produto',
+    unidade_medida:         'unidade_medida',
+    unidade_fracionamento:  'unidade_medida'
+  };
+
+  async function carregarOpcoes(){
+    try{
+      const r=await rpc('cn_listar_opcoes_produto',{p_usuario_id:USER.id,p_tipo:null});
+      OPC={ categoria_produto:[], origem_produto:[], unidade_medida:[] };
+      (r||[]).forEach(o=>{ if(!OPC[o.tipo])OPC[o.tipo]=[]; OPC[o.tipo].push(o.valor); });
+    }catch(e){}
+  }
+
+  // Monta o <select> de um campo de opcao.
+  // O valor ATUAL do produto entra na lista mesmo que nao esteja mais nas
+  // opcoes (cadastro antigo com grafia diferente, opcao desativada). Sem
+  // isso o select cairia na primeira opcao e "Sem alteracao" mentiria,
+  // alterando o cadastro sem ninguem pedir. O valor fora da lista aparece
+  // marcado, e qualquer troca so pode ser para uma opcao valida.
+  function selectOpcao(campo, valorAtual){
+    const lista = OPC[CAMPO_OPCAO[campo]] || [];
+    const atual = (valorAtual==null || valorAtual==='') ? '' : String(valorAtual);
+    const esc = (v)=>String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    let html = `<option value=""${atual===''?' selected':''}>—</option>`;
+    if(atual!=='' && !lista.includes(atual)){
+      html += `<option value="${esc(atual)}" selected>${esc(atual)} (fora das opções)</option>`;
+    }
+    html += lista.map(v=>`<option value="${esc(v)}"${v===atual?' selected':''}>${esc(v)}</option>`).join('');
+    return `<select class="conf-input" id="cf-${campo}" disabled>${html}</select>`;
+  }
+
   // formata timestamp ISO (com hora) em dd/mm/aaaa hh:mm; aceita também data pura
   function dataHora(v){ if(!v) return '—';
     const dt=new Date(v); if(isNaN(dt)) return '—';
@@ -56,7 +96,7 @@ const ENT = (function(){
     p_busca:f('busca').value.trim()||null
   }; }
 
-  async function init(){ carregar(); bind(); }
+  async function init(){ await carregarOpcoes(); carregar(); bind(); }
 
   // ---------------- HISTÓRICO (lista) ----------------
   async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="7" class="loading">Carregando lançamentos…</td></tr>'; const fl=filtros();
@@ -210,10 +250,13 @@ const ENT = (function(){
     if(ehMasterFracionavel(d)) campos=campos.concat(CAMPOS_FRAC);
     f('i-campos').innerHTML=campos.map(([k,rot])=>{
       const val=d[k]==null?'':d[k];
+      const controle = CAMPO_OPCAO[k]
+        ? selectOpcao(k, val)
+        : `<input class="conf-input" id="cf-${k}" value="${String(val).replace(/"/g,'&quot;')}" disabled>`;
       return `<div class="conf-row" data-campo="${k}">
         <div class="conf-lbl">${rot}</div>
         <div class="conf-val">
-          <input class="conf-input" id="cf-${k}" value="${String(val).replace(/"/g,'&quot;')}" disabled>
+          ${controle}
         </div>
         <div class="conf-tog">
           <label><input type="radio" name="tog-${k}" value="sem" checked onclick="ENT.togCampo('${k}','sem')"> Sem alteração</label>
