@@ -1401,8 +1401,8 @@ function registrarTela(nome, api){ TELAS[nome] = api; }
 async function setDot(dotId, permitido, fn){
   const dot=$(dotId); if(!dot) return;
   if(!permitido){ dot.style.display='none'; return; }
-  try{ const n=Number(await rpc(fn,{p_usuario_id:USER.id}))||0; dot.textContent = n>99 ? '99+' : String(n); dot.style.display = n>0 ? 'inline-flex' : 'none'; }
-  catch(e){ dot.style.display='none'; }
+  try{ const n=Number(await rpc(fn,{p_usuario_id:USER.id}))||0; dot.textContent = n>99 ? '99+' : String(n); dot.style.display = n>0 ? 'inline-flex' : 'none'; return n; }
+  catch(e){ dot.style.display='none'; return 0; }
 }
 // Badge de AVISO (não é contagem de itens): mostra "!" e explica no
 // tooltip. Usado pela Análise de Estoque, cuja pendência é binária
@@ -1416,25 +1416,82 @@ async function setDotAviso(id, permitido, fn, montarTitulo){
       dot.textContent='!';
       dot.title=montarTitulo?montarTitulo(n):'';
       dot.style.display='inline-flex';
+      return 1;   // aviso conta como UMA pendencia, nao como n
     } else {
       dot.style.display='none'; dot.title='';
+      return 0;
     }
-  }catch(e){ dot.style.display='none'; }
+  }catch(e){ dot.style.display='none'; return 0; }
 }
 
 async function atualizarBadges(){
-  setDot('badge-vendas',        temPermissao('vendas.ver'),        'cn_vendas_pendencias');
-  setDot('badge-ocorrencias', temPermissao('cancelamentos.ver')||temPermissao('devolucoes.ver'), 'cn_ocorrencias_pendencias');
-  setDot('badge-reclamacoes',   temPermissao('reclamacoes.ver'),   'cn_reclamacoes_pendencias');
-  setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias');
-  setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias');
-  setDot('badge-produtos',      temPermissao('produtos.ver'),      'cn_produtos_pendencias');
-  setDot('badge-frete',         temPermissao('frete.ver'),         'cn_frete_pendencias');
-  setDot('badge-valores',       temPermissao('valores.ver'),       'cn_valores_pendencias');
-  setDotAviso('badge-estoque',  temPermissao('estoque.ver'),       'cn_estoque_pendencias',
-    (n)=> n>=999
-      ? 'Nenhum relatório de estoque foi importado ainda — importe um relatório do Bling.'
-      : `A última importação de estoque foi há ${n} dia(s). Importe um relatório novo do Bling.`);
+  // Roda tudo em paralelo e soma para o contador global da aba.
+  const n = await Promise.all([
+    setDot('badge-vendas',        temPermissao('vendas.ver'),        'cn_vendas_pendencias'),
+    setDot('badge-ocorrencias', temPermissao('cancelamentos.ver')||temPermissao('devolucoes.ver'), 'cn_ocorrencias_pendencias'),
+    setDot('badge-reclamacoes',   temPermissao('reclamacoes.ver'),   'cn_reclamacoes_pendencias'),
+    setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias'),
+    setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias'),
+    setDot('badge-produtos',      temPermissao('produtos.ver'),      'cn_produtos_pendencias'),
+    setDot('badge-frete',         temPermissao('frete.ver'),         'cn_frete_pendencias'),
+    setDot('badge-valores',       temPermissao('valores.ver'),       'cn_valores_pendencias'),
+    setDotAviso('badge-estoque',  temPermissao('estoque.ver'),       'cn_estoque_pendencias',
+      (d)=> d>=999
+        ? 'Nenhum relatório de estoque foi importado ainda — importe um relatório do Bling.'
+        : `A última importação de estoque foi há ${d} dia(s). Importe um relatório novo do Bling.`)
+  ]);
+  aplicarBadgeGlobal(n.reduce((a,b)=>a+(Number(b)||0),0));
+}
+
+// ============== CONTADOR GLOBAL NA ABA / ICONE DO APP ==============
+// Soma de tudo que esta pendente no sistema, em tres lugares:
+//   1) titulo da aba  -> "(58) Carrinhos_Net · Sistema"
+//   2) favicon        -> bolinha vermelha com o numero, desenhada por cima
+//   3) icone do app   -> navigator.setAppBadge (so quando instalado como
+//                        aplicativo; no navegador comum e ignorado)
+const TITULO_BASE = document.title;
+let FAVICON_ORIGINAL = null;
+
+function aplicarBadgeGlobal(total){
+  total = Number(total)||0;
+  // No titulo cabe o numero inteiro; o corte "99+" fica so no favicon,
+  // que tem espaco para 3 caracteres.
+  document.title = total>0 ? `(${total}) ${TITULO_BASE}` : TITULO_BASE;
+  desenharFavicon(total);
+  // Badging API: so funciona em app instalado (PWA). Em aba normal nao faz
+  // nada e nao gera erro — por isso o try/catch silencioso.
+  try{
+    if(navigator.setAppBadge){
+      if(total>0) navigator.setAppBadge(total); else navigator.clearAppBadge();
+    }
+  }catch(e){}
+}
+
+function desenharFavicon(total){
+  const link=document.querySelector('link[rel="icon"]'); if(!link) return;
+  if(FAVICON_ORIGINAL===null) FAVICON_ORIGINAL=link.href;
+  if(!total){ link.href=FAVICON_ORIGINAL; return; }
+  const img=new Image();
+  img.onload=function(){
+    try{
+      const S=64, cv=document.createElement('canvas'); cv.width=S; cv.height=S;
+      const cx=cv.getContext('2d');
+      cx.drawImage(img,0,0,S,S);
+      const txt = total>99 ? '99+' : String(total);
+      // bolinha vermelha no canto inferior direito
+      const r = txt.length>2 ? 22 : 19;
+      cx.beginPath(); cx.arc(S-r+4, S-r+4, r, 0, Math.PI*2);
+      cx.fillStyle='#ef4444'; cx.fill();
+      cx.strokeStyle='#171a21'; cx.lineWidth=3; cx.stroke();
+      cx.fillStyle='#fff';
+      cx.font='bold '+(txt.length>2?20:26)+'px sans-serif';
+      cx.textAlign='center'; cx.textBaseline='middle';
+      cx.fillText(txt, S-r+4, S-r+5);
+      link.href=cv.toDataURL('image/png');
+    }catch(e){}
+  };
+  img.onerror=function(){};
+  img.src=FAVICON_ORIGINAL;
 }
 // compatibilidade com chamadas existentes (boletos.js)
 async function atualizarBadgeBoletos(){ return atualizarBadges(); }
@@ -1541,7 +1598,7 @@ function mostrarTela(t){
   if(TELAS[t] && !CARREGADO[t]){ CARREGADO[t]=true; TELAS[t].init(); }
   if(typeof atualizarBadges==='function') atualizarBadges();
 }
-function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new Set(); Object.keys(CARREGADO).forEach(k=>CARREGADO[k]=false); $('app').classList.remove('on'); $('login').style.display='flex'; $('in-senha').value=''; }
+function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new Set(); Object.keys(CARREGADO).forEach(k=>CARREGADO[k]=false); $('app').classList.remove('on'); $('login').style.display='flex'; $('in-senha').value=''; aplicarBadgeGlobal(0); }
 </script>
 </div>
 
