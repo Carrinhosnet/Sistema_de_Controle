@@ -165,6 +165,24 @@
 
   /* menu lateral retrátil */
   .sidebar{transition:width .18s ease}
+  /* ---- alca de redimensionamento do menu ----
+     Fica sobre a borda direita do menu. Durante o arrasto a transicao de
+     largura e desligada (classe .resizing), senao a barra "persegue" o
+     mouse com atraso. */
+  .sidebar{position:sticky}
+  .resize-handle{
+    position:absolute;top:0;right:-3px;width:7px;height:100%;
+    cursor:col-resize;z-index:60;background:transparent;
+  }
+  .resize-handle::after{
+    content:"";position:absolute;top:0;left:3px;width:1px;height:100%;
+    background:transparent;transition:background .15s;
+  }
+  .resize-handle:hover::after,.sidebar.resizing .resize-handle::after{background:var(--accent)}
+  .sidebar.resizing{transition:none}
+  /* Enquanto arrasta, impede selecao de texto e troca o cursor da pagina
+     toda — senao o cursor pisca ao sair da alca. */
+  body.resizing-nav{cursor:col-resize;user-select:none}
   .toggle-btn{background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:7px;cursor:pointer;flex-shrink:0;line-height:1}
   .toggle-btn:hover{color:var(--text);border-color:var(--accent)}
   #app.nav-hidden .sidebar{display:none}
@@ -237,7 +255,8 @@
 <!-- ============ APP ============ -->
 <div id="app">
   <button class="floating-toggle" id="btn-expand" title="Mostrar menu">☰</button>
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
+    <div class="resize-handle" id="nav-resize" title="Arraste para ajustar a largura (duplo clique volta ao padrão)"></div>
     <div class="brand">
       <img src="logo.png" alt="Carrinhos_Net — Sistema de controle" class="logo-full" onerror="this.style.display='none';this.insertAdjacentHTML('afterend','&lt;div style=\'font-weight:700;color:var(--text);font-size:15px\'&gt;Carrinhos_Net&lt;/div&gt;')" />
       <button class="toggle-btn" id="btn-collapse" title="Esconder menu">‹</button>
@@ -1648,6 +1667,66 @@ $('btn-entrar').addEventListener('click', entrar);
 $('in-senha').addEventListener('keydown', e=>{ if(e.key==='Enter') entrar(); });
 $('in-login').addEventListener('keydown', e=>{ if(e.key==='Enter') $('in-senha').focus(); });
 $('btn-sair').addEventListener('click', sair);
+// ================== LARGURA AJUSTAVEL DO MENU ==================
+// Arrastar a borda direita muda a largura. O conteudo NAO reflui: os
+// nomes das telas continuam em uma linha so e vao sendo cortados com
+// reticencias (nav button ja tem white-space:nowrap + overflow:hidden +
+// text-overflow:ellipsis), que e o comportamento pedido.
+// Duplo clique na alca volta ao padrao.
+const NAV_LARGURA_PADRAO = 290;
+const NAV_LARGURA_MIN    = 150;   // abaixo disso so sobram as bolinhas
+const NAV_LARGURA_MAX    = 520;
+
+function aplicarLarguraNav(px){
+  const sb=$('sidebar'); if(!sb) return;
+  const v=Math.round(Math.min(NAV_LARGURA_MAX, Math.max(NAV_LARGURA_MIN, px)));
+  sb.style.width=v+'px';
+  try{ localStorage.setItem('cn_navwidth', String(v)); }catch(e){}
+}
+
+function restaurarLarguraNav(){
+  try{
+    const v=parseInt(localStorage.getItem('cn_navwidth'),10);
+    if(Number.isFinite(v)) aplicarLarguraNav(v);
+  }catch(e){}
+}
+restaurarLarguraNav();
+
+(function(){
+  const alca=$('nav-resize'), sb=$('sidebar');
+  if(!alca||!sb) return;
+  let arrastando=false;
+
+  function mover(e){
+    if(!arrastando) return;
+    const x=(e.touches&&e.touches[0]?e.touches[0].clientX:e.clientX);
+    // largura = distancia do canto esquerdo do menu ate o ponteiro
+    aplicarLarguraNav(x - sb.getBoundingClientRect().left);
+    e.preventDefault();
+  }
+  function soltar(){
+    if(!arrastando) return;
+    arrastando=false;
+    sb.classList.remove('resizing');
+    document.body.classList.remove('resizing-nav');
+  }
+  function pegar(e){
+    arrastando=true;
+    sb.classList.add('resizing');
+    document.body.classList.add('resizing-nav');
+    e.preventDefault();
+  }
+
+  alca.addEventListener('mousedown', pegar);
+  alca.addEventListener('touchstart', pegar, {passive:false});
+  document.addEventListener('mousemove', mover);
+  document.addEventListener('touchmove', mover, {passive:false});
+  document.addEventListener('mouseup', soltar);
+  document.addEventListener('touchend', soltar);
+  // duplo clique: volta ao padrao
+  alca.addEventListener('dblclick', ()=>aplicarLarguraNav(NAV_LARGURA_PADRAO));
+})();
+
 $('btn-collapse').addEventListener('click', ()=>$('app').classList.add('nav-hidden'));
 $('btn-expand').addEventListener('click', ()=>$('app').classList.remove('nav-hidden'));
 document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click', ()=>mostrarTela(b.dataset.tela)));
