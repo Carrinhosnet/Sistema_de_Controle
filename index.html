@@ -1667,6 +1667,50 @@ $('btn-entrar').addEventListener('click', entrar);
 $('in-senha').addEventListener('keydown', e=>{ if(e.key==='Enter') entrar(); });
 $('in-login').addEventListener('keydown', e=>{ if(e.key==='Enter') $('in-senha').focus(); });
 $('btn-sair').addEventListener('click', sair);
+// ================== "IR PARA A PAGINA" NAS PAGINACOES ==================
+// Uma unica implementacao para as 11 telas paginadas. O controle e criado
+// na primeira chamada e depois so atualizado — nao mexe no HTML das telas.
+//
+// Cada tela chama, no fim do seu renderPag():
+//   montarIrPara('vd', paginaAtual, totalPaginas, (n)=>{ PAGINA=n-1; carregar(); });
+//
+// Some sozinho quando ha uma pagina so: nao faz sentido "ir para" ali.
+function montarIrPara(prefixo, pagina, totalPaginas, ir){
+  const info=$(prefixo+'-paginfo'); if(!info) return;
+  let cx=$(prefixo+'-irbox');
+
+  if(!cx){
+    cx=document.createElement('span');
+    cx.id=prefixo+'-irbox';
+    cx.style.cssText='display:inline-flex;align-items:center;gap:4px;margin-left:2px';
+    cx.innerHTML=
+      '<input type="number" id="'+prefixo+'-irnum" min="1" title="Número da página"'+
+      ' style="width:58px;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);'+
+      'border-radius:6px;color:var(--text);font-size:12px;text-align:center">'+
+      '<button class="act" id="'+prefixo+'-irbtn" style="padding:4px 10px">Ir</button>';
+    info.insertAdjacentElement('afterend', cx);
+
+    const campo=$(prefixo+'-irnum'), botao=$(prefixo+'-irbtn');
+    const disparar=()=>{
+      const max=Number(campo.max)||1;
+      let n=parseInt(campo.value,10);
+      if(!Number.isFinite(n)){ campo.value=''; return; }
+      n=Math.min(max, Math.max(1, n));   // fora do intervalo: encosta no limite
+      campo.value='';
+      cx._ir(n);
+    };
+    botao.addEventListener('click', disparar);
+    campo.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); disparar(); } });
+  }
+
+  // guarda o callback da tela atual (cada render pode trocar o closure)
+  cx._ir = ir;
+  const campo=$(prefixo+'-irnum');
+  campo.max = totalPaginas;
+  campo.placeholder = pagina + '/' + totalPaginas;
+  cx.style.display = totalPaginas > 1 ? 'inline-flex' : 'none';
+}
+
 // ================== LARGURA AJUSTAVEL DO MENU ==================
 // Arrastar a borda direita muda a largura. O conteudo NAO reflui: os
 // nomes das telas continuam em uma linha so e vao sendo cortados com

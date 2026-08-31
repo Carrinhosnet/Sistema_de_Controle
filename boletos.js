@@ -34,7 +34,9 @@ const BO = (function(){
       if(typeof atualizarBadgeBoletos==='function') atualizarBadgeBoletos();
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="12" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
-  function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp; }
+  function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
+    // campo "Ir para a pagina" (helper global do index.html)
+    if(typeof montarIrPara==='function') montarIrPara('bo',p,tp,(n)=>{ PAGINA=n-1; carregar(); }); }
 
   function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
     const cards=[

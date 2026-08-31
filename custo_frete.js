@@ -49,6 +49,8 @@ const FRT = (function(){
     f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`;
     f('paginfo').textContent=`Página ${p} de ${tp}`;
     f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
+    // campo "Ir para a pagina" (helper global do index.html)
+    if(typeof montarIrPara==='function') montarIrPara('frt',p,tp,(n)=>{ PAGINA=n-1; carregar(); });
   }
 
   function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
