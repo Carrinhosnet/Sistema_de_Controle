@@ -42,6 +42,31 @@
   .brand .t1{font-weight:600;font-size:14px}
   .brand .t2{font-size:11px;color:var(--muted)}
   .navtit{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 10px 2px}
+  /* ---- hierarquia visual do menu ----
+     Os itens de cada grupo ficam recuados e ligados por uma guia vertical
+     que nasce sob o titulo do grupo, deixando claro o que pertence a que.
+     O recuo vive no .navgroup (nao no button) para o estado "active" e o
+     hover continuarem ocupando a largura toda do item. */
+  .navgroup{position:relative}
+  /* Recuo do item + espaco interno para o marcador. O marcador fica DENTRO
+     do botao porque nav button tem overflow:hidden (para o ellipsis do
+     texto longo) e cortaria qualquer coisa desenhada fora da caixa. */
+  .navgroup > button{margin-left:14px;width:calc(100% - 14px);padding-left:22px}
+  /* guia vertical: nasce sob o titulo do grupo e passa pelo centro dos
+     marcadores (14 de margem + 8 do marcador + 2,5 de raio = 24,5) */
+  .navgroup::before{
+    content:"";position:absolute;left:24px;top:26px;bottom:4px;width:1px;
+    background:var(--border);pointer-events:none;
+  }
+  .navgroup.collapsed::before{display:none}
+  /* marcador do item, sobre a guia; acende quando a tela esta aberta */
+  .navgroup > button::before{
+    content:"";position:absolute;left:8px;top:50%;transform:translateY(-50%);
+    width:5px;height:5px;border-radius:50%;background:var(--border);
+    transition:background .15s,box-shadow .15s;
+  }
+  .navgroup > button:hover::before{background:var(--muted)}
+  .navgroup > button.active::before{background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
   nav{display:flex;flex-direction:column;gap:4px;overflow-y:auto;flex:1 1 auto;min-height:0;margin:0 -4px;padding:0 4px}
   nav::-webkit-scrollbar{width:8px}
   nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
@@ -233,9 +258,9 @@
         <div class="navtit navtit-toggle" data-grp="grp-produtos">Controle de Produtos<span class="caret">▾</span></div>
         <button data-tela="entradas" id="nav-entradas">Lançamento de Entradas</button>
         <button data-tela="custos" id="nav-custos">Controle de Custo de Compra</button>
+        <button data-tela="valores" id="nav-valores">Controle de Valores de Venda<span class="badge-dot" id="badge-valores" style="display:none"></span></button>
         <button data-tela="frete" id="nav-frete">Controle de Custo de Frete<span class="badge-dot" id="badge-frete" style="display:none"></span></button>
         <button data-tela="estoque" id="nav-estoque">Análise de Estoque<span class="badge-dot" id="badge-estoque" style="display:none"></span></button>
-        <button data-tela="valores" id="nav-valores">Controle de Valores<span class="badge-dot" id="badge-valores" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-cadastros">
         <div class="navtit navtit-toggle" data-grp="grp-cadastros">Controle de Cadastros<span class="caret">▾</span></div>
