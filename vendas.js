@@ -37,7 +37,7 @@ const VD = (function(){
     // campo "Ir para a pagina" (helper global do index.html)
     if(typeof montarIrPara==='function') montarIrPara('vd',p,tp,(n)=>{ PAGINA=n-1; carregar(); }); }
 
-  function renderKpis(k,kc){ const box=f('kpis'); if(!k){box.innerHTML='';return;} const cards=[['Faturamento bruto',brl(k.faturamento_bruto)],['Pedidos',Number(k.qtd_pedidos||0).toLocaleString('pt-BR')],['Ticket médio',brl(k.ticket_medio)],['Comissão total',brl(k.total_comissao)],['Receita comercial',brl(k.receita_comercial)]]; if(kc){ cards.push(['Faltam conferir',Number(kc.faltam||0).toLocaleString('pt-BR')]); cards.push(['Editados',Number(kc.editados||0).toLocaleString('pt-BR')]); } box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join(''); }
+  function renderKpis(k,kc){ const box=f('kpis'); if(!k){box.innerHTML='';return;} const cards=[['Faturamento bruto',brl(k.faturamento_bruto)],['Pedidos',Number(k.qtd_pedidos||0).toLocaleString('pt-BR')],['Ticket médio',brl(k.ticket_medio)],['Comissão total',brl(k.total_comissao)],['Receita comercial',brl(k.receita_comercial)]]; if(kc){ cards.push(['Faltam conferir',Number(kc.faltam||0).toLocaleString('pt-BR')]); cards.push(['Editados',Number(kc.editados||0).toLocaleString('pt-BR')]); cards.push(['Envio alterado',Number(kc.envio_alterado||0).toLocaleString('pt-BR')]); } box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join(''); }
 
   function renderTabela(){
     const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="22" class="empty">Nenhuma venda encontrada.</td></tr>'; return; }
