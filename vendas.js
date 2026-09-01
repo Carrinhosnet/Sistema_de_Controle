@@ -80,7 +80,14 @@ const VD = (function(){
       syncUI('Enriquecendo com Mercado Livre…',50); g=0; while(true){ const r=await chamarFuncao('sync-ml',{dias:DIAS,limite:15}); g++; if(r.restantes>0){ syncUI(`Buscando no Mercado Livre… (faltam ~${r.restantes})`,Math.min(80,50+g*3)); } else break; if(g>200)break; }
       syncUI('Aplicando dados do Mercado Livre…',85); await rpc('cn_processar_staging_ml',{p_usuario_id:USER.id});
       syncUI('Enriquecendo Shopify (Yever)…',90); g=0; while(true){ const r=await chamarFuncao('sync-yever',{dias:DIAS,limite:5}); g++; if(r.restantes>0){ syncUI(`Buscando na Yever… (faltam ~${r.restantes} pág.)`,Math.min(97,90+g*2)); } else break; if(g>200)break; }
-      syncUI('Aplicando dados da Yever…',98); await rpc('cn_processar_staging_yever',{p_usuario_id:USER.id});
+      syncUI('Aplicando dados da Yever…',96); await rpc('cn_processar_staging_yever',{p_usuario_id:USER.id});
+      // UF faltante: o Bling completa o endereço do contato instantes depois
+      // de criar o pedido do ML. Se a importação passou nesse intervalo, a
+      // venda entrou sem UF — e sem UF o envio não confere (e a venda também
+      // não). Esta varredura rebusca o contato e preenche. Não interrompe a
+      // atualização se falhar: é correção de dado, não parte da importação.
+      syncUI('Preenchendo UF faltante…',98);
+      try{ await chamarFuncao('bling-uf',{}); }catch(e){ console.warn('bling-uf:', e); }
       syncUI('Concluído!',100); await carregar(true); setTimeout(()=>{ f('syncbox').style.display='none'; },1500);
     }catch(e){ syncUI('Erro: '+(e.message||e),null); f('syncbar').style.background='var(--danger)'; setTimeout(()=>{ f('syncbox').style.display='none'; f('syncbar').style.background='var(--accent)'; },5000); }
     finally{ b.disabled=false; }
