@@ -18,7 +18,7 @@ const VD = (function(){
 
   async function carregar(reset){
     if(reset) PAGINA=0;
-    f('tbody').innerHTML='<tr><td colspan="22" class="loading">Carregando vendas…</td></tr>';
+    f('tbody').innerHTML='<tr><td colspan="21" class="loading">Carregando vendas…</td></tr>';
     const fl=filtros();
     try{
       const [linhas,total,kpis,kconf]=await Promise.all([
@@ -30,7 +30,7 @@ const VD = (function(){
       LINHAS=linhas||[]; TOTAL=Number(total)||0;
       renderKpis(kpis&&kpis[0], kconf&&kconf[0]); renderTabela(); renderPag();
       msgAtualizado('vd-msg','vendas');
-    }catch(e){ f('tbody').innerHTML='<tr><td colspan="22" class="empty">Erro: '+(e.message||e)+'</td></tr>'; }
+    }catch(e){ f('tbody').innerHTML='<tr><td colspan="21" class="empty">Erro: '+(e.message||e)+'</td></tr>'; }
   }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
@@ -39,15 +39,22 @@ const VD = (function(){
 
   function renderKpis(k,kc){ const box=f('kpis'); if(!k){box.innerHTML='';return;} const cards=[['Faturamento bruto',brl(k.faturamento_bruto)],['Pedidos',Number(k.qtd_pedidos||0).toLocaleString('pt-BR')],['Ticket médio',brl(k.ticket_medio)],['Comissão total',brl(k.total_comissao)],['Receita comercial',brl(k.receita_comercial)]]; if(kc){ cards.push(['Faltam conferir',Number(kc.faltam||0).toLocaleString('pt-BR')]); cards.push(['Editados',Number(kc.editados||0).toLocaleString('pt-BR')]); cards.push(['Envio alterado',Number(kc.envio_alterado||0).toLocaleString('pt-BR')]); } box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join(''); }
 
+  // Dif. Frete = aguardado − frete efetivo. Usa o mesmo frete que a coluna
+  // ao lado mostra; do contrário a linha não fecharia na conta.
+  function difFrete(l){
+    const ag=Number(l.frete_aguardado||0), fr=Number(l.frete_efetivo||0);
+    return ag-fr;
+  }
+
   function renderTabela(){
-    const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="22" class="empty">Nenhuma venda encontrada.</td></tr>'; return; }
+    const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="21" class="empty">Nenhuma venda encontrada.</td></tr>'; return; }
     const podeConf=temPermissao('vendas.conferir');
     tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}" onclick="VD.abrir(${l.id})">
       <td>${l.editado?'<span title="Editado" style="color:var(--warn)">✎ </span>':''}${dataBr(l.data_compra)}</td><td>${l.canal||'—'}</td><td>${l.tipo_envio||'—'}${l.tipo_envio_editado?' <span title="Tipo de envio alterado pelo sistema ao lançar o envio manualmente — o frete que vale é o do Controle de Envios" style="color:var(--warn)">✎</span>':''}</td><td>${l.id_pedido||'—'}</td><td>${l.modelo||'—'}</td>
       <td class="num">${l.quantidade??'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
       <td class="num">${brl(l.valor_unitario)}</td><td class="num">${brl(l.valor_total)}</td><td class="num">${brl(l.valor_comissao)}</td><td class="num">${pct(l.pct_comissao_ml)}</td><td>${l.tipo_anuncio||'—'}</td>
-      <td class="num">${brl(l.frete)}</td><td class="num">${brl(l.frete_aguardado)}</td><td class="num">${brl(l.diferenca_frete)}</td><td class="num">${brl(l.frete_extra)}</td>
-      <td class="num" title="Valor pago à transportadora (Controle de Envios). Quando existe, é ele que entra no lucro.">${l.custo_frete_real==null?'<span style="color:var(--muted)">—</span>':'<b>'+brl(l.custo_frete_real)+'</b>'}</td><td class="num">${brl(l.valor_total_nf)}</td><td class="num">${brl(l.valor_a_receber)}</td><td class="num">${pct(l.lucro_bruto_pct)}</td>
+      <td class="num">${brl(l.frete_efetivo)}</td><td class="num">${brl(l.frete_aguardado)}</td><td class="num">${brl(difFrete(l))}</td><td class="num">${brl(l.frete_extra)}</td>
+      <td class="num">${brl(l.valor_total_nf)}</td><td class="num">${brl(l.valor_a_receber)}</td><td class="num">${pct(l.lucro_bruto_pct)}</td>
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="VD.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
     </tr>`).join('');
   }
