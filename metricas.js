@@ -29,12 +29,15 @@ const MET = (function(){
   // qualquer mês antes disso mostra custo irreal e receita inflada.
   const CORTE='2026-08';
 
+  // [chave, rótulo, classe de cor]
+  // ME2 vem antes de ME1 porque é o volume principal do Mercado Livre —
+  // a leitura da esquerda para a direita acompanha o peso do canal.
   const CANAIS=[
-    ['total','Total'],
-    ['me1','ME1 — ML com envio'],
-    ['me2','ME2 — ML sem envio'],
-    ['site','Site'],
-    ['vd','Venda Direta']
+    ['total','Total','c-total'],
+    ['me2','ME2 — ML sem envio','c-me2'],
+    ['me1','ME1 — ML com envio','c-me1'],
+    ['site','Site','c-site'],
+    ['vd','Venda Direta','c-vd']
   ];
 
   // [chave, rótulo, formato, tipo de percentual, explicação]
@@ -90,6 +93,17 @@ const MET = (function(){
     }
   }
 
+  // "2026-09-01" -> "Setembro de 2026". O mesLabel global abrevia
+  // (set/2026), o que serve para select e tabela, mas não para título.
+  const MESES_EXT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                   'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  function mesExtenso(d){
+    if(!d) return '';
+    const [y,m]=String(d).split('-');
+    const nome=MESES_EXT[Number(m)-1];
+    return nome ? `${nome} de ${y}` : mesLabel(d);
+  }
+
   const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
   function fmt(v,tipo){ return tipo==='num' ? n0(v) : brl(Number(v||0)); }
 
@@ -106,7 +120,7 @@ const MET = (function(){
     return `<span style="color:${cor}">${p.toFixed(1).replace('.',',')}%</span>`;
   }
 
-  function caixa(mesObj, ck, rotulo, met){
+  function caixa(mesObj, ck, rotulo, met, cor){
     const [chave, , formato, tipoPct] = met;
     const c=(mesObj.canais&&mesObj.canais[ck])||{};
     const valor=c[chave];
@@ -121,8 +135,9 @@ const MET = (function(){
       pctHtml=`<div class="met-pct">${txtPct(p)} do faturamento</div>`;
     }
 
+    // valor negativo mantém o vermelho: é sinal, não identidade de canal
     const negativo = Number(valor||0) < 0;
-    return `<div class="kpi met-cx${ck==='total'?' met-cx-total':''}">`+
+    return `<div class="kpi met-cx ${cor}">`+
            `<div class="lbl">${rotulo}</div>`+
            `<div class="val"${negativo?' style="color:var(--danger)"':''}>${fmt(valor,formato)}</div>`+
            pctHtml+
@@ -145,10 +160,10 @@ const MET = (function(){
         return `<div class="met-faixa">`+
                `<div class="met-titulo">${rotulo}<span class="met-hint">${hint}</span></div>`+
                `<div class="met-grid">`+
-               CANAIS.map(([ck,rot])=>caixa(m,ck,rot,met)).join('')+
+               CANAIS.map(([ck,rot,cor])=>caixa(m,ck,rot,met,cor)).join('')+
                `</div></div>`;
       }).join('');
-      return `<div class="met-mes"><h3 class="met-mes-tit">${mesLabel(m.mes)}</h3>${aviso}${faixas}</div>`;
+      return `<div class="met-mes"><h3 class="met-mes-tit">${mesExtenso(m.mes)}</h3>${aviso}${faixas}</div>`;
     }).join('');
   }
 

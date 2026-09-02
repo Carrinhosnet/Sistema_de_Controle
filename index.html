@@ -255,8 +255,16 @@
   .met-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
   @media (max-width:1100px){ .met-grid{grid-template-columns:repeat(2,1fr)} }
   .met-cx .val{font-size:18px}
-  .met-cx-total{border-left:3px solid var(--accent)}
   .met-pct{font-size:11px;color:var(--muted);margin-top:3px}
+  /* cor por canal: a mesma posição tem sempre a mesma cor em todas as
+     faixas, então a vista reconhece o canal antes de ler o rótulo */
+  .met-cx{border-left:3px solid var(--cnl,var(--border))}
+  .met-cx .lbl{color:var(--cnl)}
+  .met-cx.c-total{--cnl:#1e40af}
+  .met-cx.c-me2  {--cnl:#fbbf24}
+  .met-cx.c-me1  {--cnl:#b45309}
+  .met-cx.c-site {--cnl:#15803d}
+  .met-cx.c-vd   {--cnl:#a855f7}
 
   /* cartões da tela de Boletos */
   .kpi.b-total   {--kpc:#1e40af}
