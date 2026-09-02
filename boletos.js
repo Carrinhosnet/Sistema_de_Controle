@@ -76,7 +76,10 @@ const BO = (function(){
   // Cada cartão mostra a soma em reais e a quantidade, e filtra a tabela
   // pelo próprio status. O primeiro limpa o filtro e volta para tudo.
   function cardBo(titulo,valor,qtd,cor,status,hint){
-    const ativo = (f('status').value===status);
+    // o cartão "Total" tem status vazio e representa a ausência de
+    // filtro: ele nunca se marca como ativo, senão apareceria destacado
+    // justamente quando nada está filtrado.
+    const ativo = status!=='' && (f('status').value===status);
     return `<div class="kpi click ${cor} ${ativo?'on':''}" onclick="BO.filtrarStatus('${status}')">`+
            `<div class="lbl">${titulo}</div>`+
            (hint?`<div class="hint">${hint}</div>`:'')+
