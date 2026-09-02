@@ -104,7 +104,12 @@
   .kpi .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
   .kpi .val{font-size:22px;font-weight:600;letter-spacing:-.01em}
   /* explicacao de como o numero e obtido, abaixo do titulo */
-  .kpi .hint{font-size:10.5px;color:var(--muted);opacity:.75;line-height:1.35;margin:-2px 0 6px}
+  /* altura fixa de duas linhas: sem isso um texto mais longo empurra o
+     valor para baixo e o cartão sai do alinhamento dos vizinhos */
+  .kpi{display:flex;flex-direction:column}
+  .kpi .hint{font-size:10.5px;color:var(--muted);opacity:.75;line-height:1.35;margin:-2px 0 8px;
+             min-height:28px;overflow:hidden}
+  .kpi .val{margin-top:auto}
   /* cartoes de contagem: clicaveis, cada um com sua cor */
   .kpi.click{cursor:pointer;transition:border-color .15s,background .15s}
   .kpi.click:hover{background:var(--surface2)}
@@ -316,9 +321,9 @@
         <select id="vd-tenvio"><option value="">Todos os envios</option></select>
         <select id="vd-uf"><option value="">Todas as UFs</option></select>
         <select id="vd-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
-        <button class="act" id="vd-limpar" title="Remove todos os filtros, inclusive os aplicados pelos cartões">Limpar filtros</button>
-        <button class="act" id="vd-atualizar">↻ Atualizar</button>
-        <button class="act" id="vd-exportar">Exportar CSV</button>
+        <button class="act prim" id="vd-limpar" title="Remove todos os filtros, inclusive o mês e os aplicados pelos cartões">Limpar filtros</button>
+        <button class="act prim" id="vd-atualizar">↻ Atualizar</button>
+        <button class="act prim" id="vd-exportar">Exportar CSV</button>
         <span id="vd-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
       <div id="vd-syncbox" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:14px">

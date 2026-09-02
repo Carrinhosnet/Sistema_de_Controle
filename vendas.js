@@ -52,7 +52,22 @@ const VD = (function(){
     p_uf:f('uf').value||null
   }; }
 
-  async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarFiltros(); carregar(); bind(); }
+  async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarFiltros(); selecionarMesAtual(); carregar(); bind(); }
+
+  // A tela abre no mês corrente: é o recorte que quase sempre interessa
+  // e evita varrer o histórico inteiro na primeira carga. Se ainda não
+  // houver venda no mês, o select fica em "todos os meses" — melhor uma
+  // tela com dados do que uma tela vazia. O "Limpar filtros" remove o
+  // mês junto com o resto.
+  function selecionarMesAtual(){
+    const hoje=new Date();
+    // compara só por ano-mês: o valor da option vem do banco como data e
+    // pode chegar com hora junto dependendo do formato devolvido.
+    const alvo=`${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+    const sel=f('mes');
+    const op=[...sel.options].find(o=>o.value && String(o.value).startsWith(alvo));
+    if(op) sel.value=op.value;
+  }
 
   async function carregarFiltros(){
     try{ const meses=await rpc('cn_meses_vendas',{p_usuario_id:USER.id}); (meses||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); }); }catch(e){}
@@ -89,8 +104,10 @@ const VD = (function(){
   // Linha 2: contagens. As três últimas são controles de filtro.
   const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
 
-  function cardHtml(titulo,valor,hint){
-    return `<div class="kpi"><div class="lbl">${titulo}</div>`+
+  // hint = a explicação curta que aparece sob o título; det = detalhe
+  // completo no title, para o texto longo não desalinhar o cartão.
+  function cardHtml(titulo,valor,hint,det){
+    return `<div class="kpi"${det?` title="${det}"`:''}><div class="lbl">${titulo}</div>`+
            (hint?`<div class="hint">${hint}</div>`:'')+
            `<div class="val">${valor}</div></div>`;
   }
@@ -106,17 +123,18 @@ const VD = (function(){
 
     box.innerHTML =
       cardHtml('Faturamento bruto', brl(k.faturamento_bruto),
-               'Soma do valor dos produtos, sem frete') +
+               'Soma do total das notas, com frete extra') +
       cardHtml('Comissão total', brl(k.total_comissao),
                'Soma da comissão cobrada pelo canal') +
       cardHtml('Custo de frete total', brl(k.total_frete),
                'Soma do frete, sem o frete extra') +
-      cardHtml('Custo com frete extra', brl(k.total_frete_extra),
-               'Soma do frete extra cobrado do cliente') +
+      cardHtml('Frete extra', brl(k.total_frete_extra),
+               'Cobrado do cliente e já incluído no faturamento') +
       cardHtml('Receita comercial', brl(k.receita_comercial),
                'Total da NF menos frete e frete extra') +
       cardHtml('Total a receber', brl(k.a_receber_total),
-               'O que o canal deposita: NF menos comissão, e menos frete quando não há envio próprio');
+               'Valor repassado pelo canal de venda',
+               'NF menos comissão; frete e frete extra também saem quando não há envio próprio');
 
     if(!box2) return;
     box2.innerHTML =
