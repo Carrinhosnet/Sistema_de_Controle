@@ -234,6 +234,25 @@
   tr.st-caminho td, tr.st-atrasado td, tr.st-entregue td, tr.st-proc-dev td,
   tr.st-devolvido td, tr.st-cancelado td { color: #fff; }
 
+  /* cartões de status da tela de Envios: mesma cor da linha da tabela */
+  .kpi.k-prod    {--kpc:#b45309}
+  .kpi.k-caminho {--kpc:#eab308}
+  .kpi.k-atraso  {--kpc:#f97316}
+  .kpi.k-entregue{--kpc:#22c55e}
+  .kpi.k-devol   {--kpc:#ef4444}
+  .kpi.k-conf    {--kpc:#3b82f6}
+  /* seletor de diferença de frete: caixas de marcação num painel */
+  .dropck{position:relative;display:inline-block}
+  .dropck>button{padding:9px 14px;background:var(--surface);border:1px solid var(--border);
+                 border-radius:8px;color:var(--text);cursor:pointer;white-space:nowrap}
+  .dropck>button:hover{border-color:var(--accent)}
+  .dropck .painel{display:none;position:absolute;z-index:30;top:calc(100% + 4px);left:0;
+                  background:var(--surface);border:1px solid var(--border);border-radius:8px;
+                  padding:8px 10px;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .dropck.open .painel{display:block}
+  .dropck .painel label{display:flex;align-items:center;gap:8px;padding:5px 2px;
+                        font-size:13px;cursor:pointer;white-space:nowrap}
+
   /* Cores de Diferença */
   td.neg { color: #f87171 !important; font-weight: 600; }
   td.pos { color: #4ade80 !important; font-weight: 600; }
@@ -284,9 +303,9 @@
       <div class="navgroup" id="grp-comercial">
         <div class="navtit navtit-toggle" data-grp="grp-comercial">Controle Comercial<span class="caret">▾</span></div>
         <button data-tela="vendas" id="nav-vendas">Controle de Vendas<span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
+        <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
         <button data-tela="ocorrencias" id="nav-ocorrencias">Cancelamentos e Devoluções<span class="badge-dot" id="badge-ocorrencias" style="display:none"></span></button>
         <button data-tela="reclamacoes" id="nav-reclamacoes">Controle de Reclamações<span class="badge-dot" id="badge-reclamacoes" style="display:none"></span></button>
-        <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-financeiro">
         <div class="navtit navtit-toggle" data-grp="grp-financeiro">Controle Financeiro<span class="caret">▾</span></div>
@@ -406,19 +425,27 @@
         <select id="en-status"><option value="">Todos os status</option></select>
         <select id="en-transp"><option value="">Todas transportadoras</option></select>
         <select id="en-pgto"><option value="">Todos pagamentos de frete</option></select>
-        <select id="en-conf"><option value="">Conf.: todos</option><option value="false">Pendentes</option><option value="true">Conferidos</option></select>
+        <select id="en-uf"><option value="">Todas as UFs</option></select>
+        <div class="dropck" id="en-difbox">
+          <button type="button" id="en-difbtn">Diferença: todas</button>
+          <div class="painel">
+            <label><input type="checkbox" class="en-dif" value="positiva"> Positiva (sobrou)</label>
+            <label><input type="checkbox" class="en-dif" value="negativa"> Negativa (saiu do bolso)</label>
+            <label><input type="checkbox" class="en-dif" value="zerada"> Zerada</label>
+          </div>
+        </div>
         <select id="en-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
 
-        <button class="act prim" id="en-btn-filtrar">Filtrar filtros selecionados</button>
-
+        <button class="act prim" id="en-limpar" title="Remove todos os filtros, inclusive o mês e os aplicados pelos cartões">Limpar filtros</button>
         <button class="act prim" id="en-lancar">+ Lançar item</button>
-        <button class="act" id="en-gerar">↻ Gerar envios</button>
-        <button class="act" id="en-exportar">Exportar CSV</button>
+        <button class="act prim" id="en-gerar">↻ Gerar envios</button>
+        <button class="act prim" id="en-exportar">Exportar CSV</button>
         <span id="en-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
       <div class="kpis" id="en-kpis"></div>
+      <div class="kpis linha2" id="en-kpis2"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th>Data</th><th>Mês</th><th>Canal</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
+        <th>Data</th><th>Canal</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
         <th>Transportadora</th><th>Protocolo</th><th>Pgto Frete</th><th>Tempo</th><th>Ent. Prometida</th><th>Ent. Concluída</th><th>Status</th>
         <th class="num">Vlr Transporte</th><th class="num">Vlr Incluso</th><th class="num">Vlr Extra</th><th class="num">Diferença</th><th style="text-align:center">Conferido</th>
       </tr></thead><tbody id="en-tbody"></tbody></table></div>
