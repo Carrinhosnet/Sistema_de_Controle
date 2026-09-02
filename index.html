@@ -103,6 +103,20 @@
   .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
   .kpi .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
   .kpi .val{font-size:22px;font-weight:600;letter-spacing:-.01em}
+  /* explicacao de como o numero e obtido, abaixo do titulo */
+  .kpi .hint{font-size:10.5px;color:var(--muted);opacity:.75;line-height:1.35;margin:-2px 0 6px}
+  /* cartoes de contagem: clicaveis, cada um com sua cor */
+  .kpi.click{cursor:pointer;transition:border-color .15s,background .15s}
+  .kpi.click:hover{background:var(--surface2)}
+  .kpi.click .val{color:var(--kpc)}
+  .kpi.click{border-left:3px solid var(--kpc)}
+  .kpi.click.on{background:var(--surface2);border-color:var(--kpc)}
+  .kpi.c-conf{--kpc:#ef4444}
+  .kpi.c-edit{--kpc:#f59e0b}
+  .kpi.c-envio{--kpc:#a855f7}
+  .kpi.click .flag{display:none;font-size:10px;font-weight:600;color:var(--kpc);margin-top:4px}
+  .kpi.click.on .flag{display:block}
+  .kpis.linha2{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 
   .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);position:relative}
   .scroll{overflow:auto;max-height:65vh;scrollbar-width:none;padding-right:18px}
@@ -299,9 +313,10 @@
           <input id="vd-busca" placeholder="Buscar cliente, ID do pedido ou SKU" /></div>
         <select id="vd-mes"><option value="">Todos os meses</option></select>
         <select id="vd-canal"><option value="">Todos os canais</option></select>
-        <select id="vd-edit"><option value="">Edição: todos</option><option value="true">Só editados</option><option value="false">Não editados</option></select>
-        <select id="vd-envioedit" title="Vendas cujo modo de envio foi convertido para ME1 ao lançar o envio manualmente"><option value="">Envio: todos</option><option value="true">Só com envio alterado</option><option value="false">Sem envio alterado</option></select>
+        <select id="vd-tenvio"><option value="">Todos os envios</option></select>
+        <select id="vd-uf"><option value="">Todas as UFs</option></select>
         <select id="vd-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
+        <button class="act" id="vd-limpar" title="Remove todos os filtros, inclusive os aplicados pelos cartões">Limpar filtros</button>
         <button class="act" id="vd-atualizar">↻ Atualizar</button>
         <button class="act" id="vd-exportar">Exportar CSV</button>
         <span id="vd-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
@@ -313,6 +328,7 @@
         <div style="height:6px;background:var(--surface2);border-radius:4px;overflow:hidden"><div id="vd-syncbar" style="height:100%;width:0%;background:var(--accent);transition:width .3s"></div></div>
       </div>
       <div class="kpis" id="vd-kpis"></div>
+      <div class="kpis linha2" id="vd-kpis2"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
         <th>Data (import.)</th><th>Canal</th><th>Envio</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
         <th class="num">Vlr Unit.</th><th class="num">Vlr Total</th><th class="num">Comissão</th><th class="num">% Com.</th><th>Anúncio</th>

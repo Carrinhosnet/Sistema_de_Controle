@@ -26,13 +26,39 @@ const VD = (function(){
   let LINHAS=[], PAGINA=0, TOTAL=0, EDIT_ID=null; const POR=100;
   const f = (id)=>$('vd-'+id);
 
-  function filtros(){ return { p_usuario_id:USER.id, p_mes:f('mes').value||null, p_canal:f('canal').value||null, p_editado:f('edit').value===''?null:(f('edit').value==='true'), p_tipo_envio_editado:f('envioedit').value===''?null:(f('envioedit').value==='true'), p_busca:f('busca').value.trim()||null }; }
+  // Estados ligados pelos cartões de contagem. Não têm select na barra:
+  // o próprio cartão é o controle, e o "Limpar filtros" zera os três.
+  let FCONF=null, FEDIT=null, FENVIO=null;   // null = sem filtro
+
+  function filtros(){ return {
+    p_usuario_id:USER.id,
+    p_mes:f('mes').value||null,
+    p_canal:f('canal').value||null,
+    p_tipo_envio:f('tenvio').value||null,
+    p_uf:f('uf').value||null,
+    p_conferido:FCONF,
+    p_editado:FEDIT,
+    p_tipo_envio_editado:FENVIO,
+    p_busca:f('busca').value.trim()||null
+  }; }
+
+  // os KPIs refletem o recorte dos filtros da barra, não os cartões nem
+  // a busca — do contrário clicar num cartão zeraria os próprios números.
+  function filtrosKpi(){ return {
+    p_usuario_id:USER.id,
+    p_mes:f('mes').value||null,
+    p_canal:f('canal').value||null,
+    p_tipo_envio:f('tenvio').value||null,
+    p_uf:f('uf').value||null
+  }; }
 
   async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarFiltros(); carregar(); bind(); }
 
   async function carregarFiltros(){
     try{ const meses=await rpc('cn_meses_vendas',{p_usuario_id:USER.id}); (meses||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); }); }catch(e){}
     try{ const canais=await rpc('cn_canais_vendas',{p_usuario_id:USER.id}); (canais||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); }); }catch(e){}
+    try{ const tps=await rpc('cn_tipos_envio_vendas',{p_usuario_id:USER.id}); (tps||[]).forEach(t=>{ const o=document.createElement('option'); o.value=t.tipo_envio;o.textContent=t.tipo_envio; f('tenvio').appendChild(o); }); }catch(e){}
+    try{ const ufs=await rpc('cn_ufs_vendas',{p_usuario_id:USER.id}); (ufs||[]).forEach(u=>{ const o=document.createElement('option'); o.value=u.uf;o.textContent=u.uf; f('uf').appendChild(o); }); }catch(e){}
   }
 
   async function carregar(reset){
@@ -43,8 +69,8 @@ const VD = (function(){
       const [linhas,total,kpis,kconf]=await Promise.all([
         rpc('cn_listar_vendas',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_vendas',fl),
-        rpc('cn_kpis_vendas',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal}),
-        rpc('cn_kpis_conferencia',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal}),
+        rpc('cn_kpis_vendas',filtrosKpi()),
+        rpc('cn_kpis_conferencia',filtrosKpi()),
       ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0;
       renderKpis(kpis&&kpis[0], kconf&&kconf[0]); renderTabela(); renderPag();
@@ -56,10 +82,73 @@ const VD = (function(){
     // campo "Ir para a pagina" (helper global do index.html)
     if(typeof montarIrPara==='function') montarIrPara('vd',p,tp,(n)=>{ PAGINA=n-1; carregar(); }); }
 
-  function renderKpis(k,kc){ const box=f('kpis'); if(!k){box.innerHTML='';return;} const cards=[['Faturamento bruto',brl(k.faturamento_bruto)],['Pedidos',Number(k.qtd_pedidos||0).toLocaleString('pt-BR')],['Ticket médio',brl(k.ticket_medio)],['Comissão total',brl(k.total_comissao)],['Receita comercial',brl(k.receita_comercial)]];
-    // somas das duas colunas novas; só aparecem se o SQL 70 já estiver aplicado
-    if(k.receita_liquida_total!=null) cards.push(['Receita líq. do canal',brl(k.receita_liquida_total)]);
-    if(k.a_receber_total!=null) cards.push(['Total a receber',brl(k.a_receber_total)]); if(kc){ cards.push(['Faltam conferir',Number(kc.faltam||0).toLocaleString('pt-BR')]); cards.push(['Editados',Number(kc.editados||0).toLocaleString('pt-BR')]); cards.push(['Envio alterado',Number(kc.envio_alterado||0).toLocaleString('pt-BR')]); } box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join(''); }
+  // ---- cartões ----
+  // Linha 1: dinheiro, na ordem em que a conta acontece — do que entrou
+  // até o que sobra. Cada um traz abaixo do título como é obtido, para
+  // ninguém precisar abrir o SQL para lembrar.
+  // Linha 2: contagens. As três últimas são controles de filtro.
+  const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
+
+  function cardHtml(titulo,valor,hint){
+    return `<div class="kpi"><div class="lbl">${titulo}</div>`+
+           (hint?`<div class="hint">${hint}</div>`:'')+
+           `<div class="val">${valor}</div></div>`;
+  }
+  function cardClick(titulo,valor,cor,fn,ativo){
+    return `<div class="kpi click ${cor} ${ativo?'on':''}" onclick="VD.${fn}()">`+
+           `<div class="lbl">${titulo}</div><div class="val">${valor}</div>`+
+           `<div class="flag">filtro ativo · clique para remover</div></div>`;
+  }
+
+  function renderKpis(k,kc){
+    const box=f('kpis'), box2=f('kpis2');
+    if(!k){ box.innerHTML=''; if(box2) box2.innerHTML=''; return; }
+
+    box.innerHTML =
+      cardHtml('Faturamento bruto', brl(k.faturamento_bruto),
+               'Soma do valor dos produtos, sem frete') +
+      cardHtml('Comissão total', brl(k.total_comissao),
+               'Soma da comissão cobrada pelo canal') +
+      cardHtml('Custo de frete total', brl(k.total_frete),
+               'Soma do frete, sem o frete extra') +
+      cardHtml('Custo com frete extra', brl(k.total_frete_extra),
+               'Soma do frete extra cobrado do cliente') +
+      cardHtml('Receita comercial', brl(k.receita_comercial),
+               'Total da NF menos frete e frete extra') +
+      cardHtml('Total a receber', brl(k.a_receber_total),
+               'O que o canal deposita: NF menos comissão, e menos frete quando não há envio próprio');
+
+    if(!box2) return;
+    box2.innerHTML =
+      cardHtml('Número de pedidos', n0(k.qtd_pedidos),
+               'Pedidos distintos no período') +
+      cardHtml('Ticket médio', brl(k.ticket_medio),
+               'Faturamento bruto dividido pelos pedidos') +
+      (kc ? (
+        cardClick('Faltam conferir', n0(kc.faltam),  'c-conf',  'filtrarPendentes',  FCONF===false) +
+        cardClick('Vendas editadas', n0(kc.editados),'c-edit',  'filtrarEditadas',   FEDIT===true) +
+        cardClick('Envio alterado',  n0(kc.envio_alterado),'c-envio','filtrarEnvioAlterado', FENVIO===true)
+      ) : '');
+  }
+
+  // Cada cartão liga e desliga o próprio filtro. Clicar de novo remove.
+  function alternar(campo){
+    if(campo==='conf')  FCONF  = (FCONF===false) ? null : false;
+    if(campo==='edit')  FEDIT  = (FEDIT===true)  ? null : true;
+    if(campo==='envio') FENVIO = (FENVIO===true) ? null : true;
+    carregar(true);
+  }
+  function filtrarPendentes(){ alternar('conf'); }
+  function filtrarEditadas(){ alternar('edit'); }
+  function filtrarEnvioAlterado(){ alternar('envio'); }
+
+  // Zera tudo: selects da barra, busca, ordem e os filtros dos cartões.
+  function limparFiltros(){
+    f('busca').value=''; f('mes').value=''; f('canal').value='';
+    f('tenvio').value=''; f('uf').value=''; f('ordem').value='recentes';
+    FCONF=null; FEDIT=null; FENVIO=null;
+    carregar(true);
+  }
 
   // Frete que vale para a linha. Depois do arquivo 69 a própria coluna
   // vendas.frete já é o custo real; frete_efetivo continua vindo da
@@ -203,14 +292,15 @@ const VD = (function(){
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
-    f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true)); f('edit').addEventListener('change',()=>carregar(true)); f('envioedit').addEventListener('change',()=>carregar(true)); f('ordem').addEventListener('change',()=>carregar(true));
+    ['mes','canal','tenvio','uf','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true)));
+    f('limpar').addEventListener('click',limparFiltros);
     f('atualizar').addEventListener('click',atualizar); f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     ['e-qtd','e-vunit','e-comissao','e-frete','e-fextra'].forEach(id=>f(id).addEventListener('input',prev));
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
   }
 
-  return { init, abrir, conf };
+  return { init, abrir, conf, filtrarPendentes, filtrarEditadas, filtrarEnvioAlterado, limparFiltros };
 })();
 window.VD = VD;
 registrarTela('vendas', VD);
