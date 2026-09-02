@@ -162,8 +162,12 @@ const VD = (function(){
           fe=parseFloat(f('e-fextra').value)||0,
           fr=parseFloat(f('e-frete').value)||0;
     const t=vu*q, nf=t+fe;
+    // sem envio o frete e o frete extra ficam com o marketplace, então
+    // já saem do "a receber". Subtrair o frete de novo para chegar na
+    // líquida descontaria duas vezes — por isso as duas contas partem
+    // da NF, e não uma da outra.
     const receber = nf - co - (EDIT_TEM_ENVIO ? 0 : (fr+fe));
-    const liquida = receber - fr;
+    const liquida = nf - co - fr - (EDIT_TEM_ENVIO ? 0 : fe);
     f('c-total').value=brl(t); f('c-nf').value=brl(nf);
     f('c-receber').value=brl(receber);
     f('c-lucro').value=brl(liquida);
