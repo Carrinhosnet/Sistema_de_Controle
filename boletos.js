@@ -17,6 +17,7 @@ const BO = (function(){
     p_canal:f('canal').value||null,
     p_status:f('status').value||null,
     p_uf:f('uf').value||null,
+    p_mes_compra:f('mescompra').value||null,
     p_busca:f('busca').value.trim()||null
   }; }
 
@@ -27,6 +28,7 @@ const BO = (function(){
     p_mes:f('mes').value||null,
     p_canal:f('canal').value||null,
     p_uf:f('uf').value||null,
+    p_mes_compra:f('mescompra').value||null,
     p_busca:f('busca').value.trim()||null
   }; }
 
@@ -36,22 +38,38 @@ const BO = (function(){
     try{ const meses=await rpc('cn_meses_boletos',{p_usuario_id:USER.id}); (meses||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); }); }catch(e){}
     try{ const canais=await rpc('cn_canais_boletos',{p_usuario_id:USER.id}); (canais||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); }); }catch(e){}
     try{ const ufs=await rpc('cn_ufs_boletos',{p_usuario_id:USER.id}); (ufs||[]).forEach(u=>{ const o=document.createElement('option'); o.value=u.uf;o.textContent=u.uf; f('uf').appendChild(o); }); }catch(e){}
+    try{ const mc=await rpc('cn_meses_compra_boletos',{p_usuario_id:USER.id}); (mc||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m.mes;o.textContent=mesLabel(m.mes); f('mescompra').appendChild(o); }); }catch(e){}
   }
 
-  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="11" class="loading">Carregando boletos…</td></tr>'; const fl=filtros();
-    try{ const [linhas,total,kpis]=await Promise.all([
-        rpc('cn_listar_boletos',{...fl,p_ordem:f('ordem').value||'prioridade',p_limite:POR,p_offset:PAGINA*POR}),
-        rpc('cn_contar_boletos',fl),
-        rpc('cn_kpis_boletos',filtrosKpi())
-      ]);
-      LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
+  // Cache dos KPIs. Eles não dependem do status nem da página, então
+  // trocar de status ou virar página não precisa buscá-los de novo — e
+  // cada chamada evitada é uma ida ao servidor a menos.
+  let KPIS=null;
+
+  // opts.kpis=false quando a mudança não afeta os cartões
+  async function carregar(reset, opts){
+    if(reset)PAGINA=0;
+    const precisaKpis = !(opts && opts.kpis===false) || KPIS===null;
+    f('tbody').innerHTML='<tr><td colspan="11" class="loading">Carregando boletos…</td></tr>';
+    const fl=filtros();
+    try{
+      const chamadas=[ rpc('cn_listar_boletos',{...fl,p_ordem:f('ordem').value||'prioridade',p_limite:POR,p_offset:PAGINA*POR}) ];
+      if(precisaKpis) chamadas.push(rpc('cn_kpis_boletos',filtrosKpi()));
+      const res=await Promise.all(chamadas);
+
+      // a listagem já traz o total: não há chamada separada de contagem
+      const pacote=res[0]||{};
+      LINHAS=pacote.linhas||[];
+      TOTAL=Number(pacote.total)||0;
+      if(precisaKpis) KPIS=(res[1]&&res[1][0])||null;
+
+      renderKpis(KPIS); renderTabela(); renderPag();
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
-      if(typeof atualizarBadgeBoletos==='function') atualizarBadgeBoletos();
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="11" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
     // campo "Ir para a pagina" (helper global do index.html)
-    if(typeof montarIrPara==='function') montarIrPara('bo',p,tp,(n)=>{ PAGINA=n-1; carregar(); }); }
+    if(typeof montarIrPara==='function') montarIrPara('bo',p,tp,(n)=>{ PAGINA=n-1; carregar(false,{kpis:false}); }); }
 
   const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
 
@@ -85,12 +103,13 @@ const BO = (function(){
   // acesso. Clicar no cartão já ativo desliga o filtro.
   function filtrarStatus(status){
     f('status').value = (f('status').value===status) ? '' : status;
-    carregar(true);
+    carregar(true,{kpis:false});   // cartões não dependem do status
   }
 
   function limparFiltros(){
-    ['busca','mes','canal','status','uf'].forEach(id=>{ f(id).value=''; });
+    ['busca','mes','canal','status','uf','mescompra'].forEach(id=>{ f(id).value=''; });
     f('ordem').value='prioridade';
+    KPIS=null;
     carregar(true);
   }
 
@@ -122,7 +141,13 @@ const BO = (function(){
     </tr>`; }).join(''); }
 
   // -------- ações de status --------
-  async function acao(fn,id,args){ try{ await rpc(fn,{p_usuario_id:USER.id,p_boleto_id:id,...(args||{})}); await carregar(); }catch(e){ alert(e.message||e); } }
+  // Mudar o status altera os cartões e o badge do menu: aqui sim vale
+  // reler tudo. Trocar um filtro, não — por isso o badge saiu do
+  // carregar() e ficou só nas ações.
+  async function acao(fn,id,args){ try{ await rpc(fn,{p_usuario_id:USER.id,p_boleto_id:id,...(args||{})}); KPIS=null; await carregar();
+      if(typeof atualizarBadgeBoletos==='function') atualizarBadgeBoletos();
+      if(typeof atualizarBadges==='function') atualizarBadges();
+    }catch(e){ alert(e.message||e); } }
   function pago(id){ acao('cn_boleto_marcar_pago',id); }
   function cobranca(id){ acao('cn_boleto_registrar_cobranca',id); }
   function protestar(id){ if(confirm('Marcar este boleto como Protestado?')) acao('cn_boleto_marcar_protestado',id); }
@@ -138,7 +163,7 @@ const BO = (function(){
     try{ if(!f('e-venc').value) throw new Error('Informe o vencimento.');
       if(!f('e-doc').value.trim()) throw new Error('Informe o documento do boleto.');
       await rpc('cn_editar_boleto',{p_usuario_id:USER.id,p_boleto_id:EDIT_ID,p_valor:f('e-valor').value===''?null:Number(f('e-valor').value),p_vencimento:f('e-venc').value,p_documento:f('e-doc').value||null,p_observacao:f('e-obs').value||null});
-      fechar(); carregar(); }
+      fechar(); KPIS=null; carregar(); }
     catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; } }
 
   // -------- modal de lançamento --------
@@ -187,11 +212,11 @@ const BO = (function(){
       parcelas.push({ parcela:i+1, valor:valor===''?null:Number(valor), vencimento:venc, documento:doc, observacao:r.querySelector('.pcobs').value||'' }); }
     const b=f('m-salvar'); b.disabled=true; const t=b.textContent; b.textContent='Salvando…';
     try{ const n=await rpc('cn_lancar_boletos',{p_usuario_id:USER.id,p_id_pedido:SELPED.id_pedido,p_parcelas:parcelas});
-      fecharModal(); await carregar(true); f('msg').textContent=`${n} boleto(s) lançado(s).`; }
+      fecharModal(); KPIS=null; await carregar(true); f('msg').textContent=`${n} boleto(s) lançado(s).`; }
     catch(e){ f('m-erro2').textContent=(e.message||e); } finally{ b.disabled=false; b.textContent=t; } }
 
   async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
-    try{ const fl=filtros(); const todas=await rpc('cn_listar_boletos',{...fl,p_ordem:f('ordem').value||'prioridade',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return;
+    try{ const fl=filtros(); const pacote=await rpc('cn_listar_boletos',{...fl,p_ordem:f('ordem').value||'prioridade',p_limite:100000,p_offset:0}); const todas=(pacote&&pacote.linhas)||[]; if(!todas.length)return;
       const cols=['data_compra','canal','id_pedido','cliente','uf','parcela','total_parcelas','valor','vencimento','status_efetivo','documento_boleto','observacao'];
       const head=['Data Compra','Canal','ID Pedido','Cliente','UF','Parcela','Total Parcelas','Valor','Vencimento','Status','Documento','Observacao'];
       const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';'));
@@ -199,12 +224,14 @@ const BO = (function(){
     }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
   function bind(){
-    let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
-    // filtros aplicam sozinhos, como nas telas de Vendas e Envios
-    ['mes','canal','status','uf','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true)));
+    let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>{ KPIS=null; carregar(true); },400); });
+    // filtros aplicam sozinhos, como nas telas de Vendas e Envios.
+    // Status e ordenação não mexem nos cartões — recarregam só a tabela.
+    ['mes','canal','uf','mescompra'].forEach(id=>f(id).addEventListener('change',()=>{ KPIS=null; carregar(true); }));
+    ['status','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true,{kpis:false})));
     f('limpar').addEventListener('click',limparFiltros);
     f('lancar').addEventListener('click',abrirModal); f('exportar').addEventListener('click',exportar);
-    f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
+    f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(false,{kpis:false}); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(false,{kpis:false}); });
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
     f('modal-x').addEventListener('click',fecharModal); let mt; f('m-busca').addEventListener('input',()=>{ clearTimeout(mt); mt=setTimeout(buscarVendas,400); });
     f('m-voltar').addEventListener('click',voltarBusca); f('m-gerar').addEventListener('click',gerarParcelas); f('m-salvar').addEventListener('click',salvarBoletos);
