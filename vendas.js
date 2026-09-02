@@ -10,10 +10,17 @@
 // fica somente leitura — corrigir na venda faria as duas telas divergirem
 // de novo, porque o gatilho só empurra do envio para a venda.
 //
-// FRETE EXTRA: em venda COM envio ele fica com a empresa e não sai da
-// conta do valor a receber. Em venda SEM envio (ME2) o ML fica com ele.
-// A regra vive no cn_listar_vendas; aqui a prévia do drawer só reproduz
-// para não contradizer a tabela.
+// TRES NUMEROS (arquivo 70):
+//   A Receber          = o que o marketplace deposita.
+//                        NF − comissão − (frete e frete extra só quando
+//                        NÃO há envio, porque aí o ML retém os dois).
+//   Receita Líq. Canal = o que sobra após os custos diretos de venda,
+//                        antes do CMV. É o A Receber menos o frete.
+//   Receita comercial  = KPI do topo, base da comissão do vendedor.
+//                        NF − frete − frete extra, com a comissão do
+//                        marketplace dentro de propósito.
+// Sem envio as duas colunas dão o mesmo número. O Lucro % saiu da tela;
+// continua sendo devolvido pela função.
 // =====================================================================
 const VD = (function(){
   let LINHAS=[], PAGINA=0, TOTAL=0, EDIT_ID=null; const POR=100;
@@ -49,7 +56,10 @@ const VD = (function(){
     // campo "Ir para a pagina" (helper global do index.html)
     if(typeof montarIrPara==='function') montarIrPara('vd',p,tp,(n)=>{ PAGINA=n-1; carregar(); }); }
 
-  function renderKpis(k,kc){ const box=f('kpis'); if(!k){box.innerHTML='';return;} const cards=[['Faturamento bruto',brl(k.faturamento_bruto)],['Pedidos',Number(k.qtd_pedidos||0).toLocaleString('pt-BR')],['Ticket médio',brl(k.ticket_medio)],['Comissão total',brl(k.total_comissao)],['Receita comercial',brl(k.receita_comercial)]]; if(kc){ cards.push(['Faltam conferir',Number(kc.faltam||0).toLocaleString('pt-BR')]); cards.push(['Editados',Number(kc.editados||0).toLocaleString('pt-BR')]); cards.push(['Envio alterado',Number(kc.envio_alterado||0).toLocaleString('pt-BR')]); } box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join(''); }
+  function renderKpis(k,kc){ const box=f('kpis'); if(!k){box.innerHTML='';return;} const cards=[['Faturamento bruto',brl(k.faturamento_bruto)],['Pedidos',Number(k.qtd_pedidos||0).toLocaleString('pt-BR')],['Ticket médio',brl(k.ticket_medio)],['Comissão total',brl(k.total_comissao)],['Receita comercial',brl(k.receita_comercial)]];
+    // somas das duas colunas novas; só aparecem se o SQL 70 já estiver aplicado
+    if(k.receita_liquida_total!=null) cards.push(['Receita líq. do canal',brl(k.receita_liquida_total)]);
+    if(k.a_receber_total!=null) cards.push(['Total a receber',brl(k.a_receber_total)]); if(kc){ cards.push(['Faltam conferir',Number(kc.faltam||0).toLocaleString('pt-BR')]); cards.push(['Editados',Number(kc.editados||0).toLocaleString('pt-BR')]); cards.push(['Envio alterado',Number(kc.envio_alterado||0).toLocaleString('pt-BR')]); } box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join(''); }
 
   // Frete que vale para a linha. Depois do arquivo 69 a própria coluna
   // vendas.frete já é o custo real; frete_efetivo continua vindo da
@@ -81,7 +91,7 @@ const VD = (function(){
       <td class="num">${l.quantidade??'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
       <td class="num">${brl(l.valor_unitario)}</td><td class="num">${brl(l.valor_total)}</td><td class="num">${brl(l.valor_comissao)}</td><td class="num">${pct(l.pct_comissao_ml)}</td><td>${l.tipo_anuncio||'—'}</td>
       <td class="num">${brl(freteReal(l))}</td><td class="num">${l.frete_aguardado==null?'<span style="color:var(--muted)">—</span>':brl(l.frete_aguardado)}</td><td class="num">${celDif(l)}</td><td class="num">${brl(l.frete_extra)}</td>
-      <td class="num">${brl(l.valor_total_nf)}</td><td class="num">${brl(l.valor_a_receber)}</td><td class="num">${pct(l.lucro_bruto_pct)}</td>
+      <td class="num">${brl(l.valor_total_nf)}</td><td class="num">${brl(l.receita_liquida_canal)}</td><td class="num">${brl(l.valor_a_receber)}</td>
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="VD.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
     </tr>`).join('');
   }
@@ -142,8 +152,9 @@ const VD = (function(){
 
   function fechar(){ f('overlay').classList.remove('open'); f('drawer').classList.remove('open'); EDIT_ID=null; EDIT_TEM_ENVIO=false; EDIT_FRETE_DO_ENVIO=false; notaFrete(''); }
 
-  // Prévia do lucro. Reproduz a regra do cn_listar_vendas: o frete extra
-  // só sai da conta quando a venda NÃO tem envio.
+  // Prévia. Reproduz a regra do cn_listar_vendas para não contradizer a
+  // tabela: com envio, nem o frete nem o frete extra saem do "a receber",
+  // porque não passam pelo marketplace.
   function prev(){
     const q=parseFloat(f('e-qtd').value)||0,
           vu=parseFloat(f('e-vunit').value)||0,
@@ -151,16 +162,18 @@ const VD = (function(){
           fe=parseFloat(f('e-fextra').value)||0,
           fr=parseFloat(f('e-frete').value)||0;
     const t=vu*q, nf=t+fe;
-    const rc=nf-co-fr-(EDIT_TEM_ENVIO?0:fe);
-    const lu=nf>0?rc/nf*100:0;
-    f('c-total').value=brl(t); f('c-nf').value=brl(nf); f('c-receber').value=brl(rc); f('c-lucro').value=nf>0?lu.toFixed(2)+'%':'—';
+    const receber = nf - co - (EDIT_TEM_ENVIO ? 0 : (fr+fe));
+    const liquida = receber - fr;
+    f('c-total').value=brl(t); f('c-nf').value=brl(nf);
+    f('c-receber').value=brl(receber);
+    f('c-lucro').value=brl(liquida);
   }
 
   async function salvar(){ if(EDIT_ID==null)return; f('drawer-erro').textContent=''; const b=f('drawer-save'); b.disabled=true; b.textContent='Salvando...'; const num=(id)=>{const v=f(id).value;return v===''?null:Number(v);};
     try{ await rpc('cn_editar_venda',{p_usuario_id:USER.id,p_venda_id:EDIT_ID,p_data_compra:f('e-data').value||null,p_canal:f('e-canal').value||null,p_tipo_envio:f('e-tenvio').value||null,p_cliente:f('e-cliente').value||null,p_uf:f('e-uf').value.toUpperCase()||null,p_modelo:f('e-modelo').value||null,p_quantidade:num('e-qtd'),p_valor_unitario:num('e-vunit'),p_valor_comissao:num('e-comissao'),p_tipo_anuncio:f('e-anuncio').value||null,p_frete:num('e-frete'),p_frete_extra:num('e-fextra'),p_frete_aguardado:num('e-faguard')}); fechar(); carregar(); }
     catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; } }
 
-  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_vendas',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_compra','data_bling','canal','tipo_envio','id_pedido','modelo','quantidade','cliente','uf','valor_unitario','valor_total','valor_comissao','pct_comissao_ml','tipo_anuncio','_frete','frete_aguardado','_dif_frete','frete_extra','valor_total_nf','valor_a_receber','lucro_bruto_pct','conferido','editado']; const head=['Data (import.)','Data Bling','Canal','Envio','ID Pedido','SKU','Qtd','Cliente','UF','Valor Unitario','Valor Total','Comissao','% Comissao','Anuncio','Frete','Frete Aguardado','Dif Frete','Frete Extra','Total NF','A Receber','Lucro %','Conferido','Editado']; const ls=todas.map(l=>cols.map(c=>{let v; if(c==='_dif_frete') v=difFrete(l); else if(c==='_frete') v=freteReal(l); else v=l[c]; if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='vendas_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
+  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_vendas',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_compra','data_bling','canal','tipo_envio','id_pedido','modelo','quantidade','cliente','uf','valor_unitario','valor_total','valor_comissao','pct_comissao_ml','tipo_anuncio','_frete','frete_aguardado','_dif_frete','frete_extra','valor_total_nf','receita_liquida_canal','valor_a_receber','conferido','editado']; const head=['Data (import.)','Data Bling','Canal','Envio','ID Pedido','SKU','Qtd','Cliente','UF','Valor Unitario','Valor Total','Comissao','% Comissao','Anuncio','Frete','Frete Aguardado','Dif Frete','Frete Extra','Total NF','Receita Liq Canal','A Receber','Conferido','Editado']; const ls=todas.map(l=>cols.map(c=>{let v; if(c==='_dif_frete') v=difFrete(l); else if(c==='_frete') v=freteReal(l); else v=l[c]; if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='vendas_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
   // ----- sync (Atualizar) -----
   function syncUI(msg,p){ f('syncbox').style.display='block'; f('syncmsg').textContent=msg; f('syncpct').textContent=p==null?'':Math.round(p)+'%'; f('syncbar').style.width=(p==null?0:p)+'%'; }
