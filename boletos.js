@@ -8,11 +8,25 @@ const BO = (function(){
   let RESULTS=[], SELPED=null;   // seletor de lançamento
   const f=(id)=>$('bo-'+id);
 
+  // Status também é acionado pelos cartões. O select da barra e o cartão
+  // controlam o mesmo filtro: clicar num cartão move o select junto, para
+  // a tela nunca mostrar dois estados diferentes da mesma coisa.
   function filtros(){ return {
     p_usuario_id:USER.id,
     p_mes:f('mes').value||null,
     p_canal:f('canal').value||null,
     p_status:f('status').value||null,
+    p_uf:f('uf').value||null,
+    p_busca:f('busca').value.trim()||null
+  }; }
+
+  // Os cartões refletem mês, canal, UF e busca — não o status, que é o
+  // que eles acionam. Se refletisse, clicar em "Pago" zeraria os outros.
+  function filtrosKpi(){ return {
+    p_usuario_id:USER.id,
+    p_mes:f('mes').value||null,
+    p_canal:f('canal').value||null,
+    p_uf:f('uf').value||null,
     p_busca:f('busca').value.trim()||null
   }; }
 
@@ -21,32 +35,63 @@ const BO = (function(){
   async function carregarFiltros(){
     try{ const meses=await rpc('cn_meses_boletos',{p_usuario_id:USER.id}); (meses||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); }); }catch(e){}
     try{ const canais=await rpc('cn_canais_boletos',{p_usuario_id:USER.id}); (canais||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); }); }catch(e){}
+    try{ const ufs=await rpc('cn_ufs_boletos',{p_usuario_id:USER.id}); (ufs||[]).forEach(u=>{ const o=document.createElement('option'); o.value=u.uf;o.textContent=u.uf; f('uf').appendChild(o); }); }catch(e){}
   }
 
-  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="12" class="loading">Carregando boletos…</td></tr>'; const fl=filtros();
+  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="11" class="loading">Carregando boletos…</td></tr>'; const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([
         rpc('cn_listar_boletos',{...fl,p_ordem:f('ordem').value||'prioridade',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_boletos',fl),
-        rpc('cn_kpis_boletos',fl)
+        rpc('cn_kpis_boletos',filtrosKpi())
       ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
       if(typeof atualizarBadgeBoletos==='function') atualizarBadgeBoletos();
-    }catch(e){ f('tbody').innerHTML='<tr><td colspan="12" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
+    }catch(e){ f('tbody').innerHTML='<tr><td colspan="11" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
     // campo "Ir para a pagina" (helper global do index.html)
     if(typeof montarIrPara==='function') montarIrPara('bo',p,tp,(n)=>{ PAGINA=n-1; carregar(); }); }
 
+  const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
+
+  // Cada cartão mostra a soma em reais e a quantidade, e filtra a tabela
+  // pelo próprio status. O primeiro limpa o filtro e volta para tudo.
+  function cardBo(titulo,valor,qtd,cor,status,hint){
+    const ativo = (f('status').value===status);
+    return `<div class="kpi click ${cor} ${ativo?'on':''}" onclick="BO.filtrarStatus('${status}')">`+
+           `<div class="lbl">${titulo}</div>`+
+           (hint?`<div class="hint">${hint}</div>`:'')+
+           `<div class="val">${valor}</div>`+
+           `<div style="font-size:11px;color:var(--muted);margin-top:2px">${qtd} boleto(s)</div>`+
+           `<div class="flag">filtro ativo · clique para remover</div></div>`;
+  }
+
   function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
-    const cards=[
-      ['Total de boletos',Number(k.total||0).toLocaleString('pt-BR')],
-      ['Aguardando Pagamento',brl(k.soma_aguardando)],
-      ['Pago',brl(k.soma_pago)],
-      ['Em Atraso',brl(k.soma_atraso)],
-      ['Em Protesto',brl(k.soma_protesto)]
-    ];
-    box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join('');
+    box.innerHTML =
+      cardBo('Total de boletos', brl(k.soma_total), n0(k.total), 'b-total', '',
+             'Todos os boletos no recorte dos filtros') +
+      cardBo('Valores quitados', brl(k.soma_pago), n0(k.qtd_pago), 'b-pago', 'Pago',
+             'Boletos com pagamento confirmado') +
+      cardBo('Aguardando pagamento', brl(k.soma_aguardando), n0(k.qtd_aguardando), 'b-aguard', 'Aguardando Pagamento',
+             'Vencimento ainda não chegou') +
+      cardBo('Em atraso', brl(k.soma_atraso), n0(k.qtd_atraso), 'b-atraso', 'Pagamento Atrasado',
+             'Vencimento passou e segue em aberto') +
+      cardBo('Em protesto', brl(k.soma_protesto), n0(k.qtd_protesto), 'b-protesto', 'Protestado',
+             'Boletos levados a protesto');
+  }
+
+  // O cartão move o select de status: um controle só, dois lugares de
+  // acesso. Clicar no cartão já ativo desliga o filtro.
+  function filtrarStatus(status){
+    f('status').value = (f('status').value===status) ? '' : status;
+    carregar(true);
+  }
+
+  function limparFiltros(){
+    ['busca','mes','canal','status','uf'].forEach(id=>{ f(id).value=''; });
+    f('ordem').value='prioridade';
+    carregar(true);
   }
 
   function getStatusClass(st){ switch((st||'').trim()){
@@ -67,10 +112,10 @@ const BO = (function(){
     else if(st==='Protestado'){ btns.push(B('reabrir','Reabrir')); }
     return btns.join(' '); }
 
-  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="12" class="empty">Nenhum boleto encontrado.</td></tr>'; return; }
+  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="11" class="empty">Nenhum boleto encontrado.</td></tr>'; return; }
     tb.innerHTML=LINHAS.map(l=>{ const cls=getStatusClass(l.status_efetivo);
       return `<tr class="${cls}" onclick="BO.abrir(${l.id})">
-      <td>${dataBr(l.data_compra)}</td><td>${mesLabel(l.mes_vencimento)||'—'}</td><td>${l.canal||'—'}</td><td>${l.id_pedido||'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
+      <td>${dataBr(l.data_compra)}</td><td>${l.canal||'—'}</td><td>${l.id_pedido||'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
       <td class="num">${l.parcela}/${l.total_parcelas}</td><td class="num">${brl(l.valor)}</td><td>${dataBr(l.vencimento)}</td>
       <td><span class="pill">${l.status_efetivo||'—'}</span></td><td>${l.documento_boleto||'—'}</td>
       <td class="acoes" onclick="event.stopPropagation()">${acoesHtml(l)}</td>
@@ -91,6 +136,7 @@ const BO = (function(){
   function fechar(){ f('overlay').classList.remove('open'); f('drawer').classList.remove('open'); EDIT_ID=null; }
   async function salvar(){ if(EDIT_ID==null)return; f('drawer-erro').textContent=''; const b=f('drawer-save'); b.disabled=true; b.textContent='Salvando...';
     try{ if(!f('e-venc').value) throw new Error('Informe o vencimento.');
+      if(!f('e-doc').value.trim()) throw new Error('Informe o documento do boleto.');
       await rpc('cn_editar_boleto',{p_usuario_id:USER.id,p_boleto_id:EDIT_ID,p_valor:f('e-valor').value===''?null:Number(f('e-valor').value),p_vencimento:f('e-venc').value,p_documento:f('e-doc').value||null,p_observacao:f('e-obs').value||null});
       fechar(); carregar(); }
     catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; } }
@@ -125,7 +171,7 @@ const BO = (function(){
         <td class="num">${i+1}/${n}</td>
         <td><input type="number" step="0.01" class="pcv" value="${valores[i]}" style="width:110px"></td>
         <td><input type="date" class="pcd" value="${venc}"></td>
-        <td><input type="text" class="pcdoc" placeholder="opcional" style="width:120px"></td>
+        <td><input type="text" class="pcdoc" placeholder="obrigatório" style="width:120px"></td>
         <td><input type="text" class="pcobs" placeholder="opcional" style="width:160px"></td>
       </tr>`; }
     html+='</tbody></table>';
@@ -136,7 +182,9 @@ const BO = (function(){
     const parcelas=[]; for(let i=0;i<rows.length;i++){ const r=rows[i];
       const valor=r.querySelector('.pcv').value; const venc=r.querySelector('.pcd').value;
       if(!venc){ f('m-erro2').textContent=`Parcela ${i+1}: informe o vencimento.`; return; }
-      parcelas.push({ parcela:i+1, valor:valor===''?null:Number(valor), vencimento:venc, documento:r.querySelector('.pcdoc').value||'', observacao:r.querySelector('.pcobs').value||'' }); }
+      const doc=r.querySelector('.pcdoc').value.trim();
+      if(!doc){ f('m-erro2').textContent=`Parcela ${i+1}: informe o documento do boleto.`; return; }
+      parcelas.push({ parcela:i+1, valor:valor===''?null:Number(valor), vencimento:venc, documento:doc, observacao:r.querySelector('.pcobs').value||'' }); }
     const b=f('m-salvar'); b.disabled=true; const t=b.textContent; b.textContent='Salvando…';
     try{ const n=await rpc('cn_lancar_boletos',{p_usuario_id:USER.id,p_id_pedido:SELPED.id_pedido,p_parcelas:parcelas});
       fecharModal(); await carregar(true); f('msg').textContent=`${n} boleto(s) lançado(s).`; }
@@ -144,16 +192,17 @@ const BO = (function(){
 
   async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
     try{ const fl=filtros(); const todas=await rpc('cn_listar_boletos',{...fl,p_ordem:f('ordem').value||'prioridade',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return;
-      const cols=['data_compra','mes_vencimento','canal','id_pedido','cliente','uf','parcela','total_parcelas','valor','vencimento','status_efetivo','documento_boleto','observacao'];
-      const head=['Data Compra','Mes Vencimento','Canal','ID Pedido','Cliente','UF','Parcela','Total Parcelas','Valor','Vencimento','Status','Documento','Observacao'];
+      const cols=['data_compra','canal','id_pedido','cliente','uf','parcela','total_parcelas','valor','vencimento','status_efetivo','documento_boleto','observacao'];
+      const head=['Data Compra','Canal','ID Pedido','Cliente','UF','Parcela','Total Parcelas','Valor','Vencimento','Status','Documento','Observacao'];
       const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';'));
       const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='boletos_carrinhos_net.csv'; a.click();
     }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
-    f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true)); f('status').addEventListener('change',()=>carregar(true)); f('ordem').addEventListener('change',()=>carregar(true));
-    f('btn-filtrar').addEventListener('click',()=>carregar(true));
+    // filtros aplicam sozinhos, como nas telas de Vendas e Envios
+    ['mes','canal','status','uf','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true)));
+    f('limpar').addEventListener('click',limparFiltros);
     f('lancar').addEventListener('click',abrirModal); f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
@@ -161,7 +210,7 @@ const BO = (function(){
     f('m-voltar').addEventListener('click',voltarBusca); f('m-gerar').addEventListener('click',gerarParcelas); f('m-salvar').addEventListener('click',salvarBoletos);
   }
 
-  return { init, abrir, pago, cobranca, protestar, reabrir, selecionar };
+  return { init, abrir, pago, cobranca, protestar, reabrir, selecionar, filtrarStatus, limparFiltros };
 })();
 window.BO = BO;
 registrarTela('boletos', BO);

@@ -241,6 +241,13 @@
   .kpi.k-entregue{--kpc:#22c55e}
   .kpi.k-devol   {--kpc:#ef4444}
   .kpi.k-conf    {--kpc:#3b82f6}
+  /* cartões da tela de Boletos */
+  .kpi.b-total   {--kpc:#1e40af}
+  .kpi.b-pago    {--kpc:#22c55e}
+  .kpi.b-aguard  {--kpc:#f59e0b}
+  .kpi.b-atraso  {--kpc:#f87171}
+  .kpi.b-protesto{--kpc:#991b1b}
+
   /* seletor de diferença de frete: caixas de marcação num painel */
   .dropck{position:relative;display:inline-block}
   .dropck>button{padding:9px 14px;background:var(--surface);border:1px solid var(--border);
@@ -471,15 +478,16 @@
           <option>Pago</option>
           <option>Protestado</option>
         </select>
+        <select id="bo-uf"><option value="">Todas as UFs</option></select>
         <select id="bo-ordem"><option value="prioridade">Prioridade (atraso/cobrança)</option><option value="recentes">Vencimento mais recente</option><option value="antigos">Vencimento mais antigo</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option></select>
-        <button class="act prim" id="bo-btn-filtrar">Filtrar</button>
+        <button class="act prim" id="bo-limpar" title="Remove todos os filtros, inclusive os aplicados pelos cartões">Limpar filtros</button>
         <button class="act prim" id="bo-lancar">+ Lançar boleto</button>
-        <button class="act" id="bo-exportar">Exportar CSV</button>
+        <button class="act prim" id="bo-exportar">Exportar CSV</button>
         <span id="bo-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
       <div class="kpis" id="bo-kpis"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th>Data Compra</th><th>Mês Venc.</th><th>Canal</th><th>ID Pedido</th><th>Cliente</th><th>UF</th>
+        <th>Data Compra</th><th>Canal</th><th>ID Pedido</th><th>Cliente</th><th>UF</th>
         <th class="num">Parcela</th><th class="num">Valor</th><th>Vencimento</th><th>Status</th><th>Documento</th><th>Ações</th>
       </tr></thead><tbody id="bo-tbody"></tbody></table></div>
       <div class="foot"><span id="bo-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
