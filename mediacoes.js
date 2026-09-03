@@ -153,7 +153,11 @@ const MED = (function(){
     tb.innerHTML=LINHAS.map(l=>{
       const pend = !l.destino;
       const clicavel = pend && temPermissao('mediacoes.editar');
-      return `<tr class="${pend?'pendente':''}"${clicavel?` style="cursor:pointer" onclick="MED.abrir(${l.id})"`:''}>
+      // linha pintada pelo destino; a que ainda não foi triada fica sem
+      // cor, e a classe 'pendente' que existia aqui sai: o realce dela
+      // brigaria com essa leitura
+      const cor = {reclamacao:'md-recla', devolucao:'md-devol', cancelamento:'md-canc'}[l.destino] || '';
+      return `<tr class="${cor}"${clicavel?` style="cursor:pointer" onclick="MED.abrir(${l.id})"`:''}>
         <td>${dataBr(l.data_abertura)}</td>
         <td>${dataBr(l.data_venda)}</td>
         <td>${l.canal||'—'}</td>

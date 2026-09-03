@@ -267,6 +267,14 @@
   .met-cx.c-site {--cnl:#15803d}
   .met-cx.c-vd   {--cnl:#a855f7}
 
+  /* linha da tela de Mediações pintada pelo destino, no mesmo padrão
+     dos status da tela de Envios: rgba com 0.15 sobre o fundo escuro.
+     Caso ainda na fila fica sem cor — a ausência é o próprio sinal de
+     que falta decidir. */
+  tr.md-recla td { background: rgba(251, 191, 36, 0.15); }
+  tr.md-devol td { background: rgba(249, 115, 22, 0.15); }
+  tr.md-canc  td { background: rgba(239, 68, 68, 0.15); }
+
   /* cartões da tela de Mediações */
   .kpi.m-triar{--kpc:#1e40af}   /* azul escuro: o que ainda falta decidir */
   .kpi.m-recla{--kpc:#fbbf24}   /* amarelo */
