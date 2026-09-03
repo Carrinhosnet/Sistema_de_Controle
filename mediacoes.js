@@ -16,6 +16,11 @@
 //
 // SEM SUGESTÃO DE DESTINO, por decisão: o tipo que o ML informa fica
 // visível na coluna, mas quem decide é você.
+//
+// Fase, status e motivo saíram da tabela — como aqui não se edita nada,
+// eles não mudavam decisão nenhuma. Continuam gravados e vão no CSV; o
+// único resquício na tela é o ponto amarelo ao lado do tipo, que marca
+// caso ainda em aberto no Mercado Livre.
 // =====================================================================
 const MED = (function(){
   let LINHAS=[], TOTAL=0, PAGINA=0, KPIS=null; const POR=100;
@@ -26,10 +31,6 @@ const MED = (function(){
   const TIPO={
     mediations:'Mediação', returns:'Devolução ML',
     cancel_purchase:'Cancelamento', cancel_sale:'Cancelamento (venda)'
-  };
-  const FASE={
-    claim:'Reclamação', dispute:'Disputa',
-    none:'—', recontact:'Recontato'
   };
   const DESTINO={
     devolucao:'Devolução', reclamacao:'Reclamação', cancelamento:'Cancelamento'
@@ -69,7 +70,7 @@ const MED = (function(){
   async function carregar(reset, opts){
     if(reset) PAGINA=0;
     const precisaKpis = !(opts && opts.kpis===false) || KPIS===null;
-    f('tbody').innerHTML='<tr><td colspan="12" class="loading">Carregando mediações…</td></tr>';
+    f('tbody').innerHTML='<tr><td colspan="9" class="loading">Carregando mediações…</td></tr>';
     const fl=filtros();
     try{
       const chamadas=[ rpc('cn_listar_mediacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}) ];
@@ -82,7 +83,7 @@ const MED = (function(){
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){
-      f('tbody').innerHTML='<tr><td colspan="12" class="empty">Erro: '+(e.message||e)+'</td></tr>';
+      f('tbody').innerHTML='<tr><td colspan="9" class="empty">Erro: '+(e.message||e)+'</td></tr>';
     }
   }
 
@@ -150,7 +151,7 @@ const MED = (function(){
 
   function renderTabela(){
     const tb=f('tbody');
-    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="12" class="empty">Nenhum caso encontrado.</td></tr>'; return; }
+    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="9" class="empty">Nenhum caso encontrado.</td></tr>'; return; }
     tb.innerHTML=LINHAS.map(l=>{
       const pend = !l.destino;
       const aberto = l.status_ml==='opened';
@@ -162,10 +163,7 @@ const MED = (function(){
         <td>${l.uf||'—'}</td>
         <td class="num">${l.qtd_itens??'—'}</td>
         <td class="num">${l.valor_pedido==null?'—':brl(l.valor_pedido)}</td>
-        <td><span class="pill">${TIPO[l.tipo_ml]||l.tipo_ml||'—'}</span></td>
-        <td>${FASE[l.fase_ml]||l.fase_ml||'—'}</td>
-        <td>${aberto?'<span class="pill" style="border-color:var(--warn);color:var(--warn)">Em aberto</span>':(l.status_ml?'Encerrado':'—')}</td>
-        <td style="font-size:11px;color:var(--muted)">${l.motivo_ml||'—'}</td>
+        <td><span class="pill"${aberto?' title="Ainda em aberto no Mercado Livre"':''}>${TIPO[l.tipo_ml]||l.tipo_ml||'—'}</span>${aberto?' <span title="Em aberto no Mercado Livre" style="color:var(--warn)">•</span>':''}</td>
         <td class="acoes" onclick="event.stopPropagation()">${acoesHtml(l)}</td>
       </tr>`;
     }).join('');
