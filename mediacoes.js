@@ -1,6 +1,6 @@
 // =====================================================================
 // CARRINHOS_NET — TELA: Controle de Mediações
-// Depende da base do index.html: $, rpc, USER, temPermissao, brl,
+// Depende da base do index.html: $, rpc, chamarFuncao, USER, temPermissao, brl,
 // dataBr, mesLabel, registrarTela, atualizarBadges, montarIrPara.
 //
 // O QUE É
@@ -144,9 +144,11 @@ const MED = (function(){
       return `<span class="pill" style="border-color:var(--ok);color:var(--ok)">${DESTINO[l.destino]||l.destino}</span> `+
              `<button class="mini dg" onclick="event.stopPropagation();MED.devolver(${l.id})">Devolver à fila</button>`;
     }
+    const ed = temPermissao('mediacoes.editar')
+      ? ` <button class="mini" title="Corrigir os dados deste caso" onclick="event.stopPropagation();MED.abrir(${l.id})">✎</button>` : '';
     return `<button class="mini" onclick="event.stopPropagation();MED.classificar(${l.id},'devolucao')">Devolução</button> `+
            `<button class="mini" onclick="event.stopPropagation();MED.classificar(${l.id},'reclamacao')">Reclamação</button> `+
-           `<button class="mini" onclick="event.stopPropagation();MED.classificar(${l.id},'cancelamento')">Cancelamento</button>`;
+           `<button class="mini" onclick="event.stopPropagation();MED.classificar(${l.id},'cancelamento')">Cancelamento</button>`+ed;
   }
 
   function renderTabela(){
@@ -158,7 +160,7 @@ const MED = (function(){
       return `<tr class="${pend?'pendente':''}">
         <td>${dataBr(l.data_abertura)}</td>
         <td>${l.canal||'—'}</td>
-        <td><b>${l.id_pedido||'—'}</b></td>
+        <td>${semVenda(l)?'<span title="Nenhuma venda com este número — corrija pelo ✎ antes de classificar" style="color:var(--warn)">⚠ </span>':''}<b>${semVenda(l)?'sem pedido':l.id_pedido||'—'}</b></td>
         <td>${l.cliente||'—'}</td>
         <td>${l.uf||'—'}</td>
         <td class="num">${l.qtd_itens??'—'}</td>
@@ -200,6 +202,81 @@ const MED = (function(){
     }catch(e){ alert('Não foi possível devolver: '+(e.message||e)); }
   }
 
+  // Busca manual no Mercado Livre. A rotina automática roda às 03:40,
+  // mas um caso aberto agora só apareceria amanhã sem isto.
+  // Encadeia lote a lote até acabar e só então manda processar — igual
+  // ao botão das telas de Vendas e Ocorrências.
+  async function buscar(){
+    if(!temPermissao('sync.executar')){ alert('Você não tem permissão para atualizar.'); return; }
+    const b=f('buscar'); if(b.disabled)return; b.disabled=true; const t=b.textContent;
+    try{
+      f('msg').textContent='Buscando no Mercado Livre…';
+      let g=0;
+      while(true){
+        const r=await chamarFuncao('sync-mediacoes',{dias:180,limite:20});
+        g++;
+        if(r && r.restantes>0){ f('msg').textContent=`Buscando… (faltam ~${r.restantes})`; }
+        else break;
+        if(g>400) break;   // trava: 400 lotes de 20 cobre folgadamente a janela
+      }
+      f('msg').textContent='Processando…';
+      await rpc('cn_processar_mediacoes',{p_usuario_id:USER.id});
+      KPIS=null; await carregar(true);
+      f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
+    }catch(e){ alert('Erro ao atualizar: '+(e.message||e)); f('msg').textContent=''; }
+    finally{ b.disabled=false; b.textContent=t; }
+  }
+
+  // Caso que entrou sem casar com nenhuma venda: o id_pedido guarda o
+  // claim como marcador. Classificar assim não cria nada no destino —
+  // por isso o aviso na coluna e o botão de correção.
+  function semVenda(l){ return String(l.id_pedido||'').startsWith('sem-pedido:'); }
+
+  let EDIT_ID=null;
+
+  function abrir(id){
+    if(!temPermissao('mediacoes.editar')) return;
+    const l=LINHAS.find(x=>x.id===id); if(!l) return;
+    if(l.destino){ alert('Este caso já foi classificado. Devolva à fila antes de editar.'); return; }
+    EDIT_ID=id; f('drawer-erro').textContent='';
+    f('e-claim').value=l.claim_id||'—';
+    f('e-tipo').value=(TIPO[l.tipo_ml]||l.tipo_ml||'—');
+    f('e-idped').value = semVenda(l) ? '' : (l.id_pedido||'');
+    f('e-abertura').value=l.data_abertura||'';
+    f('e-canal').value=l.canal||''; f('e-cliente').value=l.cliente||'';
+    f('e-uf').value=l.uf||''; f('e-valor').value=l.valor_pedido??'';
+    f('e-itens').value=l.qtd_itens??''; f('e-obs').value=l.observacao||'';
+    $('med-overlay').classList.add('open'); $('med-drawer').classList.add('open');
+    setTimeout(()=>f('e-idped').focus(),50);
+  }
+  function fecharDrawer(){
+    $('med-overlay').classList.remove('open'); $('med-drawer').classList.remove('open'); EDIT_ID=null;
+  }
+
+  async function salvarEdicao(){
+    if(EDIT_ID==null) return;
+    f('drawer-erro').textContent='';
+    const b=f('drawer-save'); b.disabled=true; const t=b.textContent; b.textContent='Salvando…';
+    const num=(id)=>{const v=f(id).value;return v===''?null:Number(v);};
+    try{
+      const r=await rpc('cn_editar_mediacao',{
+        p_usuario_id:USER.id, p_mediacao_id:EDIT_ID,
+        p_id_pedido:f('e-idped').value.trim()||null,
+        p_data_abertura:f('e-abertura').value||null,
+        p_canal:f('e-canal').value.trim()||null,
+        p_cliente:f('e-cliente').value.trim()||null,
+        p_uf:f('e-uf').value.trim().toUpperCase()||null,
+        p_valor_pedido:num('e-valor'),
+        p_qtd_itens:num('e-itens'),
+        p_observacao:f('e-obs').value.trim()||null
+      });
+      fecharDrawer(); KPIS=null; await carregar();
+      // avisa quando continua sem venda: classificar não criaria nada
+      f('msg').textContent = (r && r.aviso) ? r.aviso : 'Dados corrigidos.';
+    }catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); }
+    finally{ b.disabled=false; b.textContent=t; }
+  }
+
   function limparFiltros(){
     ['busca','mes','canal','destino','tipo','status'].forEach(id=>{ f(id).value=''; });
     f('ordem').value='recentes';
@@ -232,12 +309,18 @@ const MED = (function(){
     ['mes','canal'].forEach(id=>f(id).addEventListener('change',()=>{ KPIS=null; carregar(true); }));
     ['destino','tipo','status','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true,{kpis:false})));
     f('limpar').addEventListener('click',limparFiltros);
+    const bx=f('buscar');
+    if(bx){ if(temPermissao('sync.executar')) bx.addEventListener('click',buscar); else bx.style.display='none'; }
     f('exportar').addEventListener('click',exportar);
+    f('drawer-x').addEventListener('click',fecharDrawer);
+    f('drawer-cancel').addEventListener('click',fecharDrawer);
+    f('drawer-save').addEventListener('click',salvarEdicao);
+    $('med-overlay').addEventListener('click',fecharDrawer);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(false,{kpis:false}); } });
     f('next').addEventListener('click',()=>{ PAGINA++; carregar(false,{kpis:false}); });
   }
 
-  return { init, classificar, devolver, filtrarDestino };
+  return { init, classificar, devolver, filtrarDestino, abrir };
 })();
 window.MED = MED;
 registrarTela('mediacoes', MED);

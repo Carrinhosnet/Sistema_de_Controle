@@ -343,7 +343,8 @@
         <button data-tela="vendas" id="nav-vendas">Controle de Vendas<span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
         <button data-tela="envios" id="nav-envios">Controle de Envios<span class="badge-dot" id="badge-envios" style="display:none"></span></button>
         <button data-tela="mediacoes" id="nav-mediacoes">Controle de Mediações<span class="badge-dot" id="badge-mediacoes" style="display:none"></span></button>
-        <button data-tela="ocorrencias" id="nav-ocorrencias">Cancelamentos e Devoluções<span class="badge-dot" id="badge-ocorrencias" style="display:none"></span></button>
+        <button data-tela="devolucoes" id="nav-devolucoes">Controle de Devoluções<span class="badge-dot" id="badge-devolucoes" style="display:none"></span></button>
+        <button data-tela="cancelamentos" id="nav-cancelamentos">Controle de Cancelamentos<span class="badge-dot" id="badge-cancelamentos" style="display:none"></span></button>
         <button data-tela="reclamacoes" id="nav-reclamacoes">Controle de Reclamações<span class="badge-dot" id="badge-reclamacoes" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-financeiro">
@@ -404,27 +405,54 @@
       </span></div></div>
     </section>
 
-    <!-- =================== TELA CANCELAMENTOS E DEVOLUÇÕES =================== -->
-    <section class="tela" id="scr-ocorrencias">
+    <!-- =================== TELA CANCELAMENTOS =================== -->
+    <section class="tela" id="scr-cancelamentos">
       <div class="toolbar">
         <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input id="oc-busca" placeholder="Buscar cliente, ID do pedido ou SKU" /></div>
-        <select id="oc-tipo"><option value="">Todos os tipos</option><option value="Cancelamento">Cancelamentos</option><option value="Devolução">Devoluções</option></select>
-        <select id="oc-mes"><option value="">Todos os meses</option></select>
-        <select id="oc-canal"><option value="">Todos os canais</option></select>
-        <select id="oc-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
-        <button class="act prim" id="oc-lancar">+ Lançar devolução</button>
-        <button class="act prim" id="oc-buscar">↻ Buscar (180d)</button>
-        <button class="act" id="oc-exportar">Exportar CSV</button>
-        <span id="oc-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+          <input id="can-busca" placeholder="Buscar cliente, ID do pedido ou SKU" /></div>
+        <select id="can-mes"><option value="">Todos os meses</option></select>
+        <select id="can-canal"><option value="">Todos os canais</option></select>
+        <select id="can-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
+        <button class="act prim" id="can-limpar" title="Remove todos os filtros">Limpar filtros</button>
+        <button class="act prim" id="can-exportar">Exportar CSV</button>
+        <span id="can-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
-      <div class="kpis" id="oc-kpis"></div>
+      <div class="kpis" id="can-kpis"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th>Tipo</th><th>Data</th><th>Mês</th><th>Canal</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
-        <th class="num">Valor</th><th>Detalhe</th><th>Status</th><th class="num">Custo Dev.</th><th class="num">Custo Prej.</th><th>Data Venda</th><th style="text-align:center">Conferido</th>
-      </tr></thead><tbody id="oc-tbody"></tbody></table></div>
-      <div class="foot"><span id="oc-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
-        <button class="act" id="oc-prev" style="padding:4px 10px">‹ Anterior</button><span id="oc-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="oc-next" style="padding:4px 10px">Próxima ›</button>
+        <th>Data Cancel.</th><th>Data Venda</th><th>Canal</th><th>ID Pedido</th><th>SKU</th>
+        <th class="num">Qtd</th><th>Cliente</th><th>UF</th>
+        <th class="num">Valor</th><th class="num">Comissão</th><th>Envio</th>
+        <th style="text-align:center">Conferido</th>
+      </tr></thead><tbody id="can-tbody"></tbody></table></div>
+      <div class="foot"><span id="can-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="can-prev" style="padding:4px 10px">‹ Anterior</button><span id="can-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="can-next" style="padding:4px 10px">Próxima ›</button>
+      </span></div></div>
+    </section>
+
+    <!-- =================== TELA DEVOLUÇÕES =================== -->
+    <section class="tela" id="scr-devolucoes">
+      <div class="toolbar">
+        <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="dev-busca" placeholder="Buscar cliente, ID do pedido, SKU ou NF" /></div>
+        <select id="dev-mes"><option value="">Todos os meses</option></select>
+        <select id="dev-canal"><option value="">Todos os canais</option></select>
+        <select id="dev-status"><option value="">Todos os status</option></select>
+        <select id="dev-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
+        <button class="act prim" id="dev-limpar" title="Remove todos os filtros">Limpar filtros</button>
+        <button class="act prim" id="dev-lancar">+ Lançar devolução</button>
+        <button class="act prim" id="dev-exportar">Exportar CSV</button>
+        <span id="dev-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div class="kpis" id="dev-kpis"></div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Data Chegada</th><th>Data Venda</th><th>Canal</th><th>ID Pedido</th><th>SKU</th>
+        <th class="num">Qtd</th><th>Cliente</th><th>UF</th>
+        <th class="num">Valor NF</th><th>N° NF</th><th>Tipo</th><th>Status</th>
+        <th class="num">Custo Dev.</th><th class="num">Prejuízo</th>
+        <th style="text-align:center">Conferido</th>
+      </tr></thead><tbody id="dev-tbody"></tbody></table></div>
+      <div class="foot"><span id="dev-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
+        <button class="act" id="dev-prev" style="padding:4px 10px">‹ Anterior</button><span id="dev-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="dev-next" style="padding:4px 10px">Próxima ›</button>
       </span></div></div>
     </section>
 
@@ -527,6 +555,7 @@
           <option value="menor_valor">Menor valor primeiro</option>
         </select>
         <button class="act prim" id="med-limpar" title="Remove todos os filtros, inclusive os aplicados pelos cartões">Limpar filtros</button>
+        <button class="act prim" id="med-buscar" title="Busca novos casos no Mercado Livre agora, sem esperar a rotina das 03:40">↻ Atualizar</button>
         <button class="act prim" id="med-exportar">Exportar CSV</button>
         <span id="med-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
@@ -1011,53 +1040,79 @@
   </div>
 </div></div>
 
-<!-- ===== DRAWER DEVOLUÇÃO (tela Cancelamentos e Devoluções) ===== -->
-<div class="overlay" id="oc-overlay"></div>
-<aside class="drawer" id="oc-drawer">
-  <h2>Editar devolução <button class="x" id="oc-drawer-x">×</button></h2>
-  <div class="drawer-erro" id="oc-drawer-erro"></div>
+<!-- ===== DRAWER EDIÇÃO (tela Mediações) ===== -->
+<div class="overlay" id="med-overlay"></div>
+<aside class="drawer" id="med-drawer">
+  <h2>Corrigir dados do caso <button class="x" id="med-drawer-x">×</button></h2>
+  <div class="drawer-erro" id="med-drawer-erro"></div>
+  <div class="body">
+    <div class="sec-tit">Do Mercado Livre (não editável)</div>
+    <div class="grid">
+      <div class="fld"><label>Claim</label><input id="med-e-claim" readonly></div>
+      <div class="fld"><label>Tipo</label><input id="med-e-tipo" readonly></div>
+    </div>
+    <div class="sec-tit">Dados do caso</div>
+    <div class="grid">
+      <div class="fld full"><label>ID do pedido</label><input id="med-e-idped" placeholder="Corrigir o número revincula a venda automaticamente"></div>
+      <div class="fld"><label>Data de abertura</label><input type="date" id="med-e-abertura"></div>
+      <div class="fld"><label>Canal</label><input id="med-e-canal"></div>
+      <div class="fld"><label>Cliente</label><input id="med-e-cliente"></div>
+      <div class="fld"><label>UF</label><input id="med-e-uf" maxlength="2"></div>
+      <div class="fld"><label>Valor do pedido (R$)</label><input type="number" step="0.01" id="med-e-valor"></div>
+      <div class="fld"><label>Quantidade de itens</label><input type="number" step="1" id="med-e-itens"></div>
+      <div class="fld full"><label>Observação</label><input id="med-e-obs"></div>
+    </div>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="med-drawer-cancel">Cancelar</button><button class="btn-save" id="med-drawer-save">Salvar</button></div>
+</aside>
+
+<!-- ===== DRAWER DEVOLUÇÃO (tela Devoluções) ===== -->
+<div class="overlay" id="dev-overlay"></div>
+<aside class="drawer" id="dev-drawer">
+  <h2>Editar devolução <button class="x" id="dev-drawer-x">×</button></h2>
+  <div class="drawer-erro" id="dev-drawer-erro"></div>
   <div class="body">
     <div class="sec-tit">Pedido (de Vendas)</div>
     <div class="grid">
-      <div class="fld"><label>Data venda</label><input id="oc-e-dvenda" readonly></div>
-      <div class="fld"><label>Canal</label><input id="oc-e-canal" readonly></div>
-      <div class="fld"><label>ID do pedido</label><input id="oc-e-idped" readonly></div>
-      <div class="fld"><label>SKU</label><input id="oc-e-modelo" readonly></div>
-      <div class="fld"><label>Cliente</label><input id="oc-e-cliente" readonly></div>
-      <div class="fld"><label>UF</label><input id="oc-e-uf" readonly></div>
+      <div class="fld"><label>Data venda</label><input id="dev-e-dvenda" readonly></div>
+      <div class="fld"><label>Canal</label><input id="dev-e-canal" readonly></div>
+      <div class="fld"><label>ID do pedido</label><input id="dev-e-idped" readonly></div>
+      <div class="fld"><label>SKU</label><input id="dev-e-modelo" readonly></div>
+      <div class="fld"><label>Cliente</label><input id="dev-e-cliente" readonly></div>
+      <div class="fld"><label>UF</label><input id="dev-e-uf" readonly></div>
     </div>
     <div class="sec-tit">Devolução</div>
     <div class="grid">
-      <div class="fld"><label>Data de chegada</label><input type="date" id="oc-e-chegada"></div>
-      <div class="fld"><label>Tipo de devolução</label><select id="oc-e-tipo"><option value="">—</option><option>Reclamação</option><option>Mediação</option><option>Devolução Simples</option></select></div>
-      <div class="fld full"><label>Status</label><select id="oc-e-status"></select></div>
-      <div class="fld full"><label>Motivo</label><input id="oc-e-motivo"></div>
+      <div class="fld"><label>Data de chegada</label><input type="date" id="dev-e-chegada"></div>
+      <div class="fld"><label>Tipo de devolução</label><select id="dev-e-tipo"><option value="">—</option><option>Reclamação</option><option>Mediação</option><option>Devolução Simples</option></select></div>
+      <div class="fld full"><label>Status</label><select id="dev-e-status"></select></div>
+      <div class="fld full"><label>Motivo</label><input id="dev-e-motivo"></div>
     </div>
     <div class="sec-tit">Nota fiscal</div>
     <div class="grid">
-      <div class="fld"><label>Valor da NF (R$)</label><input type="number" step="0.01" id="oc-e-valornf"></div>
-      <div class="fld"><label>Nº NF</label><input id="oc-e-numnf"></div>
-      <div class="fld"><label>NFD</label><input id="oc-e-nfd"></div>
+      <div class="fld"><label>Valor da NF (R$)</label><input type="number" step="0.01" id="dev-e-valornf"></div>
+      <div class="fld"><label>Nº NF</label><input id="dev-e-numnf"></div>
+      <div class="fld"><label>NFD</label><input id="dev-e-nfd"></div>
     </div>
     <div class="sec-tit">Custos e observações</div>
     <div class="grid">
-      <div class="fld"><label>Custo de devolução (R$)</label><input type="number" step="0.01" id="oc-e-custodev"></div>
-      <div class="fld"><label>Custo do prejuízo (R$)</label><input type="number" step="0.01" id="oc-e-custoprej"></div>
-      <div class="fld"><label>Incluídas</label><input id="oc-e-incluidas"></div>
-      <div class="fld full"><label>Observações</label><input id="oc-e-obs"></div>
+      <div class="fld"><label>Custo de devolução (R$)</label><input type="number" step="0.01" id="dev-e-custodev"></div>
+      <div class="fld"><label>Custo do prejuízo (R$)</label><input type="number" step="0.01" id="dev-e-custoprej"></div>
+      <div class="fld"><label>Incluídas</label><input id="dev-e-incluidas"></div>
+      <div class="fld full"><label>Observações</label><input id="dev-e-obs"></div>
     </div>
   </div>
-  <div class="foot"><button class="btn-cancel" id="oc-drawer-cancel">Cancelar</button><button class="btn-save" id="oc-drawer-save">Salvar</button></div>
+  <div class="foot"><button class="btn-cancel" id="dev-drawer-cancel">Cancelar</button><button class="btn-save" id="dev-drawer-save">Salvar</button></div>
 </aside>
 
 <!-- ===== MODAL LANÇAMENTO MANUAL (DEVOLUÇÕES) ===== -->
-<div class="modal" id="oc-modal"><div class="box">
-  <h3>Lançar devolução manual <button class="x" id="oc-modal-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
+<div class="modal" id="dev-modal"><div class="box">
+  <h3>Lançar devolução manual <button class="x" id="dev-modal-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">×</button></h3>
   <div class="content">
     <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Busque um pedido de Vendas que ainda não esteja em Devoluções.</p>
-    <div class="field"><input id="oc-m-busca" placeholder="Buscar cliente, ID do pedido ou SKU" style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
-    <div class="drawer-erro" id="oc-m-erro" style="padding:6px 0"></div>
-    <div id="oc-m-res"></div>
+    <div class="field"><input id="dev-m-busca" placeholder="Buscar cliente, ID do pedido ou SKU" style="width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text)"></div>
+    <div class="drawer-erro" id="dev-m-erro" style="padding:6px 0"></div>
+    <div id="dev-m-res"></div>
   </div>
 </div></div>
 
@@ -1624,7 +1679,8 @@ async function atualizarBadges(){
   const n = await Promise.all([
     setDot('badge-vendas',        temPermissao('vendas.ver'),        'cn_vendas_pendencias'),
     setDot('badge-mediacoes',     temPermissao('mediacoes.ver'),     'cn_mediacoes_pendencias'),
-    setDot('badge-ocorrencias', temPermissao('cancelamentos.ver')||temPermissao('devolucoes.ver'), 'cn_ocorrencias_pendencias'),
+    setDot('badge-devolucoes',    temPermissao('devolucoes.ver'),    'cn_devolucoes_pendencias'),
+    setDot('badge-cancelamentos', temPermissao('cancelamentos.ver'), 'cn_cancelamentos_pendencias'),
     setDot('badge-reclamacoes',   temPermissao('reclamacoes.ver'),   'cn_reclamacoes_pendencias'),
     setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias'),
     setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias'),
@@ -1756,6 +1812,8 @@ async function abrirApp(){
   // métricas saem de vendas e envios: quem vê vendas vê as métricas
   $('nav-metricas').style.display = temPermissao('vendas.ver') ? '' : 'none';
   $('nav-mediacoes').style.display = temPermissao('mediacoes.ver') ? '' : 'none';
+  $('nav-devolucoes').style.display = temPermissao('devolucoes.ver') ? '' : 'none';
+  $('nav-cancelamentos').style.display = temPermissao('cancelamentos.ver') ? '' : 'none';
   $('nav-cadastro').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
   $('nav-produtos').style.display = temPermissao('produtos.ver') ? '' : 'none';
   $('nav-opcoes').style.display = temPermissao('usuarios.gerenciar') ? '' : 'none';
@@ -1803,7 +1861,8 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 
 <!-- ============ TELAS (uma por arquivo) ============ -->
 <script src="vendas.js"></script>
-<script src="ocorrencias.js"></script>
+<script src="cancelamentos.js"></script>
+<script src="devolucoes.js"></script>
 <script src="reclamacoes.js"></script>
 <script src="envios.js"></script>
 <script src="boletos.js"></script>
