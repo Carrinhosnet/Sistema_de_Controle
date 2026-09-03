@@ -115,16 +115,20 @@ const MED = (function(){
   function renderKpis(k){
     const box=f('kpis');
     if(!k){ box.innerHTML=''; return; }
+    // Ordem: o que falta decidir vem primeiro; depois os destinos na
+    // sequência do ciclo da venda (problema, retorno, cancelamento); o
+    // total fecha, sem cor, por ser leitura e não filtro de trabalho.
     box.innerHTML =
-      cardClick('A triar', n0(k.pendentes), 'c-conf', 'pendentes',
-                'Casos ainda sem destino') +
-      cardClick('Para devolução', n0(k.para_devolucao), 'm-devol', 'devolucao',
-                'Já enviados a Devoluções') +
+      cardClick('A triar', n0(k.pendentes), 'm-triar', 'pendentes',
+                'Casos cuja análise ainda não foi realizada') +
       cardClick('Para reclamação', n0(k.para_reclamacao), 'm-recla', 'reclamacao',
-                'Já enviados a Reclamações') +
+                'Vendas que tiveram algum problema e precisaram de tratativa') +
+      cardClick('Para devolução', n0(k.para_devolucao), 'm-devol', 'devolucao',
+                'Vendas que foram enviadas, mas por algum motivo estão retornando à empresa') +
       cardClick('Para cancelamento', n0(k.para_cancelamento), 'm-canc', 'cancelamento',
-                'Já enviados a Cancelamentos') +
-      cardHtml('Total de casos', n0(k.total), 'Tudo no recorte dos filtros');
+                'Vendas canceladas antes mesmo de serem enviadas') +
+      cardHtml('Total de casos', n0(k.total),
+                'Todas as vendas importadas para esta tela, qualquer que seja o motivo ou a resolução');
   }
 
   function filtrarDestino(v){
