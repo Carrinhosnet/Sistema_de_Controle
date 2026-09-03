@@ -1805,7 +1805,6 @@ async function abrirApp(){
   $('who').textContent = USER.nome + (USER.perfil_nome? ' · '+USER.perfil_nome : '');
   await carregarPermissoes();
   $('nav-vendas').style.display = temPermissao('vendas.ver') ? '' : 'none';
-  $('nav-ocorrencias').style.display = (temPermissao('cancelamentos.ver')||temPermissao('devolucoes.ver')) ? '' : 'none';
   $('nav-reclamacoes').style.display = temPermissao('reclamacoes.ver') ? '' : 'none';
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
@@ -1831,7 +1830,9 @@ async function abrirApp(){
   atualizarBadges();
   carregarUltimaAuto();
   const primeira = temPermissao('vendas.ver') ? 'vendas'
-    : (temPermissao('cancelamentos.ver')||temPermissao('devolucoes.ver')) ? 'ocorrencias'
+    : temPermissao('mediacoes.ver') ? 'mediacoes'
+    : temPermissao('devolucoes.ver') ? 'devolucoes'
+    : temPermissao('cancelamentos.ver') ? 'cancelamentos'
     : temPermissao('reclamacoes.ver') ? 'reclamacoes'
     : temPermissao('envios.ver') ? 'envios'
     : temPermissao('boletos.ver') ? 'boletos'

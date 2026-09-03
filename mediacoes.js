@@ -213,7 +213,7 @@ const MED = (function(){
       f('msg').textContent='Buscando no Mercado Livre…';
       let g=0;
       while(true){
-        const r=await chamarFuncao('sync-mediacoes',{dias:180,limite:20});
+        const r=await chamarFuncao('sync-mediacoes',{dias:90,limite:20});
         g++;
         if(r && r.restantes>0){ f('msg').textContent=`Buscando… (faltam ~${r.restantes})`; }
         else break;
