@@ -35,6 +35,7 @@ const MED = (function(){
   function filtros(){ return {
     p_usuario_id:USER.id,
     p_mes:f('mes').value||null,
+    p_mes_venda:f('mesvenda').value||null,
     p_canal:f('canal').value||null,
     p_destino:f('destino').value||null,
     p_busca:f('busca').value.trim()||null
@@ -44,6 +45,7 @@ const MED = (function(){
   function filtrosKpi(){ return {
     p_usuario_id:USER.id,
     p_mes:f('mes').value||null,
+    p_mes_venda:f('mesvenda').value||null,
     p_canal:f('canal').value||null
   }; }
 
@@ -53,6 +55,10 @@ const MED = (function(){
     try{ const meses=await rpc('cn_meses_mediacoes',{p_usuario_id:USER.id});
       (meses||[]).forEach(m=>{ const o=document.createElement('option');
         o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); });
+    }catch(e){}
+    try{ const mv=await rpc('cn_meses_venda_mediacoes',{p_usuario_id:USER.id});
+      (mv||[]).forEach(m=>{ const o=document.createElement('option');
+        o.value=m.mes;o.textContent=mesLabel(m.mes); f('mesvenda').appendChild(o); });
     }catch(e){}
     try{ const canais=await rpc('cn_canais_mediacoes',{p_usuario_id:USER.id});
       (canais||[]).forEach(c=>{ const o=document.createElement('option');
@@ -282,7 +288,7 @@ const MED = (function(){
   }
 
   function limparFiltros(){
-    ['busca','mes','canal','destino'].forEach(id=>{ f(id).value=''; });
+    ['busca','mes','mesvenda','canal','destino'].forEach(id=>{ f(id).value=''; });
     f('ordem').value='recentes';
     KPIS=null; carregar(true);
   }
@@ -310,7 +316,7 @@ const MED = (function(){
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>{ KPIS=null; carregar(true); },400); });
     // mês e canal mexem nos cartões; destino, tipo, status e ordem não
-    ['mes','canal'].forEach(id=>f(id).addEventListener('change',()=>{ KPIS=null; carregar(true); }));
+    ['mes','mesvenda','canal'].forEach(id=>f(id).addEventListener('change',()=>{ KPIS=null; carregar(true); }));
     ['destino','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true,{kpis:false})));
     f('limpar').addEventListener('click',limparFiltros);
     const bx=f('buscar');

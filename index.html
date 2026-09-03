@@ -527,19 +527,22 @@
       <div class="toolbar">
         <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           <input id="med-busca" placeholder="Buscar cliente, ID do pedido ou claim"></div>
-        <select id="med-mes"><option value="">Todos os meses</option></select>
+        <select id="med-mes"><option value="">Todos os meses (abertura)</option></select>
+        <select id="med-mesvenda"><option value="">Todos os meses (venda)</option></select>
         <select id="med-canal"><option value="">Todos os canais</option></select>
         <select id="med-destino">
           <option value="">Todos os destinos</option>
-          <option value="pendentes">A triar</option>
-          <option value="devolucao">Devolução</option>
-          <option value="reclamacao">Reclamação</option>
-          <option value="cancelamento">Cancelamento</option>
+          <option value="pendentes">Aguardando triagem</option>
+          <option value="devolucao">Enviados a Devoluções</option>
+          <option value="reclamacao">Enviados a Reclamações</option>
+          <option value="cancelamento">Enviados a Cancelamentos</option>
         </select>
         <select id="med-ordem">
-          <option value="recentes">Mais recentes primeiro</option>
-          <option value="antigos">Mais antigos primeiro</option>
-          <option value="pendentes">A triar primeiro</option>
+          <option value="recentes">Abertura mais recente</option>
+          <option value="antigos">Abertura mais antiga</option>
+          <option value="venda_recente">Venda mais recente</option>
+          <option value="venda_antiga">Venda mais antiga</option>
+          <option value="pendentes">Aguardando triagem primeiro</option>
           <option value="maior_valor">Maior valor primeiro</option>
           <option value="menor_valor">Menor valor primeiro</option>
         </select>
