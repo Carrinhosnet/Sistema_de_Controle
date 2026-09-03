@@ -132,11 +132,9 @@ const MED = (function(){
       return `<span class="pill" style="border-color:var(--ok);color:var(--ok)">${DESTINO[l.destino]||l.destino}</span> `+
              `<button class="mini dg" onclick="event.stopPropagation();MED.devolver(${l.id})">Devolver à fila</button>`;
     }
-    const ed = temPermissao('mediacoes.editar')
-      ? ` <button class="mini" title="Corrigir os dados deste caso" onclick="event.stopPropagation();MED.abrir(${l.id})">✎</button>` : '';
     return `<button class="mini" onclick="event.stopPropagation();MED.classificar(${l.id},'devolucao')">Devolução</button> `+
            `<button class="mini" onclick="event.stopPropagation();MED.classificar(${l.id},'reclamacao')">Reclamação</button> `+
-           `<button class="mini" onclick="event.stopPropagation();MED.classificar(${l.id},'cancelamento')">Cancelamento</button>`+ed;
+           `<button class="mini" onclick="event.stopPropagation();MED.classificar(${l.id},'cancelamento')">Cancelamento</button>`;
   }
 
   function renderTabela(){
@@ -144,11 +142,12 @@ const MED = (function(){
     if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="9" class="empty">Nenhum caso encontrado.</td></tr>'; return; }
     tb.innerHTML=LINHAS.map(l=>{
       const pend = !l.destino;
-      return `<tr class="${pend?'pendente':''}">
+      const clicavel = pend && temPermissao('mediacoes.editar');
+      return `<tr class="${pend?'pendente':''}"${clicavel?` style="cursor:pointer" onclick="MED.abrir(${l.id})"`:''}>
         <td>${dataBr(l.data_abertura)}</td>
         <td>${dataBr(l.data_venda)}</td>
         <td>${l.canal||'—'}</td>
-        <td>${semVenda(l)?'<span title="Nenhuma venda com este número — corrija pelo ✎ antes de classificar" style="color:var(--warn)">⚠ </span>':''}<b>${semVenda(l)?'sem pedido':l.id_pedido||'—'}</b></td>
+        <td>${semVenda(l)?'<span title="Nenhuma venda com este número — clique na linha para corrigir antes de classificar" style="color:var(--warn)">⚠ </span>':''}<b>${semVenda(l)?'sem pedido':l.id_pedido||'—'}</b></td>
         <td>${l.cliente||'—'}</td>
         <td>${l.uf||'—'}</td>
         <td class="num">${l.qtd_itens??'—'}</td>
