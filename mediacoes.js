@@ -14,24 +14,20 @@
 //   Devolver à fila APAGA o que a triagem criou, e por isso pede
 //   confirmação: o preenchimento feito na tela final se perde.
 //
-// SEM SUGESTÃO DE DESTINO, por decisão: o tipo que o ML informa fica
-// visível na coluna, mas quem decide é você.
+// A CLASSIFICAÇÃO DO MERCADO LIVRE NÃO APARECE AQUI. Tipo, fase, status
+// e motivo continuam gravados e vão no CSV, mas saíram da tela: o ML
+// classifica por critério próprio, diferente do de vocês, e mostrar as
+// duas classificações lado a lado induzia a decisão errada.
 //
-// Fase, status e motivo saíram da tabela — como aqui não se edita nada,
-// eles não mudavam decisão nenhuma. Continuam gravados e vão no CSV; o
-// único resquício na tela é o ponto amarelo ao lado do tipo, que marca
-// caso ainda em aberto no Mercado Livre.
+// Isso resolve de quebra um problema de dado velho: a sync não revisita
+// claim já gravado, então um caso que estivesse "em aberto" no ML
+// continuaria assim para sempre na tela. Sem exibir, não há o que
+// envelhecer.
 // =====================================================================
 const MED = (function(){
   let LINHAS=[], TOTAL=0, PAGINA=0, KPIS=null; const POR=100;
   const f=(id)=>$('med-'+id);
 
-  // rótulos do que o Mercado Livre devolve, para a tabela não mostrar
-  // o termo cru da API
-  const TIPO={
-    mediations:'Mediação', returns:'Devolução ML',
-    cancel_purchase:'Cancelamento', cancel_sale:'Cancelamento (venda)'
-  };
   const DESTINO={
     devolucao:'Devolução', reclamacao:'Reclamação', cancelamento:'Cancelamento'
   };
@@ -41,8 +37,6 @@ const MED = (function(){
     p_mes:f('mes').value||null,
     p_canal:f('canal').value||null,
     p_destino:f('destino').value||null,
-    p_tipo:f('tipo').value||null,
-    p_status:f('status').value||null,
     p_busca:f('busca').value.trim()||null
   }; }
 
@@ -70,7 +64,7 @@ const MED = (function(){
   async function carregar(reset, opts){
     if(reset) PAGINA=0;
     const precisaKpis = !(opts && opts.kpis===false) || KPIS===null;
-    f('tbody').innerHTML='<tr><td colspan="9" class="loading">Carregando mediações…</td></tr>';
+    f('tbody').innerHTML='<tr><td colspan="8" class="loading">Carregando mediações…</td></tr>';
     const fl=filtros();
     try{
       const chamadas=[ rpc('cn_listar_mediacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}) ];
@@ -83,7 +77,7 @@ const MED = (function(){
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){
-      f('tbody').innerHTML='<tr><td colspan="9" class="empty">Erro: '+(e.message||e)+'</td></tr>';
+      f('tbody').innerHTML='<tr><td colspan="8" class="empty">Erro: '+(e.message||e)+'</td></tr>';
     }
   }
 
@@ -113,8 +107,8 @@ const MED = (function(){
   }
 
   function renderKpis(k){
-    const box=f('kpis'), box2=f('kpis2');
-    if(!k){ box.innerHTML=''; if(box2) box2.innerHTML=''; return; }
+    const box=f('kpis');
+    if(!k){ box.innerHTML=''; return; }
     box.innerHTML =
       cardClick('A triar', n0(k.pendentes), 'c-conf', 'pendentes',
                 'Casos ainda sem destino') +
@@ -125,12 +119,6 @@ const MED = (function(){
       cardClick('Para cancelamento', n0(k.para_cancelamento), 'm-canc', 'cancelamento',
                 'Já enviados a Cancelamentos') +
       cardHtml('Total de casos', n0(k.total), 'Tudo no recorte dos filtros');
-    if(!box2) return;
-    box2.innerHTML =
-      cardHtml('Mediações', n0(k.qtd_mediacoes), 'Tipo mediations no ML') +
-      cardHtml('Devoluções ML', n0(k.qtd_returns), 'Tipo returns no ML') +
-      cardHtml('Cancelamentos ML', n0(k.qtd_cancel), 'Tipo cancel_purchase') +
-      cardHtml('Em aberto no ML', n0(k.qtd_abertas), 'Status opened — ainda em curso');
   }
 
   function filtrarDestino(v){
@@ -153,10 +141,9 @@ const MED = (function(){
 
   function renderTabela(){
     const tb=f('tbody');
-    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="9" class="empty">Nenhum caso encontrado.</td></tr>'; return; }
+    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="8" class="empty">Nenhum caso encontrado.</td></tr>'; return; }
     tb.innerHTML=LINHAS.map(l=>{
       const pend = !l.destino;
-      const aberto = l.status_ml==='opened';
       return `<tr class="${pend?'pendente':''}">
         <td>${dataBr(l.data_abertura)}</td>
         <td>${l.canal||'—'}</td>
@@ -165,7 +152,6 @@ const MED = (function(){
         <td>${l.uf||'—'}</td>
         <td class="num">${l.qtd_itens??'—'}</td>
         <td class="num">${l.valor_pedido==null?'—':brl(l.valor_pedido)}</td>
-        <td><span class="pill"${aberto?' title="Ainda em aberto no Mercado Livre"':''}>${TIPO[l.tipo_ml]||l.tipo_ml||'—'}</span>${aberto?' <span title="Em aberto no Mercado Livre" style="color:var(--warn)">•</span>':''}</td>
         <td class="acoes" onclick="event.stopPropagation()">${acoesHtml(l)}</td>
       </tr>`;
     }).join('');
@@ -259,7 +245,6 @@ const MED = (function(){
     if(l.destino){ alert('Este caso já foi classificado. Devolva à fila antes de editar.'); return; }
     EDIT_ID=id; f('drawer-erro').textContent='';
     f('e-claim').value=l.claim_id||'—';
-    f('e-tipo').value=(TIPO[l.tipo_ml]||l.tipo_ml||'—');
     f('e-idped').value = semVenda(l) ? '' : (l.id_pedido||'');
     f('e-abertura').value=l.data_abertura||'';
     f('e-canal').value=l.canal||''; f('e-cliente').value=l.cliente||'';
@@ -297,7 +282,7 @@ const MED = (function(){
   }
 
   function limparFiltros(){
-    ['busca','mes','canal','destino','tipo','status'].forEach(id=>{ f(id).value=''; });
+    ['busca','mes','canal','destino'].forEach(id=>{ f(id).value=''; });
     f('ordem').value='recentes';
     KPIS=null; carregar(true);
   }
@@ -326,7 +311,7 @@ const MED = (function(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>{ KPIS=null; carregar(true); },400); });
     // mês e canal mexem nos cartões; destino, tipo, status e ordem não
     ['mes','canal'].forEach(id=>f(id).addEventListener('change',()=>{ KPIS=null; carregar(true); }));
-    ['destino','tipo','status','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true,{kpis:false})));
+    ['destino','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true,{kpis:false})));
     f('limpar').addEventListener('click',limparFiltros);
     const bx=f('buscar');
     if(bx){ if(temPermissao('sync.executar')) bx.addEventListener('click',buscar); else bx.style.display='none'; }
