@@ -202,25 +202,44 @@ const MED = (function(){
     }catch(e){ alert('Não foi possível devolver: '+(e.message||e)); }
   }
 
-  // Busca manual no Mercado Livre. A rotina automática roda às 03:40,
-  // mas um caso aberto agora só apareceria amanhã sem isto.
-  // Encadeia lote a lote até acabar e só então manda processar — igual
-  // ao botão das telas de Vendas e Ocorrências.
+  // Busca manual nas DUAS fontes, na mesma ordem da rotina automática:
+  // Bling (cancelamentos) e depois Mercado Livre (claims). São APIs
+  // diferentes e funções diferentes — buscar só uma deixaria metade dos
+  // casos de fora.
+  //
+  // A ordem importa pouco, porque o processamento trata o encontro nos
+  // dois sentidos, mas seguir a mesma da rotina evita comportamento
+  // diferente entre o automático e o manual.
   async function buscar(){
     if(!temPermissao('sync.executar')){ alert('Você não tem permissão para atualizar.'); return; }
     const b=f('buscar'); if(b.disabled)return; b.disabled=true; const t=b.textContent;
     try{
-      f('msg').textContent='Buscando no Mercado Livre…';
+      // ---- 1) cancelamentos no Bling ----
+      f('msg').textContent='Buscando cancelamentos no Bling…';
       let g=0;
+      while(true){
+        const r=await chamarFuncao('sync-bling',{dias:90,limite:200,modo:'cancelamentos'});
+        g++;
+        if(r && r.restantes>0){ f('msg').textContent=`Buscando no Bling… (faltam ~${r.restantes})`; }
+        else break;
+        if(g>200) break;
+      }
+      f('msg').textContent='Processando cancelamentos…';
+      await rpc('cn_processar_cancelamentos',{p_usuario_id:USER.id});
+
+      // ---- 2) claims no Mercado Livre ----
+      f('msg').textContent='Buscando no Mercado Livre…';
+      g=0;
       while(true){
         const r=await chamarFuncao('sync-mediacoes',{dias:90,limite:20});
         g++;
-        if(r && r.restantes>0){ f('msg').textContent=`Buscando… (faltam ~${r.restantes})`; }
+        if(r && r.restantes>0){ f('msg').textContent=`Buscando no ML… (faltam ~${r.restantes})`; }
         else break;
         if(g>400) break;   // trava: 400 lotes de 20 cobre folgadamente a janela
       }
       f('msg').textContent='Processando…';
       await rpc('cn_processar_mediacoes',{p_usuario_id:USER.id});
+
       KPIS=null; await carregar(true);
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
     }catch(e){ alert('Erro ao atualizar: '+(e.message||e)); f('msg').textContent=''; }
