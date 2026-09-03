@@ -64,7 +64,7 @@ const MED = (function(){
   async function carregar(reset, opts){
     if(reset) PAGINA=0;
     const precisaKpis = !(opts && opts.kpis===false) || KPIS===null;
-    f('tbody').innerHTML='<tr><td colspan="8" class="loading">Carregando mediações…</td></tr>';
+    f('tbody').innerHTML='<tr><td colspan="9" class="loading">Carregando mediações…</td></tr>';
     const fl=filtros();
     try{
       const chamadas=[ rpc('cn_listar_mediacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}) ];
@@ -77,7 +77,7 @@ const MED = (function(){
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){
-      f('tbody').innerHTML='<tr><td colspan="8" class="empty">Erro: '+(e.message||e)+'</td></tr>';
+      f('tbody').innerHTML='<tr><td colspan="9" class="empty">Erro: '+(e.message||e)+'</td></tr>';
     }
   }
 
@@ -141,11 +141,12 @@ const MED = (function(){
 
   function renderTabela(){
     const tb=f('tbody');
-    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="8" class="empty">Nenhum caso encontrado.</td></tr>'; return; }
+    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="9" class="empty">Nenhum caso encontrado.</td></tr>'; return; }
     tb.innerHTML=LINHAS.map(l=>{
       const pend = !l.destino;
       return `<tr class="${pend?'pendente':''}">
         <td>${dataBr(l.data_abertura)}</td>
+        <td>${dataBr(l.data_venda)}</td>
         <td>${l.canal||'—'}</td>
         <td>${semVenda(l)?'<span title="Nenhuma venda com este número — corrija pelo ✎ antes de classificar" style="color:var(--warn)">⚠ </span>':''}<b>${semVenda(l)?'sem pedido':l.id_pedido||'—'}</b></td>
         <td>${l.cliente||'—'}</td>
