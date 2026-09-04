@@ -137,7 +137,7 @@ const BO = (function(){
   function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="11" class="empty">Nenhum boleto encontrado.</td></tr>'; return; }
     tb.innerHTML=LINHAS.map(l=>{ const cls=getStatusClass(l.status_efetivo);
       return `<tr class="${cls}" onclick="BO.abrir(${l.id})">
-      <td>${dataBr(l.data_compra)}</td><td>${l.canal||'—'}</td><td>${l.id_pedido||'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
+      <td>${dataBr(l.data_compra)}</td><td>${l.canal||'—'}</td><td>${celPedido(l.id_pedido)}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
       <td class="num">${l.parcela}/${l.total_parcelas}</td><td class="num">${brl(l.valor)}</td><td>${dataBr(l.vencimento)}</td>
       <td><span class="pill">${l.status_efetivo||'—'}</span></td><td>${l.documento_boleto||'—'}</td>
       <td class="acoes" onclick="event.stopPropagation()">${acoesHtml(l)}</td>

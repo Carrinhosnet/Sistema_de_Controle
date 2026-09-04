@@ -161,7 +161,7 @@ const MED = (function(){
         <td>${dataBr(l.data_abertura)}</td>
         <td>${dataBr(l.data_venda)}</td>
         <td>${l.canal||'—'}</td>
-        <td>${semVenda(l)?'<span title="Nenhuma venda com este número — clique na linha para corrigir antes de classificar" style="color:var(--warn)">⚠ </span>':''}<b>${semVenda(l)?'sem pedido':l.id_pedido||'—'}</b></td>
+        <td>${semVenda(l)?'<span title="Nenhuma venda com este número — clique na linha para corrigir antes de classificar" style="color:var(--warn)">⚠ </span>':''}<b>${semVenda(l)?'sem pedido':celPedido(l.id_pedido)}</b></td>
         <td>${l.cliente||'—'}</td>
         <td>${l.uf||'—'}</td>
         <td class="num">${l.qtd_itens??'—'}</td>

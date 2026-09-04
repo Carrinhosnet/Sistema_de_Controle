@@ -48,7 +48,7 @@ const REC = (function(){
   function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="14" class="empty">Nenhuma reclamação encontrada.</td></tr>'; return; }
     const podeConf=temPermissao('reclamacoes.conferir');
     tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}" onclick="REC.abrir(${l.id})">
-      <td>${dataBr(l.data_abertura)}</td><td>${mesLabel(l.mes)||'—'}</td><td>${l.canal||'—'}</td><td>${l.id_pedido||'—'}</td><td>${l.modelo||'—'}</td>
+      <td>${dataBr(l.data_abertura)}</td><td>${mesLabel(l.mes)||'—'}</td><td>${l.canal||'—'}</td><td>${celPedido(l.id_pedido)}</td><td>${l.modelo||'—'}</td>
       <td class="num">${l.quantidade??'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
       <td>${l.numero_nf||'—'}</td><td>${l.motivo||'—'}</td><td><span class="pill">${l.status||'—'}</span></td><td>${dataBr(l.data_resolucao)}</td><td>${dataBr(l.data_venda)}</td>
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="REC.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>

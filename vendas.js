@@ -194,7 +194,7 @@ const VD = (function(){
     const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="21" class="empty">Nenhuma venda encontrada.</td></tr>'; return; }
     const podeConf=temPermissao('vendas.conferir');
     tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}" onclick="VD.abrir(${l.id})">
-      <td>${l.editado?'<span title="Editado" style="color:var(--warn)">✎ </span>':''}${dataBr(l.data_compra)}</td><td>${l.canal||'—'}</td><td>${l.tipo_envio||'—'}${l.tipo_envio_editado?' <span title="Tipo de envio alterado pelo sistema ao lançar o envio manualmente — o frete que vale é o do Controle de Envios" style="color:var(--warn)">✎</span>':''}</td><td>${l.id_pedido||'—'}</td><td>${l.modelo||'—'}</td>
+      <td>${l.editado?'<span title="Editado" style="color:var(--warn)">✎ </span>':''}${dataBr(l.data_compra)}</td><td>${l.canal||'—'}</td><td>${l.tipo_envio||'—'}${l.tipo_envio_editado?' <span title="Tipo de envio alterado pelo sistema ao lançar o envio manualmente — o frete que vale é o do Controle de Envios" style="color:var(--warn)">✎</span>':''}</td><td>${celPedido(l.id_pedido)}</td><td>${l.modelo||'—'}</td>
       <td class="num">${l.quantidade??'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
       <td class="num">${brl(l.valor_unitario)}</td><td class="num">${brl(l.valor_total)}</td><td class="num">${brl(l.valor_comissao)}</td><td class="num">${pct(l.pct_comissao_ml)}</td><td>${l.tipo_anuncio||'—'}</td>
       <td class="num">${brl(freteReal(l))}</td><td class="num">${l.frete_aguardado==null?'<span style="color:var(--muted)">—</span>':brl(l.frete_aguardado)}</td><td class="num">${celDif(l)}</td><td class="num">${brl(l.frete_extra)}</td>

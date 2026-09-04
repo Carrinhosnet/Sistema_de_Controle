@@ -101,7 +101,7 @@ const DEV = (function(){
       <td>${dataBr(l.data_chegada)}</td>
       <td>${dataBr(l.data_venda)}</td>
       <td>${l.canal||'—'}</td>
-      <td>${l.id_pedido||'—'}</td>
+      <td>${celPedido(l.id_pedido)}</td>
       <td>${l.modelo||'—'}</td>
       <td class="num">${l.quantidade??'—'}</td>
       <td>${l.cliente||'—'}</td>

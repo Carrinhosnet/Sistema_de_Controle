@@ -267,6 +267,11 @@
   .met-cx.c-site {--cnl:#15803d}
   .met-cx.c-vd   {--cnl:#a855f7}
 
+  /* número de pedido copiável: sublinhado pontilhado sinaliza a ação
+     sem transformar a célula num botão visualmente pesado */
+  .copiavel{cursor:pointer;border-bottom:1px dashed var(--muted);transition:color .15s}
+  .copiavel:hover{color:var(--accent);border-bottom-color:var(--accent)}
+
   /* linha da tela de Mediações pintada pelo destino, no mesmo padrão
      dos status da tela de Envios: rgba com 0.15 sobre o fundo escuro.
      Caso ainda na fila fica sem cor — a ausência é o próprio sinal de
@@ -1890,6 +1895,47 @@ $('btn-sair').addEventListener('click', sair);
 //   montarIrPara('vd', paginaAtual, totalPaginas, (n)=>{ PAGINA=n-1; carregar(); });
 //
 // Some sozinho quando ha uma pagina so: nao faz sentido "ir para" ali.
+// Copia um texto para a área de transferência e confirma na própria
+// célula. Usado no número do pedido, que é o dado mais colado daqui
+// para fora do sistema (Bling, Mercado Livre, e-mail).
+//
+// O navegador só libera navigator.clipboard em HTTPS; o GitHub Pages
+// serve em HTTPS, mas em teste local pelo file:// ele falha. Por isso o
+// caminho antigo com textarea + execCommand fica como reserva.
+async function copiar(texto, elemento){
+  const ok = () => {
+    if(!elemento) return;
+    const antes = elemento.innerHTML;
+    elemento.innerHTML = '<span style="color:var(--ok)">copiado</span>';
+    setTimeout(()=>{ elemento.innerHTML = antes; }, 1200);
+  };
+  try{
+    await navigator.clipboard.writeText(String(texto));
+    ok();
+  }catch(e){
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=String(texto);
+      ta.style.cssText='position:fixed;top:-1000px;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      ok();
+    }catch(e2){ alert('Não foi possível copiar: '+(e2.message||e2)); }
+  }
+}
+
+// Célula de número de pedido: o texto vira um botão discreto que copia
+// ao ser clicado. O event.stopPropagation impede que o clique abra o
+// drawer da linha nas telas onde a linha é clicável.
+function celPedido(valor){
+  const v = (valor==null || valor==='') ? '' : String(valor);
+  if(!v) return '<span style="color:var(--muted)">—</span>';
+  const esc = v.replace(/'/g,"\\'");
+  return '<span class="copiavel" title="Clique para copiar" '+
+         'onclick="event.stopPropagation();copiar(\''+esc+'\',this)">'+v+'</span>';
+}
+
 function montarIrPara(prefixo, pagina, totalPaginas, ir){
   const info=$(prefixo+'-paginfo'); if(!info) return;
   let cx=$(prefixo+'-irbox');

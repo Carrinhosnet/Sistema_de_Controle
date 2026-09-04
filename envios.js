@@ -182,7 +182,7 @@ const EN = (function(){
       const stClass = getStatusClass(l.status);
       
       return `<tr class="${l.conferido?'':'pendente'} ${stClass}" onclick="EN.abrir(${l.id})">
-      <td>${dataBr(l.data_compra)}</td><td>${l.canal||'—'}</td><td>${l.id_pedido||'—'}</td><td>${l.modelo||'—'}</td><td class="num">${l.quantidade??'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
+      <td>${dataBr(l.data_compra)}</td><td>${l.canal||'—'}</td><td>${celPedido(l.id_pedido)}</td><td>${l.modelo||'—'}</td><td class="num">${l.quantidade??'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
       <td>${l.transportadora||'—'}</td><td>${l.protocolo||'—'}</td><td>${l.pagamento_frete||'—'}</td><td>${l.tempo_entrega||'—'}</td><td>${dataBr(l.entrega_prometida)}</td><td>${dataBr(l.entrega_concluida)}</td><td><span class="pill">${l.status||'—'}</span></td>
       <td class="num">${brl(l.valor_transporte)}</td><td class="num">${brl(l.valor_incluso_frete)}</td><td class="num">${brl(l.valor_extra)}</td><td class="num ${colorDif}">${brl(l.diferenca)}</td>
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="EN.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
