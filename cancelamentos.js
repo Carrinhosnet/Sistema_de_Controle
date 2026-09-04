@@ -23,7 +23,7 @@ const CAN = (function(){
     p_busca:f('busca').value.trim()||null
   }; }
 
-  async function init(){ await carregarFiltros(); await carregar(); bind(); }
+  async function init(){ await carregarMotivos(); await carregarFiltros(); await carregar(); bind(); }
 
   async function carregarFiltros(){
     try{ const meses=await rpc('cn_meses_cancelamentos',{p_usuario_id:USER.id});
@@ -89,19 +89,20 @@ const CAN = (function(){
     const tb=f('tbody');
     if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="12" class="empty">Nenhum cancelamento encontrado.</td></tr>'; return; }
     const podeConf=temPermissao('cancelamentos.conferir');
-    tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}">
-      <td>${dataBr(l.data_compra)}</td>
+    const editavel=temPermissao('cancelamentos.editar');
+    tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}"${editavel?` style="cursor:pointer" onclick="CAN.abrir(${l.id})"`:''}>
       <td>${dataBr(l.data_venda)}</td>
+      <td>${dataBr(l.data_compra)}</td>
       <td>${l.canal||'—'}</td>
       <td>${celPedido(l.id_pedido)}</td>
+      <td>${l.tipo_envio||'—'}</td>
       <td>${l.modelo||'—'}</td>
       <td class="num">${l.quantidade??'—'}</td>
+      <td class="num">${brl(l.valor_total)}</td>
       <td>${l.cliente||'—'}</td>
       <td>${l.uf||'—'}</td>
-      <td class="num">${brl(l.valor_total)}</td>
-      <td class="num">${brl(l.valor_comissao)}</td>
-      <td>${l.tipo_envio||'—'}</td>
-      <td class="conf"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="CAN.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
+      <td>${l.motivo||'<span style="color:var(--muted)">—</span>'}</td>
+      <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="CAN.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
     </tr>`).join('');
   }
 
@@ -118,6 +119,54 @@ const CAN = (function(){
     finally{ elem.disabled=false; }
   }
 
+  // ---- edição do motivo ----
+  // Só o motivo é editável: o resto vem da venda, e alterar aqui criaria
+  // divergência silenciosa com o Controle de Vendas.
+  let EDIT_ID=null, MOTIVOS=[];
+
+  async function carregarMotivos(){
+    try{
+      const r=await rpc('cn_listar_opcoes_comerciais',{p_usuario_id:USER.id,p_tipo:'motivo_cancelamento'});
+      MOTIVOS=(r||[]).filter(o=>o.ativo).map(o=>o.valor);
+    }catch(e){ MOTIVOS=[]; }
+  }
+
+  // Lista fechada: só o que estiver cadastrado em Opções Comerciais.
+  // O valor atual entra na lista mesmo se tiver sido inativado depois,
+  // senão abrir o registro apagaria silenciosamente o que já estava lá.
+  function fillMotivo(atual){
+    const sel=f('e-motivo'); sel.innerHTML='<option value="">—</option>';
+    const opts=[...MOTIVOS];
+    if(atual && !opts.includes(atual)) opts.unshift(atual);
+    opts.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v;
+      if(v===atual)o.selected=true; sel.appendChild(o); });
+    sel.value=atual||'';
+  }
+
+  function abrir(id){
+    if(!temPermissao('cancelamentos.editar'))return;
+    const l=LINHAS.find(x=>x.id===id); if(!l)return;
+    EDIT_ID=id; f('drawer-erro').textContent='';
+    f('e-idped').value=l.id_pedido||''; f('e-modelo').value=l.modelo||'';
+    f('e-cliente').value=l.cliente||''; f('e-data').value=dataBr(l.data_compra);
+    fillMotivo(l.motivo);
+    f('overlay').classList.add('open'); f('drawer').classList.add('open');
+    setTimeout(()=>f('e-motivo').focus(),50);
+  }
+  function fechar(){ f('overlay').classList.remove('open'); f('drawer').classList.remove('open'); EDIT_ID=null; }
+
+  async function salvar(){
+    if(EDIT_ID==null)return;
+    f('drawer-erro').textContent='';
+    const b=f('drawer-save'); b.disabled=true; b.textContent='Salvando...';
+    try{
+      await rpc('cn_editar_cancelamento',{p_usuario_id:USER.id,p_cancelamento_id:EDIT_ID,
+        p_motivo:f('e-motivo').value||null});
+      fechar(); carregar();
+    }catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); }
+    finally{ b.disabled=false; b.textContent='Salvar'; }
+  }
+
   function limparFiltros(){
     ['busca','mes','canal'].forEach(id=>{ f(id).value=''; });
     f('ordem').value='recentes';
@@ -130,10 +179,12 @@ const CAN = (function(){
       const fl=filtros();
       const todas=await rpc('cn_listar_cancelamentos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0});
       if(!todas||!todas.length)return;
-      const cols=['data_compra','data_venda','canal','id_pedido','modelo','quantidade','cliente','uf',
-                  'valor_total','valor_comissao','tipo_envio','frete','frete_extra','conferido'];
-      const head=['Data Cancelamento','Data Venda','Canal','ID Pedido','SKU','Qtd','Cliente','UF',
-                  'Valor','Comissao','Envio','Frete','Frete Extra','Conferido'];
+      const cols=['data_venda','data_compra','canal','id_pedido','tipo_envio','modelo','quantidade',
+                  'valor_total','cliente','uf','motivo',
+                  'valor_comissao','frete','frete_extra','conferido'];
+      const head=['Data da Venda','Data de Cancelamento','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade',
+                  'Valor Total','Cliente','UF','Motivo do Cancelamento',
+                  'Comissao','Frete','Frete Extra','Conferido'];
       const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';'));
       const csv=[head.join(';'),...ls].join('\n');
       const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
@@ -149,11 +200,13 @@ const CAN = (function(){
     f('ordem').addEventListener('change',()=>carregar(true,{kpis:false}));
     f('limpar').addEventListener('click',limparFiltros);
     f('exportar').addEventListener('click',exportar);
+    f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar);
+    f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(false,{kpis:false}); } });
     f('next').addEventListener('click',()=>{ PAGINA++; carregar(false,{kpis:false}); });
   }
 
-  return { init, conf };
+  return { init, conf, abrir };
 })();
 window.CAN = CAN;
 registrarTela('cancelamentos', CAN);

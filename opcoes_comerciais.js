@@ -6,10 +6,11 @@
 // Reclamações: os três motivos e os dois status. Mesmo formato da tela
 // de Opções de Produtos — abas por tipo, edição em drawer.
 //
-// As listas são fechadas: os campos correspondentes nas outras telas
-// oferecem estas opções como sugestão, mas aceitam texto livre. Quem
-// digitar algo fora da lista não é impedido; a lista existe para
-// padronizar o que se repete, não para engessar o caso raro.
+// As listas são FECHADAS: os campos de motivo e status nas outras telas
+// só aceitam o que estiver cadastrado aqui. Quem precisar de um valor
+// novo cadastra nesta tela primeiro — é o que garante que o filtro por
+// motivo devolva sempre o mesmo conjunto e que dois nomes diferentes
+// não descrevam a mesma coisa.
 //
 // Renomear uma opção propaga para os registros que a usam. Excluir uma
 // opção em uso é recusado pelo banco.

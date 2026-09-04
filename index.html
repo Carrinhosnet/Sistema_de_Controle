@@ -434,9 +434,10 @@
       </div>
       <div class="kpis" id="can-kpis"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th>Data Cancel.</th><th>Data Venda</th><th>Canal</th><th>ID Pedido</th><th>SKU</th>
-        <th class="num">Qtd</th><th>Cliente</th><th>UF</th>
-        <th class="num">Valor</th><th class="num">Comissão</th><th>Envio</th>
+        <th>Data da Venda</th><th>Data de Cancelamento</th><th>Canal de Venda</th>
+        <th>ID do Pedido</th><th>Tipo de Envio</th><th>SKU</th>
+        <th class="num">Quantidade</th><th class="num">Valor Total</th>
+        <th>Nome do Cliente</th><th>UF</th><th>Motivo do Cancelamento</th>
         <th style="text-align:center">Conferido</th>
       </tr></thead><tbody id="can-tbody"></tbody></table></div>
       <div class="foot"><span id="can-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
@@ -460,10 +461,13 @@
       </div>
       <div class="kpis" id="dev-kpis"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th>Data Chegada</th><th>Data Venda</th><th>Canal</th><th>ID Pedido</th><th>SKU</th>
-        <th class="num">Qtd</th><th>Cliente</th><th>UF</th>
-        <th class="num">Valor NF</th><th>N° NF</th><th>Tipo</th><th>Status</th>
-        <th class="num">Custo Dev.</th><th class="num">Prejuízo</th>
+        <th>Data da Venda</th><th>Previsão de Chegada</th><th>Canal de Venda</th>
+        <th>ID do Pedido</th><th>Tipo de Envio</th><th>SKU</th>
+        <th class="num">Quantidade</th><th class="num">Valor Total</th><th>N° NF</th>
+        <th>Nome do Cliente</th><th>UF</th><th>N° NFD</th>
+        <th>Motivo da Devolução</th><th>Status</th><th>Data da Chegada</th>
+        <th class="num">Valor Devolvido</th>
+        <th class="num">Custo para Devolução</th><th class="num">Prejuízo</th>
         <th style="text-align:center">Conferido</th>
       </tr></thead><tbody id="dev-tbody"></tbody></table></div>
       <div class="foot"><span id="dev-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
@@ -488,8 +492,12 @@
       </div>
       <div class="kpis" id="rc-kpis"></div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th>Data Abertura</th><th>Mês</th><th>Canal</th><th>ID Pedido</th><th>SKU</th><th class="num">Qtd</th><th>Cliente</th><th>UF</th>
-        <th>Nº NF</th><th>Motivo</th><th>Status</th><th>Data Resolução</th><th>Data Venda</th><th style="text-align:center">Conferido</th>
+        <th>Data da Venda</th><th>Data de Abertura</th><th>Canal de Venda</th>
+        <th>ID do Pedido</th><th>Tipo de Envio</th><th>SKU</th>
+        <th class="num">Quantidade</th><th class="num">Valor Total</th><th>N° NF</th>
+        <th>Nome do Cliente</th><th>UF</th><th>N° NFD</th>
+        <th>Motivo da Reclamação</th><th>Status</th><th>Data da Resolução</th>
+        <th style="text-align:center">Conferido</th>
       </tr></thead><tbody id="rc-tbody"></tbody></table></div>
       <div class="foot"><span id="rc-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
         <button class="act" id="rc-prev" style="padding:4px 10px">‹ Anterior</button><span id="rc-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="rc-next" style="padding:4px 10px">Próxima ›</button>
@@ -1088,6 +1096,31 @@
   <div class="foot"><button class="btn-cancel" id="med-drawer-cancel">Cancelar</button><button class="btn-save" id="med-drawer-save">Salvar</button></div>
 </aside>
 
+<!-- ===== DRAWER CANCELAMENTO ===== -->
+<div class="overlay" id="can-overlay"></div>
+<aside class="drawer" id="can-drawer" style="max-width:460px">
+  <h2>Motivo do cancelamento <button class="x" id="can-drawer-x">×</button></h2>
+  <div class="drawer-erro" id="can-drawer-erro"></div>
+  <div class="body">
+    <div class="sec-tit">Pedido</div>
+    <div class="grid">
+      <div class="fld"><label>ID do pedido</label><input id="can-e-idped" readonly></div>
+      <div class="fld"><label>SKU</label><input id="can-e-modelo" readonly></div>
+      <div class="fld"><label>Cliente</label><input id="can-e-cliente" readonly></div>
+      <div class="fld"><label>Data de cancelamento</label><input id="can-e-data" readonly></div>
+    </div>
+    <div class="sec-tit">Classificação</div>
+    <div class="grid">
+      <div class="fld full"><label>Motivo do cancelamento</label><select id="can-e-motivo"></select></div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin:10px 0 0">
+      Só o motivo é editável aqui. Os demais dados vêm do Controle de Vendas.
+      As opções são cadastradas em Opções Comerciais.
+    </p>
+  </div>
+  <div class="foot"><button class="btn-cancel" id="can-drawer-cancel">Cancelar</button><button class="btn-save" id="can-drawer-save">Salvar</button></div>
+</aside>
+
 <!-- ===== DRAWER DEVOLUÇÃO (tela Devoluções) ===== -->
 <div class="overlay" id="dev-overlay"></div>
 <aside class="drawer" id="dev-drawer">
@@ -1105,14 +1138,20 @@
     </div>
     <div class="sec-tit">Devolução</div>
     <div class="grid">
+      <div class="fld"><label>Previsão de chegada</label><input type="date" id="dev-e-previsao"></div>
       <div class="fld"><label>Data de chegada</label><input type="date" id="dev-e-chegada"></div>
       <div class="fld"><label>Tipo de devolução</label><select id="dev-e-tipo"><option value="">—</option><option>Reclamação</option><option>Mediação</option><option>Devolução Simples</option></select></div>
-      <div class="fld full"><label>Status</label><select id="dev-e-status"></select></div>
-      <div class="fld full"><label>Motivo</label><input id="dev-e-motivo"></div>
+      <div class="fld"><label>Status</label><select id="dev-e-status"></select></div>
+      <div class="fld full"><label>Motivo da devolução</label><select id="dev-e-motivo"></select></div>
+    </div>
+    <div class="sec-tit">Valores</div>
+    <div class="grid">
+      <div class="fld"><label>Valor total (R$)</label><input type="number" step="0.01" id="dev-e-valortotal"></div>
+      <div class="fld"><label>Valor devolvido (R$)</label><input type="number" step="0.01" id="dev-e-valordev"></div>
     </div>
     <div class="sec-tit">Nota fiscal</div>
     <div class="grid">
-      <div class="fld"><label>Valor da NF (R$)</label><input type="number" step="0.01" id="dev-e-valornf"></div>
+      <div class="fld"><label>Valor da NF de devolução (R$)</label><input type="number" step="0.01" id="dev-e-valornf"></div>
       <div class="fld"><label>Nº NF</label><input id="dev-e-numnf"></div>
       <div class="fld"><label>NFD</label><input id="dev-e-nfd"></div>
     </div>
@@ -1157,9 +1196,11 @@
     <div class="grid">
       <div class="fld"><label>Data de abertura</label><input type="date" id="rc-e-abertura"></div>
       <div class="fld"><label>Data da resolução</label><input type="date" id="rc-e-resolucao"></div>
-      <div class="fld full"><label>Status</label><select id="rc-e-status"></select></div>
+      <div class="fld"><label>Status</label><select id="rc-e-status"></select></div>
+      <div class="fld"><label>Valor total (R$)</label><input type="number" step="0.01" id="rc-e-valortotal"></div>
       <div class="fld"><label>Nº NF</label><input id="rc-e-numnf"></div>
-      <div class="fld full"><label>Motivo</label><input id="rc-e-motivo"></div>
+      <div class="fld"><label>Nº NFD</label><input id="rc-e-nfd"></div>
+      <div class="fld full"><label>Motivo da reclamação</label><select id="rc-e-motivo"></select></div>
       <div class="fld full"><label>Observações</label><input id="rc-e-obs"></div>
     </div>
   </div>

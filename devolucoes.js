@@ -26,11 +26,27 @@ const DEV = (function(){
 
   async function init(){ await carregarOpcoes(); await carregarFiltros(); await carregar(); bind(); }
 
+  let MOTIVO_OPC=[];
+
   async function carregarOpcoes(){
     try{ const r=await rpc('cn_listar_opcoes',{p_usuario_id:USER.id,p_tipo:'status_devolucao'});
       STATUS_OPC=(r||[]).map(o=>o.valor);
     }catch(e){ STATUS_OPC=[]; }
     STATUS_OPC.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; f('status').appendChild(o); });
+    // motivos vêm da tela de Opções Comerciais; lista fechada
+    try{ const r=await rpc('cn_listar_opcoes_comerciais',{p_usuario_id:USER.id,p_tipo:'motivo_devolucao'});
+      MOTIVO_OPC=(r||[]).filter(o=>o.ativo).map(o=>o.valor);
+    }catch(e){ MOTIVO_OPC=[]; }
+  }
+
+  // o valor atual entra na lista mesmo se foi inativado depois: abrir o
+  // registro não pode apagar em silêncio o que já estava gravado
+  function fillSelLista(id, opcoes, atual){
+    const sel=f(id); sel.innerHTML='<option value="">—</option>';
+    const opts=[...opcoes]; if(atual && !opts.includes(atual)) opts.unshift(atual);
+    opts.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v;
+      if(v===atual)o.selected=true; sel.appendChild(o); });
+    sel.value=atual||'';
   }
 
   async function carregarFiltros(){
@@ -47,7 +63,7 @@ const DEV = (function(){
   async function carregar(reset, opts){
     if(reset) PAGINA=0;
     const precisaKpis = !(opts && opts.kpis===false) || KPIS===null;
-    f('tbody').innerHTML='<tr><td colspan="15" class="loading">Carregando devoluções…</td></tr>';
+    f('tbody').innerHTML='<tr><td colspan="19" class="loading">Carregando devoluções…</td></tr>';
     const fl=filtros();
     try{
       const chamadas=[
@@ -62,7 +78,7 @@ const DEV = (function(){
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){
-      f('tbody').innerHTML='<tr><td colspan="15" class="empty">Erro: '+(e.message||e)+'</td></tr>';
+      f('tbody').innerHTML='<tr><td colspan="19" class="empty">Erro: '+(e.message||e)+'</td></tr>';
     }
   }
 
@@ -94,22 +110,26 @@ const DEV = (function(){
 
   function renderTabela(){
     const tb=f('tbody');
-    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="15" class="empty">Nenhuma devolução encontrada.</td></tr>'; return; }
+    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="19" class="empty">Nenhuma devolução encontrada.</td></tr>'; return; }
     const podeConf=temPermissao('devolucoes.conferir');
     const editavel=temPermissao('devolucoes.editar');
     tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}"${editavel?` style="cursor:pointer" onclick="DEV.abrir(${l.id})"`:''}>
-      <td>${dataBr(l.data_chegada)}</td>
       <td>${dataBr(l.data_venda)}</td>
+      <td>${dataBr(l.previsao_chegada)}</td>
       <td>${l.canal||'—'}</td>
       <td>${celPedido(l.id_pedido)}</td>
+      <td>${l.tipo_envio||'—'}</td>
       <td>${l.modelo||'—'}</td>
       <td class="num">${l.quantidade??'—'}</td>
+      <td class="num">${brl(l.valor_total)}</td>
+      <td>${l.numero_nf||'—'}</td>
       <td>${l.cliente||'—'}</td>
       <td>${l.uf||'—'}</td>
-      <td class="num">${brl(l.valor_nf)}</td>
-      <td>${l.numero_nf||'—'}</td>
-      <td>${l.tipo_devolucao||'—'}</td>
+      <td>${l.nfd||'—'}</td>
+      <td>${l.motivo||'—'}</td>
       <td>${l.status?`<span class="pill">${l.status}</span>`:'—'}</td>
+      <td>${dataBr(l.data_chegada)}</td>
+      <td class="num">${brl(l.valor_devolvido)}</td>
       <td class="num">${brl(l.custo_devolucao)}</td>
       <td class="num">${brl(l.custo_prejuizo)}</td>
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="DEV.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
@@ -143,8 +163,11 @@ const DEV = (function(){
     f('e-dvenda').value=dataBr(l.data_venda); f('e-canal').value=l.canal||'';
     f('e-idped').value=l.id_pedido||''; f('e-modelo').value=l.modelo||'';
     f('e-cliente').value=l.cliente||''; f('e-uf').value=l.uf||'';
+    f('e-previsao').value=l.previsao_chegada||'';
     f('e-chegada').value=l.data_chegada||''; f('e-tipo').value=l.tipo_devolucao||'';
-    fillStatusSel(l.status); f('e-motivo').value=l.motivo||'';
+    fillStatusSel(l.status);
+    fillSelLista('e-motivo', MOTIVO_OPC, l.motivo);
+    f('e-valortotal').value=l.valor_total??''; f('e-valordev').value=l.valor_devolvido??'';
     f('e-valornf').value=l.valor_nf??''; f('e-numnf').value=l.numero_nf||''; f('e-nfd').value=l.nfd||'';
     f('e-custodev').value=l.custo_devolucao??''; f('e-custoprej').value=l.custo_prejuizo??'';
     f('e-incluidas').value=l.incluidas||''; f('e-obs').value=l.observacoes||'';
@@ -162,7 +185,10 @@ const DEV = (function(){
         p_motivo:f('e-motivo').value||null,p_status:f('e-status').value||null,
         p_valor_nf:num('e-valornf'),p_numero_nf:f('e-numnf').value||null,p_nfd:f('e-nfd').value||null,
         p_custo_devolucao:num('e-custodev'),p_custo_prejuizo:num('e-custoprej'),
-        p_incluidas:f('e-incluidas').value||null,p_observacoes:f('e-obs').value||null});
+        p_incluidas:f('e-incluidas').value||null,p_observacoes:f('e-obs').value||null,
+        p_previsao_chegada:f('e-previsao').value||null,
+        p_valor_total:num('e-valortotal'),
+        p_valor_devolvido:num('e-valordev')});
       fechar(); KPIS=null; carregar();
     }catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); }
     finally{ b.disabled=false; b.textContent='Salvar'; }
@@ -209,12 +235,14 @@ const DEV = (function(){
       const fl=filtros();
       const todas=await rpc('cn_listar_devolucoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0});
       if(!todas||!todas.length)return;
-      const cols=['data_chegada','data_venda','canal','id_pedido','modelo','quantidade','cliente','uf',
-                  'valor_nf','numero_nf','nfd','tipo_devolucao','motivo','status',
-                  'custo_devolucao','custo_prejuizo','incluidas','observacoes','conferido'];
-      const head=['Data Chegada','Data Venda','Canal','ID Pedido','SKU','Qtd','Cliente','UF',
-                  'Valor NF','N NF','NFD','Tipo','Motivo','Status',
-                  'Custo Devolucao','Prejuizo','Incluidas','Observacoes','Conferido'];
+      const cols=['data_venda','previsao_chegada','canal','id_pedido','tipo_envio','modelo','quantidade',
+                  'valor_total','numero_nf','cliente','uf','nfd','motivo','status','data_chegada',
+                  'valor_devolvido','custo_devolucao','custo_prejuizo',
+                  'valor_nf','tipo_devolucao','incluidas','observacoes','conferido'];
+      const head=['Data da Venda','Previsao de Chegada','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade',
+                  'Valor Total','N NF','Cliente','UF','N NFD','Motivo','Status','Data da Chegada',
+                  'Valor Devolvido','Custo para Devolucao','Prejuizo',
+                  'Valor NF Devolucao','Tipo de Devolucao','Incluidas','Observacoes','Conferido'];
       const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';'));
       const csv=[head.join(';'),...ls].join('\n');
       const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});

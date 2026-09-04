@@ -12,16 +12,32 @@ const REC = (function(){
 
   async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarOpcoes(); await carregarFiltros(); carregar(); bind(); }
 
+  let MOTIVO_OPC=[];
+
   async function carregarOpcoes(){
     try{ const r=await rpc('cn_listar_opcoes',{p_usuario_id:USER.id,p_tipo:'status_reclamacao'}); STATUS_OPC=(r||[]).map(o=>o.valor); }catch(e){ STATUS_OPC=[]; }
     STATUS_OPC.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; f('status').appendChild(o); });
+    // motivos vêm da tela de Opções Comerciais; lista fechada
+    try{ const r=await rpc('cn_listar_opcoes_comerciais',{p_usuario_id:USER.id,p_tipo:'motivo_reclamacao'});
+      MOTIVO_OPC=(r||[]).filter(o=>o.ativo).map(o=>o.valor);
+    }catch(e){ MOTIVO_OPC=[]; }
+  }
+
+  // o valor atual entra na lista mesmo se foi inativado depois: abrir o
+  // registro não pode apagar em silêncio o que já estava gravado
+  function fillSelLista(id, opcoes, atual){
+    const sel=f(id); sel.innerHTML='<option value="">—</option>';
+    const opts=[...opcoes]; if(atual && !opts.includes(atual)) opts.unshift(atual);
+    opts.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v;
+      if(v===atual)o.selected=true; sel.appendChild(o); });
+    sel.value=atual||'';
   }
   async function carregarFiltros(){
     try{ const meses=await rpc('cn_meses_reclamacoes',{p_usuario_id:USER.id}); (meses||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); }); }catch(e){}
     try{ const canais=await rpc('cn_canais_reclamacoes',{p_usuario_id:USER.id}); (canais||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); }); }catch(e){}
   }
 
-  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="14" class="loading">Carregando reclamações…</td></tr>'; const fl=filtros();
+  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="16" class="loading">Carregando reclamações…</td></tr>'; const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([
         rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_reclamacoes',fl),
@@ -29,7 +45,7 @@ const REC = (function(){
       ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
       msgAtualizado('rc-msg','reclamacoes');
-    }catch(e){ f('tbody').innerHTML='<tr><td colspan="14" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
+    }catch(e){ f('tbody').innerHTML='<tr><td colspan="16" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
     // campo "Ir para a pagina" (helper global do index.html)
@@ -45,12 +61,24 @@ const REC = (function(){
     box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join('');
   }
 
-  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="14" class="empty">Nenhuma reclamação encontrada.</td></tr>'; return; }
+  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="16" class="empty">Nenhuma reclamação encontrada.</td></tr>'; return; }
     const podeConf=temPermissao('reclamacoes.conferir');
     tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}" onclick="REC.abrir(${l.id})">
-      <td>${dataBr(l.data_abertura)}</td><td>${mesLabel(l.mes)||'—'}</td><td>${l.canal||'—'}</td><td>${celPedido(l.id_pedido)}</td><td>${l.modelo||'—'}</td>
-      <td class="num">${l.quantidade??'—'}</td><td>${l.cliente||'—'}</td><td>${l.uf||'—'}</td>
-      <td>${l.numero_nf||'—'}</td><td>${l.motivo||'—'}</td><td><span class="pill">${l.status||'—'}</span></td><td>${dataBr(l.data_resolucao)}</td><td>${dataBr(l.data_venda)}</td>
+      <td>${dataBr(l.data_venda)}</td>
+      <td>${dataBr(l.data_abertura)}</td>
+      <td>${l.canal||'—'}</td>
+      <td>${celPedido(l.id_pedido)}</td>
+      <td>${l.tipo_envio||'—'}</td>
+      <td>${l.modelo||'—'}</td>
+      <td class="num">${l.quantidade??'—'}</td>
+      <td class="num">${brl(l.valor_total)}</td>
+      <td>${l.numero_nf||'—'}</td>
+      <td>${l.cliente||'—'}</td>
+      <td>${l.uf||'—'}</td>
+      <td>${l.nfd||'—'}</td>
+      <td>${l.motivo||'—'}</td>
+      <td>${l.status?`<span class="pill">${l.status}</span>`:'—'}</td>
+      <td>${dataBr(l.data_resolucao)}</td>
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="REC.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
     </tr>`).join('');
   }
@@ -61,11 +89,21 @@ const REC = (function(){
 
   function abrir(id){ if(!temPermissao('reclamacoes.editar'))return; const l=LINHAS.find(x=>x.id===id); if(!l)return; EDIT_ID=id; f('drawer-erro').textContent='';
     f('e-dvenda').value=dataBr(l.data_venda); f('e-canal').value=l.canal||''; f('e-idped').value=l.id_pedido||''; f('e-modelo').value=l.modelo||''; f('e-cliente').value=l.cliente||''; f('e-uf').value=l.uf||'';
-    f('e-abertura').value=l.data_abertura||''; fillStatusSel(l.status); f('e-motivo').value=l.motivo||''; f('e-resolucao').value=l.data_resolucao||''; f('e-numnf').value=l.numero_nf||''; f('e-obs').value=l.observacoes||'';
+    f('e-abertura').value=l.data_abertura||''; fillStatusSel(l.status);
+    fillSelLista('e-motivo', MOTIVO_OPC, l.motivo);
+    f('e-resolucao').value=l.data_resolucao||''; f('e-numnf').value=l.numero_nf||'';
+    f('e-nfd').value=l.nfd||''; f('e-valortotal').value=l.valor_total??'';
+    f('e-obs').value=l.observacoes||'';
     f('overlay').classList.add('open'); f('drawer').classList.add('open'); }
   function fechar(){ f('overlay').classList.remove('open'); f('drawer').classList.remove('open'); EDIT_ID=null; }
   async function salvar(){ if(EDIT_ID==null)return; f('drawer-erro').textContent=''; const b=f('drawer-save'); b.disabled=true; b.textContent='Salvando...';
-    try{ await rpc('cn_editar_reclamacao',{p_usuario_id:USER.id,p_reclamacao_id:EDIT_ID,p_data_abertura:f('e-abertura').value||null,p_motivo:f('e-motivo').value||null,p_status:f('e-status').value||null,p_data_resolucao:f('e-resolucao').value||null,p_numero_nf:f('e-numnf').value||null,p_observacoes:f('e-obs').value||null}); fechar(); carregar(); }
+    try{ await rpc('cn_editar_reclamacao',{p_usuario_id:USER.id,p_reclamacao_id:EDIT_ID,
+      p_data_abertura:f('e-abertura').value||null,p_motivo:f('e-motivo').value||null,
+      p_status:f('e-status').value||null,p_data_resolucao:f('e-resolucao').value||null,
+      p_numero_nf:f('e-numnf').value||null,p_observacoes:f('e-obs').value||null,
+      p_nfd:f('e-nfd').value||null,
+      p_valor_total:f('e-valortotal').value===''?null:Number(f('e-valortotal').value)});
+      fechar(); carregar(); }
     catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; } }
 
   // modal manual
@@ -82,7 +120,7 @@ const REC = (function(){
       await carregar(true); if(typeof atualizarBadges==='function') atualizarBadges(); f('msg').textContent='Reclamações atualizadas '+new Date().toLocaleTimeString('pt-BR');
     }catch(e){ alert('Erro ao buscar reclamações: '+(e.message||e)); f('msg').textContent=''; } finally{ b.disabled=false; b.textContent=t; } }
 
-  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_abertura','mes','canal','tipo_envio','id_pedido','modelo','quantidade','cliente','uf','numero_nf','motivo','status','data_resolucao','data_venda','observacoes','origem_lancamento','conferido']; const head=['Data Abertura','Mes','Canal','Envio','ID Pedido','SKU','Qtd','Cliente','UF','N NF','Motivo','Status','Data Resolucao','Data Venda','Observacoes','Origem','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='reclamacoes_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
+  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_venda','data_abertura','canal','id_pedido','tipo_envio','modelo','quantidade','valor_total','numero_nf','cliente','uf','nfd','motivo','status','data_resolucao','observacoes','origem_lancamento','conferido']; const head=['Data da Venda','Data de Abertura','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade','Valor Total','N NF','Cliente','UF','N NFD','Motivo','Status','Data da Resolucao','Observacoes','Origem','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='reclamacoes_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
