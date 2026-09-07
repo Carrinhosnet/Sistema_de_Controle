@@ -14,31 +14,51 @@
     --text:#e6e8ec; --muted:#9aa1ad; --accent:#3b82f6; --accent-soft:#1e2b45;
     --ok:#22c55e; --danger:#ef4444; --warn:#f59e0b;
     --radius:10px; --font:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    --verde-escuro:#1a5c3a;
+    /* verde da marca Carrinhos_Net; usado so na tela de login por enquanto */
+    --verde:#0d5c37; --verde-esc:#0a4529;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
   input,select,button{font-family:inherit;font-size:14px}
 
-  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg, rgba(15,17,21,0.4) 0%, rgba(15,17,21,0.6) 100%),url('login-bg.png') center/cover fixed;backdrop-filter:blur(4px)}
-  .card{background:rgba(23, 26, 33, 0.55);backdrop-filter:blur(12px);border:1px solid rgba(42, 47, 58, 0.6);border-radius:16px;padding:40px 32px 32px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0, 0, 0, 0.3);animation:slideUp 0.5s ease-out}
-  @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-  .card-logo{width:80px;height:auto;margin:0 auto 24px;display:block;object-fit:contain}
-  .card h1{font-size:20px;font-weight:700;margin-bottom:6px;text-align:center;letter-spacing:-0.5px}
-  .card p{color:var(--muted);font-size:13px;margin-bottom:28px;text-align:center}
-  .field{margin-bottom:16px}
-  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500}
-  .field input{width:100%;padding:11px 12px;background:rgba(30, 34, 43, 0.6);border:1px solid rgba(42, 47, 58, 0.8);border-radius:8px;color:var(--text);backdrop-filter:blur(4px);transition:all 0.2s}
-  .field input:focus{outline:none;border-color:var(--verde-escuro);background:rgba(26, 92, 58, 0.1);box-shadow:0 0 0 3px rgba(26, 92, 58, 0.2)}
-  .field input::placeholder{color:rgba(154, 161, 173, 0.6)}
-  .btn{width:100%;padding:12px;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all 0.3s}
-  .btn-login{background:var(--verde-escuro);color:#fff;margin-top:6px;font-size:14px;font-weight:700}
-  .btn-login:hover{background:#0f4628;transform:translateY(-2px);box-shadow:0 6px 20px rgba(26, 92, 58, 0.4)}
-  .btn-login:active{transform:translateY(0);box-shadow:0 2px 8px rgba(26, 92, 58, 0.2)}
-  .btn-login:disabled{opacity:.5;cursor:not-allowed;transform:none}
-  .btn:hover{opacity:.92}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  .erro{color:var(--danger);font-size:13px;margin-top:12px;min-height:18px}
+  /* ---- TELA DE LOGIN ----
+     A imagem fica numa camada propria (#login::before) em vez de background
+     do #login: assim o escurecimento da leitura e feito por um overlay
+     separado, e a caixa de vidro pode ficar realmente translucida sem que a
+     foto suma. Sem isso o gradiente do shorthand escurece a foto inteira. */
+  #login{position:relative;min-height:100vh;display:flex;align-items:center;
+         justify-content:center;padding:20px;overflow:hidden;background:#0b0d11}
+  #login::before{content:"";position:absolute;inset:0;
+         background:url('login-bg.png') center/cover no-repeat;
+         /* escurece so o suficiente para o texto branco ter contraste */
+         filter:brightness(.55)}
+  #login > *{position:relative;z-index:1}
+
+  /* caixa de vidro: fundo bem translucido + blur do que esta atras */
+  .card{background:rgba(17,20,26,.42);
+        -webkit-backdrop-filter:blur(16px) saturate(120%);
+        backdrop-filter:blur(16px) saturate(120%);
+        border:1px solid rgba(255,255,255,.14);border-radius:16px;
+        padding:34px 32px 30px;width:100%;max-width:400px;
+        box-shadow:0 20px 50px rgba(0,0,0,.45);animation:cardUp .45s ease-out}
+  @keyframes cardUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  /* logo no topo da caixa; largura em % para acompanhar a caixa no celular */
+  .card-logo{display:block;width:78%;max-width:260px;height:auto;margin:0 auto 22px}
+  .card h1{font-size:20px;font-weight:700;margin-bottom:4px;text-align:center}
+  .card p{color:#c3c9d4;font-size:13px;margin-bottom:26px;text-align:center}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;color:#c3c9d4;margin-bottom:6px}
+  .field input{width:100%;padding:11px 12px;background:rgba(255,255,255,.07);
+               border:1px solid rgba(255,255,255,.16);border-radius:8px;color:var(--text)}
+  .field input::placeholder{color:rgba(230,232,236,.45)}
+  .field input:focus{outline:none;border-color:var(--verde);
+                     box-shadow:0 0 0 3px rgba(13,92,55,.35);background:rgba(255,255,255,.10)}
+  .btn{width:100%;padding:12px;background:var(--verde);color:#fff;border:none;
+       border-radius:8px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
+  .btn:hover{background:var(--verde-esc);transform:translateY(-1px)}
+  .btn:active{transform:translateY(0)}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .erro{color:#ff6b6b;font-size:13px;margin-top:12px;min-height:18px}
 
   #app{display:none}
   #app.on{display:flex;min-height:100vh;align-items:stretch}
@@ -336,335 +356,6 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-
-<style>
-  :root{
-    --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a;
-    --text:#e6e8ec; --muted:#9aa1ad; --accent:#3b82f6; --accent-soft:#1e2b45;
-    --ok:#22c55e; --danger:#ef4444; --warn:#f59e0b;
-    --radius:10px; --font:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    --verde-escuro:#1a5c3a;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
-  input,select,button{font-family:inherit;font-size:14px}
-
-  #login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:rgba(15,17,21,0.7);stop-opacity:1" /><stop offset="100%" style="stop-color:rgba(15,17,21,0.9);stop-opacity:1" /></linearGradient></defs><rect width="1920" height="1080" fill="url(%23g)"/></svg>') center/cover fixed;backdrop-filter:blur(2px)}
-  .card{background:rgba(23, 26, 33, 0.75);backdrop-filter:blur(10px);border:1px solid rgba(42, 47, 58, 0.5);border-radius:16px;padding:40px 32px 32px;width:100%;max-width:420px;box-shadow:0 8px 32px rgba(0, 0, 0, 0.3);animation:slideUp 0.5s ease-out}
-  @keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-  .card-logo{width:80px;height:auto;margin:0 auto 24px;display:block;object-fit:contain}
-  .card h1{font-size:20px;font-weight:700;margin-bottom:6px;text-align:center;letter-spacing:-0.5px}
-  .card p{color:var(--muted);font-size:13px;margin-bottom:28px;text-align:center}
-  .field{margin-bottom:16px}
-  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:500}
-  .field input{width:100%;padding:11px 12px;background:rgba(30, 34, 43, 0.6);border:1px solid rgba(42, 47, 58, 0.8);border-radius:8px;color:var(--text);backdrop-filter:blur(4px);transition:all 0.2s}
-  .field input:focus{outline:none;border-color:var(--verde-escuro);background:rgba(26, 92, 58, 0.1);box-shadow:0 0 0 3px rgba(26, 92, 58, 0.2)}
-  .field input::placeholder{color:rgba(154, 161, 173, 0.6)}
-  .btn{width:100%;padding:12px;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all 0.3s}
-  .btn-login{background:var(--verde-escuro);color:#fff;margin-top:6px;font-size:14px;font-weight:700}
-  .btn-login:hover{background:#0f4628;transform:translateY(-2px);box-shadow:0 6px 20px rgba(26, 92, 58, 0.4)}
-  .btn-login:active{transform:translateY(0);box-shadow:0 2px 8px rgba(26, 92, 58, 0.2)}
-  .btn-login:disabled{opacity:.5;cursor:not-allowed;transform:none}
-  .btn:hover{opacity:.92}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  .erro{color:var(--danger);font-size:13px;margin-top:12px;min-height:18px}
-
-  #app{display:none}
-  #app.on{display:flex;min-height:100vh;align-items:stretch}
-  .sidebar{width:290px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:8px;padding:16px 12px;height:100vh;position:sticky;top:0}
-  .brand{display:flex;align-items:center;gap:8px;padding:4px 8px 14px;border-bottom:1px solid var(--border);margin-bottom:6px;flex-shrink:0}
-  .brand .logo{width:32px;height:32px;border-radius:8px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;overflow:hidden}
-  .brand .logo img{width:100%;height:100%;object-fit:contain}
-  .brand .logo-full{flex:1;min-width:0;max-height:46px;object-fit:contain;object-position:left center;display:block}
-  .brand .t1{font-weight:600;font-size:14px}
-  .brand .t2{font-size:11px;color:var(--muted)}
-    .navtit{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 10px 2px}
-  /* ---- hierarquia visual do menu ----
-     Os itens de cada grupo ficam recuados e ligados por uma guia vertical
-     que nasce sob o titulo do grupo, deixando claro o que pertence a que.
-     O recuo vive no .navgroup (nao no button) para o estado "active" e o
-     hover continuarem ocupando a largura toda do item. */
-  .navgroup{position:relative}
-  /* Recuo do item + espaco interno para o marcador. O marcador fica DENTRO
-     do botao porque nav button tem overflow:hidden (para o ellipsis do
-     texto longo) e cortaria qualquer coisa desenhada fora da caixa. */
-  .navgroup > button{margin-left:14px;width:calc(100% - 14px);padding-left:22px}
-  /* guia vertical: nasce sob o titulo do grupo e passa pelo centro dos
-     marcadores (14 de margem + 8 do marcador + 2,5 de raio = 24,5) */
-  .navgroup::before{
-    content:"";position:absolute;left:24px;top:26px;bottom:4px;width:1px;
-    background:var(--border);pointer-events:none;
-  }
-  .navgroup.collapsed::before{display:none}
-  /* marcador do item, sobre a guia; acende quando a tela esta aberta */
-  .navgroup > button::before{
-    content:"";position:absolute;left:8px;top:50%;transform:translateY(-50%);
-    width:5px;height:5px;border-radius:50%;background:var(--border);
-    transition:background .15s,box-shadow .15s;
-  }
-  .navgroup > button:hover::before{background:var(--muted)}
-  .navgroup > button.active::before{background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
-  nav{display:flex;flex-direction:column;gap:4px;overflow-y:auto;flex:1 1 auto;min-height:0;margin:0 -4px;padding:0 4px}
-  nav::-webkit-scrollbar{width:8px}
-  nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
-  nav::-webkit-scrollbar-track{background:transparent}
-  nav button{position:relative;padding:10px 34px 10px 12px;text-align:left;background:none;border:1px solid transparent;border-radius:8px;color:var(--muted);cursor:pointer;font-weight:500;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  nav button:hover{color:var(--text);background:var(--surface2)}
-  nav button.active{color:#fff;background:var(--accent-soft);border-color:var(--accent)}
-  .navgroup{display:flex;flex-direction:column;gap:4px}
-  .navgroup + .navgroup{margin-top:8px}
-  .navtit-toggle{cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
-  .navtit-toggle:hover{color:var(--text)}
-  .navtit .caret{font-size:10px;transition:transform .15s ease}
-  .navgroup.collapsed .caret{transform:rotate(-90deg)}
-  .navgroup.collapsed button{display:none !important}
-  .userbox{margin-top:auto;display:flex;flex-direction:column;align-items:flex-start;gap:6px;font-size:13px;padding-top:12px;border-top:1px solid var(--border);flex-shrink:0}
-  .userbox .who{color:var(--muted)}
-  .link{color:var(--accent);cursor:pointer;background:none;border:none;font-size:13px;padding:0}
-  .content{flex:1;min-width:0}
-
-  main{padding:20px;max-width:1500px;margin:0 auto}
-  .tela{display:none}
-  .tela.active{display:block}
-
-  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
-  .search{position:relative;flex:1;min-width:200px}
-  .search input{width:100%;padding:9px 12px 9px 34px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text)}
-  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted)}
-  .toolbar select{padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text)}
-  .toolbar button.act{padding:9px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;white-space:nowrap}
-  .toolbar button.act:hover{border-color:var(--accent)}
-  .toolbar button.prim{background:var(--accent);color:#fff;border-color:var(--accent)}
-
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
-  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
-  .kpi .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
-  .kpi .val{font-size:22px;font-weight:600;letter-spacing:-.01em}
-  /* explicacao de como o numero e obtido, abaixo do titulo */
-  /* altura fixa de duas linhas: sem isso um texto mais longo empurra o
-     valor para baixo e o cartão sai do alinhamento dos vizinhos */
-  .kpi{display:flex;flex-direction:column}
-  .kpi .hint{font-size:10.5px;color:var(--muted);opacity:.75;line-height:1.35;margin:-2px 0 8px;
-             min-height:28px;overflow:hidden}
-  .kpi .val{margin-top:auto}
-  /* cartoes de contagem: clicaveis, cada um com sua cor */
-  .kpi.click{cursor:pointer;transition:border-color .15s,background .15s}
-  .kpi.click:hover{background:var(--surface2)}
-  .kpi.click .val{color:var(--kpc)}
-  .kpi.click{border-left:3px solid var(--kpc)}
-  .kpi.click.on{background:var(--surface2);border-color:var(--kpc)}
-  .kpi.c-conf{--kpc:#ef4444}
-  .kpi.c-edit{--kpc:#f59e0b}
-  .kpi.c-envio{--kpc:#a855f7}
-  .kpi.click .flag{display:none;font-size:10px;font-weight:600;color:var(--kpc);margin-top:4px}
-  .kpi.click.on .flag{display:block}
-  .kpis.linha2{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
-
-  .tablewrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);position:relative}
-  .scroll{overflow:auto;max-height:65vh;scrollbar-width:none;padding-right:18px}
-  .scroll::-webkit-scrollbar{width:0;height:10px}
-  .scroll::-webkit-scrollbar-thumb{background:var(--muted);border-radius:6px}
-  .scroll::-webkit-scrollbar-track{background:var(--surface2)}
-  /* barra vertical CUSTOMIZADA (criada via JS em cada .scroll) */
-  .vbar{position:absolute;top:0;right:0;width:18px;background:var(--surface2);border-left:1px solid var(--border);border-radius:0 var(--radius) var(--radius) 0;z-index:8;cursor:pointer;user-select:none;display:none}
-  .vbar-thumb{position:absolute;left:3px;right:3px;background:var(--muted);border-radius:6px;min-height:40px;transition:background .15s}
-  .vbar:hover .vbar-thumb{background:var(--accent)}
-  /* tabelas em modais/drawers já têm max-height no .tablewrap: o .scroll não impõe outro */
-  .tablewrap[style*="max-height"] > .scroll{max-height:none}
-  table{width:100%;border-collapse:collapse;font-size:13px;white-space:nowrap}
-  thead th{text-align:left;padding:11px 14px;background:var(--surface2);color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:5}
-  tbody td{padding:10px 14px;border-bottom:1px solid var(--border)}
-  tbody tr:hover{background:var(--surface2)}
-  td.num{text-align:right;font-variant-numeric:tabular-nums}
-  .foot{padding:10px 14px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-  .empty,.loading{padding:48px 20px;text-align:center;color:var(--muted)}
-  td.conf{text-align:center}
-  .chk{width:18px;height:18px;cursor:pointer;accent-color:var(--ok)}
-  .chk:disabled{cursor:not-allowed;opacity:.5}
-  tr.pendente td{background:rgba(245,158,11,.05)}
-  tbody tr{cursor:pointer}
-  .conf-lbl{font-size:11px;color:var(--muted);display:block;margin-top:2px}
-  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;background:var(--surface2);border:1px solid var(--border)}
-
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:40}
-  .overlay.open{display:block}
-  .drawer{position:fixed;top:0;right:0;height:100vh;width:440px;max-width:92vw;background:var(--surface);border-left:1px solid var(--border);z-index:50;transform:translateX(100%);transition:transform .2s ease;overflow-y:auto;display:flex;flex-direction:column}
-  .drawer.open{transform:translateX(0)}
-  .drawer h2{font-size:15px;font-weight:600;padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-  .drawer h2 .x{cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px;line-height:1}
-  .drawer .body{padding:18px 20px;flex:1}
-  .drawer .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .fld{margin-bottom:2px}
-  .fld.full{grid-column:1/-1}
-  .fld label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
-  .fld input,.fld select{width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
-  .fld input:focus,.fld select:focus{outline:none;border-color:var(--accent)}
-  .fld input[readonly]{opacity:.55;cursor:not-allowed}
-  .sec-tit{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:16px 0 10px}
-  .calc-sec{margin-top:18px;padding-top:14px;border-top:1px dashed var(--border)}
-  .drawer .foot{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px}
-  .drawer .foot button{flex:1;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;border:none}
-  .btn-save{background:var(--accent);color:#fff}
-  .btn-cancel{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
-  .drawer-erro{color:var(--danger);font-size:12px;padding:0 20px;min-height:16px}
-
-  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:60;padding:20px}
-  .modal.open{display:flex}
-  .modal .box{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:640px;max-width:96vw;max-height:86vh;display:flex;flex-direction:column}
-  .modal .box h3{padding:16px 20px;border-bottom:1px solid var(--border);font-size:15px;display:flex;justify-content:space-between;align-items:center}
-  .modal .box .content{padding:16px 20px;overflow-y:auto}
-  .res{width:100%;border-collapse:collapse;font-size:13px}
-  .res th{text-align:left;color:var(--muted);font-weight:500;padding:8px;border-bottom:1px solid var(--border)}
-  .res td{padding:8px;border-bottom:1px solid var(--border)}
-  .res button{padding:5px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px}
-  .res input{padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px}
-
-  /* menu lateral retrátil */
-  .sidebar{transition:width .18s ease}
-  /* ---- alca de redimensionamento do menu ----
-     Fica sobre a borda direita do menu. Durante o arrasto a transicao de
-     largura e desligada (classe .resizing), senao a barra "persegue" o
-     mouse com atraso. */
-  .sidebar{position:sticky}
-  .resize-handle{
-    position:absolute;top:0;right:-3px;width:7px;height:100%;
-    cursor:col-resize;z-index:60;background:transparent;
-  }
-  .resize-handle::after{
-    content:"";position:absolute;top:0;left:3px;width:1px;height:100%;
-    background:transparent;transition:background .15s;
-  }
-  .resize-handle:hover::after,.sidebar.resizing .resize-handle::after{background:var(--accent)}
-  .sidebar.resizing{transition:none}
-  /* Enquanto arrasta, impede selecao de texto e troca o cursor da pagina
-     toda — senao o cursor pisca ao sair da alca. */
-  body.resizing-nav{cursor:col-resize;user-select:none}
-  .toggle-btn{background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:7px;cursor:pointer;flex-shrink:0;line-height:1}
-  .toggle-btn:hover{color:var(--text);border-color:var(--accent)}
-  #app.nav-hidden .sidebar{display:none}
-  .floating-toggle{position:fixed;top:12px;left:12px;z-index:70;display:none;background:var(--surface);border:1px solid var(--border);color:var(--text);width:38px;height:38px;border-radius:8px;cursor:pointer;font-size:16px}
-  #app.nav-hidden .floating-toggle{display:block}
-
-  /* cadastros */
-  .subtabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
-  .subtabs button{padding:9px 16px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-weight:500;margin-bottom:-1px}
-  .subtabs button.active{color:var(--text);border-bottom-color:var(--accent)}
-  .acao-grupo{margin-bottom:16px}
-  .acao-grupo .gt{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
-  .acao-item{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer}
-  .acao-item input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
-  .badge-adm{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;background:var(--accent-soft);color:var(--accent);vertical-align:middle}
-
-  /* Cores para os status (fundos transparentes) */
-  tr.st-ag-pgto td { background: rgba(6, 182, 212, 0.1); }
-  tr.st-ag-cot td { background: rgba(168, 85, 247, 0.1); }
-  tr.st-prod td { background: rgba(180, 83, 9, 0.15); }
-  tr.st-ag-nf td { background: rgba(249, 115, 22, 0.15); }
-  tr.st-ag-transp td { background: rgba(59, 130, 246, 0.15); }
-  tr.st-caminho td { background: rgba(234, 179, 8, 0.15); }
-  tr.st-atrasado td { background: #eab308; font-weight: 500; }
-  tr.st-entregue td { background: rgba(34, 197, 94, 0.15); }
-  tr.st-proc-dev td { background: rgba(239, 68, 68, 0.15); }
-  tr.st-devolvido td, tr.st-cancelado td { background: rgba(153, 27, 27, 0.4); }
-  /* texto branco em todas as linhas de status (a diferença neg/pos mantém verde/vermelho) */
-  tr.st-ag-pgto td, tr.st-ag-cot td, tr.st-prod td, tr.st-ag-nf td, tr.st-ag-transp td,
-  tr.st-caminho td, tr.st-atrasado td, tr.st-entregue td, tr.st-proc-dev td,
-  tr.st-devolvido td, tr.st-cancelado td { color: #fff; }
-
-  /* cartões de status da tela de Envios: mesma cor da linha da tabela */
-  .kpi.k-prod    {--kpc:#b45309}
-  .kpi.k-caminho {--kpc:#eab308}
-  .kpi.k-atraso  {--kpc:#f97316}
-  .kpi.k-entregue{--kpc:#22c55e}
-  .kpi.k-devol   {--kpc:#ef4444}
-  .kpi.k-conf    {--kpc:#3b82f6}
-  /* ====== MÉTRICAS FINANCEIRAS ====== */
-  .met-mes{margin-bottom:26px}
-  .met-mes-tit{margin:0 0 4px;font-size:17px;font-weight:600}
-  .met-aviso{font-size:12px;color:var(--warn);border-left:3px solid var(--warn);
-             padding:6px 10px;margin:8px 0 14px;background:var(--surface);border-radius:0 8px 8px 0}
-  .met-faixa{margin-bottom:14px}
-  .met-titulo{font-size:13px;font-weight:600;margin-bottom:6px;
-              display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
-  .met-hint{font-size:11px;font-weight:400;color:var(--muted)}
-  /* cinco colunas fixas: a comparação entre canais só funciona se as
-     caixas ficarem alinhadas na mesma posição em todas as faixas */
-  .met-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-  @media (max-width:1100px){ .met-grid{grid-template-columns:repeat(2,1fr)} }
-  .met-cx .val{font-size:18px}
-  .met-pct{font-size:11px;color:var(--muted);margin-top:3px}
-  /* cor por canal: a mesma posição tem sempre a mesma cor em todas as
-     faixas, então a vista reconhece o canal antes de ler o rótulo */
-  .met-cx{border-left:3px solid var(--cnl,var(--border))}
-  .met-cx .lbl{color:var(--cnl)}
-  .met-cx.c-total{--cnl:#1e40af}
-  .met-cx.c-me2  {--cnl:#fbbf24}
-  .met-cx.c-me1  {--cnl:#ca8a04}   /* amarelo queimado: mostarda, não laranja
-                                      — o laranja fica reservado à Shopee */
-  .met-cx.c-site {--cnl:#15803d}
-  .met-cx.c-vd   {--cnl:#a855f7}
-
-  /* número de pedido copiável: sublinhado pontilhado sinaliza a ação
-     sem transformar a célula num botão visualmente pesado */
-  .copiavel{cursor:pointer;border-bottom:1px dashed var(--muted);transition:color .15s}
-  .copiavel:hover{color:var(--accent);border-bottom-color:var(--accent)}
-
-  /* linha da tela de Mediações pintada pelo destino, no mesmo padrão
-     dos status da tela de Envios: rgba com 0.15 sobre o fundo escuro.
-     Caso ainda na fila fica sem cor — a ausência é o próprio sinal de
-     que falta decidir. */
-  tr.md-recla td { background: rgba(251, 191, 36, 0.15); }
-  tr.md-devol td { background: rgba(249, 115, 22, 0.15); }
-  tr.md-canc  td { background: rgba(239, 68, 68, 0.15); }
-
-  /* cartões da tela de Mediações */
-  .kpi.m-triar{--kpc:#1e40af}   /* azul escuro: o que ainda falta decidir */
-  .kpi.m-recla{--kpc:#fbbf24}   /* amarelo */
-  .kpi.m-devol{--kpc:#f97316}   /* laranja */
-  .kpi.m-canc {--kpc:#ef4444}   /* vermelho */
-
-  /* cartões da tela de Boletos */
-  .kpi.b-total   {--kpc:#1e40af}
-  .kpi.b-pago    {--kpc:#22c55e}
-  .kpi.b-aguard  {--kpc:#f59e0b}
-  .kpi.b-atraso  {--kpc:#f87171}
-  .kpi.b-protesto{--kpc:#991b1b}
-
-  /* seletor de diferença de frete: caixas de marcação num painel */
-  .dropck{position:relative;display:inline-block}
-  .dropck>button{padding:9px 14px;background:var(--surface);border:1px solid var(--border);
-                 border-radius:8px;color:var(--text);cursor:pointer;white-space:nowrap}
-  .dropck>button:hover{border-color:var(--accent)}
-  .dropck .painel{display:none;position:absolute;z-index:30;top:calc(100% + 4px);left:0;
-                  background:var(--surface);border:1px solid var(--border);border-radius:8px;
-                  padding:8px 10px;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-  .dropck.open .painel{display:block}
-  .dropck .painel label{display:flex;align-items:center;gap:8px;padding:5px 2px;
-                        font-size:13px;cursor:pointer;white-space:nowrap}
-
-  /* Cores de Diferença */
-  td.neg { color: #f87171 !important; font-weight: 600; }
-  td.pos { color: #4ade80 !important; font-weight: 600; }
-
-  /* ====== BOLETOS ====== */
-  /* bolinha de pendências no menu */
-  .badge-dot{position:absolute;right:8px;top:50%;transform:translateY(-50%);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;line-height:1;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--surface)}
-  /* cores por status do boleto (linha) */
-  tr.bo-aguardando td { background: rgba(180,120,70,0.16); }    /* marrom claro */
-  tr.bo-pago td       { background: rgba(34,197,94,0.15); }     /* verde claro */
-  tr.bo-atrasado td   { background: rgba(239,68,68,0.15); }     /* vermelho claro */
-  tr.bo-cobranca td   { background: rgba(249,115,22,0.18); }    /* laranja claro */
-  tr.bo-protestado td { background: rgba(153,27,27,0.45); }     /* vermelho escuro */
-  /* botões de ação compactos */
-  td.acoes{white-space:nowrap}
-  button.mini{padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);cursor:pointer;font-size:12px;margin-left:2px}
-  button.mini:hover{border-color:var(--accent)}
-  button.mini.ok{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.4)}
-  button.mini.dg{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#f87171}
-
-</style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-</head>
 <body>
 
 <!-- ============ LOGIN ============ -->
@@ -675,7 +366,7 @@
     <p>Sistema de controle · entre para continuar</p>
     <div class="field"><label>Usuário</label><input id="in-login" autocomplete="username" placeholder="admin" /></div>
     <div class="field"><label>Senha</label><input id="in-senha" type="password" autocomplete="current-password" placeholder="••••••••" /></div>
-    <button class="btn btn-login" id="btn-entrar">Entrar</button>
+    <button class="btn" id="btn-entrar">Entrar</button>
     <div class="erro" id="login-erro"></div>
   </div>
 </div>
