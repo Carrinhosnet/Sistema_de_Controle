@@ -285,6 +285,75 @@
      caixas ficarem alinhadas na mesma posição em todas as faixas */
   .met-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
   @media (max-width:1100px){ .met-grid{grid-template-columns:repeat(2,1fr)} }
+
+  /* ================== IMPRESSAO / PDF ==================
+     Gerado pelo botao "Exportar PDF". O navegador imprime; o usuario
+     escolhe "Salvar como PDF" no destino.
+
+     FUNDO BRANCO, e nao o tema escuro da tela: economiza tinta em papel e
+     e o que se espera de um relatorio. As cores COM SIGNIFICADO continuam
+     (vermelho = nao cobre o prazo, ambar = tem o que comprar), mas em
+     tons escurecidos: os da tela foram escolhidos para fundo preto e
+     reprovam em contraste sobre branco no corpo 7,5pt
+     (--danger 3,76 · --warn 2,15 · --muted 2,60; o minimo e 4,5).
+
+     A4 DEITADO: as 12 colunas da Analise de Estoque nao cabem em pe.
+     print-color-adjust:exact garante que a zebra e o cinza do cabecalho
+     saiam mesmo sem a caixa "Graficos de fundo" do dialogo. */
+  #print-area{display:none}
+  @media print{
+    @page{size:A4 landscape;margin:10mm}
+    html,body{background:#fff !important;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact}
+    #login,#app{display:none !important}
+    #print-area{display:block !important;
+      background:#fff;color:#1a1d23;font-family:var(--font);font-size:7.5pt;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+    /* tons do relatorio, todos aprovados sobre branco */
+    #print-area{--p-linha:#d7dbe0; --p-fraco:#5b6472; --p-zebra:#f4f6f8;
+                --p-danger:#c81e1e; --p-warn:#b45309; --p-verde:#0d5c37}
+
+    .pr-topo{display:flex;align-items:center;gap:12px;
+             border-bottom:2px solid var(--p-verde);padding-bottom:6px;margin-bottom:8px}
+    /* A logo do sistema e branca (feita para o fundo escuro) e sumiria aqui.
+       Se existir uma logo-print.png escura no repositorio, usa ela; senao
+       cai para a logo.png invertida, que deixa o desenho branco em preto. */
+    .pr-logo{height:34px;width:auto}
+    .pr-logo-inv{filter:invert(1)}
+    .pr-tit{font-size:13pt;font-weight:700;margin:0;line-height:1.2;color:var(--p-verde)}
+    .pr-sub{font-size:7pt;color:var(--p-fraco);margin-top:2px}
+    .pr-quando{margin-left:auto;text-align:right;font-size:7pt;color:var(--p-fraco)}
+
+    .pr-kpis{display:flex;gap:6px;margin-bottom:8px}
+    .pr-kpi{flex:1;border:1px solid var(--p-linha);border-radius:6px;padding:5px 8px;
+            background:var(--p-zebra)}
+    .pr-kpi .l{font-size:6.5pt;color:var(--p-fraco);text-transform:uppercase;letter-spacing:.04em}
+    .pr-kpi .v{font-size:11pt;font-weight:700;margin-top:1px;color:#1a1d23}
+
+    #print-area table{width:100%;border-collapse:collapse;table-layout:fixed}
+    /* table-header-group faz o cabecalho se repetir em toda pagina nova */
+    #print-area thead{display:table-header-group}
+    #print-area tr{break-inside:avoid;page-break-inside:avoid}
+    #print-area th{background:#e9edf1;color:#3a4049;font-size:6.5pt;
+      text-transform:uppercase;letter-spacing:.03em;text-align:left;
+      padding:4px 5px;border-bottom:1px solid var(--p-linha)}
+    #print-area td{padding:3px 5px;border-bottom:1px solid var(--p-linha);
+      vertical-align:top;color:#1a1d23}
+    #print-area th.num,#print-area td.num{text-align:right}
+    /* zebra ajuda a seguir a linha ao longo das 12 colunas */
+    #print-area tbody tr:nth-child(even){background:var(--p-zebra)}
+    /* so a descricao quebra; o resto em uma linha so */
+    #print-area td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #print-area td.pr-desc{white-space:normal;overflow:visible}
+    #print-area .pill{display:inline-block;padding:1px 5px;border:1px solid var(--p-linha);
+      border-radius:20px;font-size:6pt;color:var(--p-fraco);background:#fff}
+    .pr-danger{color:var(--p-danger);font-weight:700}
+    .pr-warn{color:var(--p-warn);font-weight:700}
+    .pr-muted{color:var(--p-fraco)}
+    .pr-rodape{margin-top:8px;padding-top:5px;border-top:1px solid var(--p-linha);
+      font-size:6.5pt;color:var(--p-fraco);display:flex;justify-content:space-between}
+  }
   .met-cx .val{font-size:18px}
   .met-pct{font-size:11px;color:var(--muted);margin-top:3px}
   /* cor por canal: a mesma posição tem sempre a mesma cor em todas as
@@ -362,6 +431,12 @@
 <body>
 
 <!-- ============ LOGIN ============ -->
+<!-- Area usada so na impressao/PDF. Fica fora do #app de proposito: o app
+     tem sidebar fixa e tabelas dentro de div com rolagem e altura maxima,
+     coisas que a impressao nao sabe paginar. Aqui a tabela e solta e o
+     navegador quebra em paginas sozinho. -->
+<div id="print-area"></div>
+
 <div id="login">
   <div class="card">
     <img src="logo.png" alt="Carrinhos_Net" class="card-logo" onerror="this.style.display='none'" />
@@ -887,6 +962,7 @@
         <button class="act prim" id="est-importar">Importar do Bling</button>
         <button class="act" id="est-enviar-bling">Enviar estoque mínimo ao Bling</button>
         <button class="act" id="est-exportar">Exportar CSV</button>
+        <button class="act" id="est-exportar-pdf">Exportar PDF</button>
         <span id="est-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
       <div id="est-aviso" style="display:none"></div>

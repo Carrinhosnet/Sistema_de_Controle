@@ -8,6 +8,7 @@
 // comprar/fabricar e dias restantes — igual à planilha do Vinicius.
 // Depende de: $, rpc, chamarFuncao, USER, temPermissao, registrarTela.
 // Usa SheetJS (XLSX) já carregado no index.
+// Exporta em CSV (dados) e em PDF (o painel como ele aparece na tela).
 // =====================================================================
 const EST = (function(){
   let LINHAS=[], TOTAL=0, PAGINA=0; const POR=50;
@@ -292,12 +293,143 @@ const EST = (function(){
     }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; }
   }
 
+
+  // ---------------- export PDF ----------------
+  // Nao usa biblioteca de PDF: monta um bloco de impressao e chama a
+  // impressao do navegador, onde o usuario escolhe "Salvar como PDF".
+  // Motivo: nao entra dependencia nova no projeto e a paginacao fica por
+  // conta do navegador.
+  //
+  // O PDF sai em FUNDO BRANCO (relatorio), nao no tema escuro da tela. As
+  // cores com significado continuam, em tons escurecidos para terem
+  // contraste sobre branco — ver o bloco @media print no index.html.
+  //
+  // Sai a analise INTEIRA com os filtros atuais, nao so a pagina aberta:
+  // uma lista de compra pela metade nao serve para nada. As 12 colunas
+  // cabem em A4 deitado; as linhas quebram em varias paginas e o
+  // cabecalho da tabela se repete em cada uma.
+  const ESC=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  // descreve os filtros ativos para quem receber o PDF saber o que esta vendo
+  function descreverFiltros(){
+    const p=[];
+    if(f('tipo').value)   p.push('Tipo: '+f('tipo').value);
+    if(f('origem').value) p.push('Origem: '+f('origem').value);
+    if(f('status').value) p.push('Status: '+(f('status').selectedOptions[0]||{}).text);
+    if(f('busca').value.trim()) p.push('Busca: "'+f('busca').value.trim()+'"');
+    const ord=(f('ordem').selectedOptions[0]||{}).text;
+    if(ord) p.push('Ordem: '+ord);
+    return p.length ? p.join('  ·  ') : 'Sem filtros — análise completa';
+  }
+
+  function montarImpressao(linhas, k){
+    const agora=new Date().toLocaleString('pt-BR');
+    const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
+
+    let kpis='';
+    if(k){
+      const dt = k.importado_em ? new Date(k.importado_em).toLocaleString('pt-BR') : '—';
+      const cards=[
+        ['SKUs na análise', n0(k.total)],
+        ['A comprar / fabricar', n0(k.a_comprar)],
+        ['Sem venda (120d)', n0(k.sem_venda)],
+        ['Última importação', dt]
+      ];
+      kpis='<div class="pr-kpis">'+cards.map(c=>
+        `<div class="pr-kpi"><div class="l">${ESC(c[0])}</div><div class="v">${ESC(c[1])}</div></div>`
+      ).join('')+'</div>';
+    }
+
+    // mesma regra de cor da tela: vermelho quando os dias restantes nao
+    // cobrem o prazo, ambar quando ha o que comprar
+    const corpo=linhas.map(l=>{
+      const dias = l.dias_restantes==null
+        ? '<span class="pr-muted">Sem venda</span>'
+        : (Number(l.dias_restantes) <= Number(l.dias_cobertura)
+            ? `<span class="pr-danger">${ESC(l.dias_restantes)}</span>`
+            : ESC(l.dias_restantes));
+      const comprar = Number(l.comprar)>0
+        ? `<span class="pr-warn">${ESC(fmt(l.comprar))}</span>` : '0';
+      return `<tr>
+        <td><span class="pill">${ESC(l.tipo_sku||'—')}</span></td>
+        <td><b>${ESC(l.sku)}</b></td>
+        <td class="num">${ESC(l.quantidade??'—')}</td>
+        <td>${ESC(l.unidade_medida||'—')}</td>
+        <td class="pr-desc">${ESC(l.descricao_curta||'—')}</td>
+        <td class="num">${ESC(fmt(l.estoque_atual))}</td>
+        <td class="num">${ESC(fmt(l.vendas_120d))}</td>
+        <td class="num">${ESC(fmt(l.media_diaria))}</td>
+        <td class="num">${ESC(l.dias_cobertura)}</td>
+        <td class="num">${ESC(fmt(l.estoque_minimo))}</td>
+        <td class="num">${comprar}</td>
+        <td class="num">${dias}</td>
+      </tr>`;
+    }).join('');
+
+    // larguras fixas: sem elas o navegador espalha as colunas pelo conteudo
+    // e a Descricao empurra as numericas para fora da folha
+    const larguras=[6,11,4,4,26,7,7,7,6,7,8,7]
+      .map(p=>`<col style="width:${p}%">`).join('');
+
+    $('print-area').innerHTML=`
+      <div class="pr-topo">
+        <img src="logo-print.png" class="pr-logo"
+             onerror="this.onerror=null;this.src='logo.png';this.className='pr-logo pr-logo-inv'">
+        <div>
+          <div class="pr-tit">Análise de Estoque</div>
+          <div class="pr-sub">${ESC(descreverFiltros())}</div>
+        </div>
+        <div class="pr-quando">
+          Gerado em ${ESC(agora)}<br>
+          por ${ESC(USER && USER.nome ? USER.nome : '—')}
+        </div>
+      </div>
+      ${kpis}
+      <table>
+        <colgroup>${larguras}</colgroup>
+        <thead><tr>
+          <th>Tipo</th><th>SKU</th><th class="num">Qtd</th><th>Un.</th><th>Descrição</th>
+          <th class="num">Estoque Atual</th><th class="num">Vendas 120d</th><th class="num">Média Diária</th>
+          <th class="num">Dias Cob.</th><th class="num">Estoque Mín.</th>
+          <th class="num">Comprar/Fabricar</th><th class="num">Dias Restantes</th>
+        </tr></thead>
+        <tbody>${corpo}</tbody>
+      </table>
+      <div class="pr-rodape">
+        <span>${n0(linhas.length)} produto(s)</span>
+        <span>Carrinhos_Net — Sistema de controle</span>
+      </div>`;
+  }
+
+  async function exportarPDF(){
+    const b=f('exportar-pdf'); if(b.disabled) return;
+    b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
+    try{
+      const [res,kpis]=await Promise.all([
+        rpc('cn_listar_estoque',{...filtros(),p_ordem:f('ordem').value||'comprar',p_limite:100000,p_offset:0}),
+        rpc('cn_estoque_kpis',{p_usuario_id:USER.id}).catch(()=>null)
+      ]);
+      const todas=(res&&res.linhas)||[];
+      if(!todas.length){ alert('Nada para exportar com os filtros atuais.'); return; }
+      montarImpressao(todas, kpis);
+      f('msg').textContent=`PDF: ${todas.length} produto(s). Escolha "Salvar como PDF" no destino.`;
+      // dois quadros de espera: o navegador precisa aplicar o layout e
+      // carregar a logo antes de congelar a pagina para a impressao
+      await new Promise(r=>setTimeout(r,120));
+      window.print();
+    }catch(e){ alert('Erro ao gerar o PDF: '+(e.message||e)); }
+    finally{ b.disabled=false; b.textContent=t; }
+  }
+  // libera a memoria da tabela grande assim que o dialogo fecha
+  window.addEventListener('afterprint',()=>{ const p=$('print-area'); if(p) p.innerHTML=''; });
+
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
     f('tipo').addEventListener('change',()=>carregar(true)); f('origem').addEventListener('change',()=>carregar(true));
     f('status').addEventListener('change',()=>carregar(true)); f('ordem').addEventListener('change',()=>carregar(true));
     f('btn-filtrar').addEventListener('click',()=>carregar(true));
     f('importar').addEventListener('click',abrirImport); f('exportar').addEventListener('click',exportar);
+    f('exportar-pdf').addEventListener('click',exportarPDF);
     const be=f('enviar-bling'); if(be) be.addEventListener('click',enviarMinimo);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } });
     f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
