@@ -11,11 +11,15 @@
 <style>
   :root{
     --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a;
-    --text:#e6e8ec; --muted:#9aa1ad; --accent:#3b82f6; --accent-soft:#1e2b45;
+    --text:#e6e8ec; --muted:#9aa1ad;
+    /* verde da marca. Sao tres tons porque o mesmo verde nao serve para tudo:
+       --accent  e TEXTO/borda sobre o fundo escuro (precisa ser claro o bastante)
+       --forte   e FUNDO de botao com texto branco (precisa ser escuro)
+       --soft    e preenchimento discreto (menu ativo, selo ADM) */
+    --accent:#26a269; --accent-soft:#102a1d;
+    --accent-forte:#0d5c37; --accent-forte-h:#0a4529;
     --ok:#22c55e; --danger:#ef4444; --warn:#f59e0b;
     --radius:10px; --font:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-    /* verde da marca Carrinhos_Net; usado so na tela de login por enquanto */
-    --verde:#0d5c37; --verde-esc:#0a4529;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
@@ -44,18 +48,18 @@
   @keyframes cardUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
   /* logo no topo da caixa; largura em % para acompanhar a caixa no celular */
   .card-logo{display:block;width:78%;max-width:260px;height:auto;margin:0 auto 22px}
-  .card h1{font-size:20px;font-weight:700;margin-bottom:4px;text-align:center}
-  .card p{color:#c3c9d4;font-size:13px;margin-bottom:26px;text-align:center}
+  .card p{color:#c3c9d4;font-size:13.5px;line-height:1.55;margin-bottom:24px;
+          text-align:center;padding:0 4px}
   .field{margin-bottom:14px}
   .field label{display:block;font-size:12px;color:#c3c9d4;margin-bottom:6px}
   .field input{width:100%;padding:11px 12px;background:rgba(255,255,255,.07);
                border:1px solid rgba(255,255,255,.16);border-radius:8px;color:var(--text)}
   .field input::placeholder{color:rgba(230,232,236,.45)}
-  .field input:focus{outline:none;border-color:var(--verde);
-                     box-shadow:0 0 0 3px rgba(13,92,55,.35);background:rgba(255,255,255,.10)}
-  .btn{width:100%;padding:12px;background:var(--verde);color:#fff;border:none;
+  .field input:focus{outline:none;border-color:var(--accent);
+                     box-shadow:0 0 0 3px rgba(38,162,105,.30);background:rgba(255,255,255,.10)}
+  .btn{width:100%;padding:12px;background:var(--accent-forte);color:#fff;border:none;
        border-radius:8px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
-  .btn:hover{background:var(--verde-esc);transform:translateY(-1px)}
+  .btn:hover{background:var(--accent-forte-h);transform:translateY(-1px)}
   .btn:active{transform:translateY(0)}
   .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
   .erro{color:#ff6b6b;font-size:13px;margin-top:12px;min-height:18px}
@@ -125,7 +129,7 @@
   .toolbar select{padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text)}
   .toolbar button.act{padding:9px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;white-space:nowrap}
   .toolbar button.act:hover{border-color:var(--accent)}
-  .toolbar button.prim{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .toolbar button.prim{background:var(--accent-forte);color:#fff;border-color:var(--accent-forte)}
 
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
   .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
@@ -195,7 +199,7 @@
   .calc-sec{margin-top:18px;padding-top:14px;border-top:1px dashed var(--border)}
   .drawer .foot{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px}
   .drawer .foot button{flex:1;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;border:none}
-  .btn-save{background:var(--accent);color:#fff}
+  .btn-save{background:var(--accent-forte);color:#fff}
   .btn-cancel{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
   .drawer-erro{color:var(--danger);font-size:12px;padding:0 20px;min-height:16px}
 
@@ -207,7 +211,7 @@
   .res{width:100%;border-collapse:collapse;font-size:13px}
   .res th{text-align:left;color:var(--muted);font-weight:500;padding:8px;border-bottom:1px solid var(--border)}
   .res td{padding:8px;border-bottom:1px solid var(--border)}
-  .res button{padding:5px 10px;border-radius:6px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-size:12px}
+  .res button{padding:5px 10px;border-radius:6px;background:var(--accent-forte);color:#fff;border:none;cursor:pointer;font-size:12px}
   .res input{padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px}
 
   /* menu lateral retrátil */
@@ -362,8 +366,7 @@
 <div id="login">
   <div class="card">
     <img src="logo.png" alt="Carrinhos_Net" class="card-logo" onerror="this.style.display='none'" />
-    <h1>Carrinhos_Net</h1>
-    <p>Sistema de controle · entre para continuar</p>
+    <p>Seja bem-vindo ao sistema de controle para e-commerce, para continuar digite seus dados de login!</p>
     <div class="field"><label>Usuário</label><input id="in-login" autocomplete="username" placeholder="admin" /></div>
     <div class="field"><label>Senha</label><input id="in-senha" type="password" autocomplete="current-password" placeholder="••••••••" /></div>
     <button class="btn" id="btn-entrar">Entrar</button>
