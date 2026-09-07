@@ -33,7 +33,7 @@
   #login{position:relative;min-height:100vh;display:flex;align-items:center;
          justify-content:center;padding:20px;overflow:hidden;background:#0b0d11}
   #login::before{content:"";position:absolute;inset:0;
-         background:url('login-bg.png') center/cover no-repeat;
+         background:url('login-bg.jpg') center/cover no-repeat;
          /* escurece so o suficiente para o texto branco ter contraste */
          filter:brightness(.55)}
   #login > *{position:relative;z-index:1}
@@ -1731,17 +1731,88 @@ const rpcURL = (fn)=>`${SUPABASE_URL}/rest/v1/rpc/${fn}`;
 const FUNC_URL = (fn)=>`${SUPABASE_URL}/functions/v1/${fn}`;
 
 async function rpc(fn, args){
+  // porta de entrada de tudo que fala com o banco: se a sessao venceu,
+  // derruba aqui em vez de deixar a tela seguir com dados de um usuario
+  // que ja deveria ter saido. Se esta valida, a propria chamada conta
+  // como atividade e estica o prazo.
+  if(USER && !verificarSessao()) throw new Error('Sessão expirada.');
+  renovarSessao();
   const resp = await fetch(rpcURL(fn), { method:"POST", headers:{ "apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json" }, body:JSON.stringify(args||{}) });
   const txt = await resp.text(); let data; try{ data=JSON.parse(txt); }catch{ data=txt; }
   if(!resp.ok) throw new Error(data?.message||data?.hint||txt||("HTTP "+resp.status));
   return data;
 }
 async function chamarFuncao(fn, body){
+  if(USER && !verificarSessao()) throw new Error('Sessão expirada.');
+  renovarSessao();
   const resp = await fetch(FUNC_URL(fn), { method:"POST", headers:{ "apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json" }, body:JSON.stringify(body||{}) });
   const txt = await resp.text(); let data; try{ data=JSON.parse(txt); }catch{ data=txt; }
   if(!resp.ok || (data && data.ok===false)) throw new Error((data&&data.erro)||txt||("HTTP "+resp.status));
   return data;
 }
+
+// ================== SESSAO POR INATIVIDADE ==================
+// A sessao cai depois de 30 minutos SEM ATIVIDADE. Qualquer sinal de uso
+// reinicia a contagem, entao quem esta trabalhando nunca e derrubado no
+// meio de uma tarefa; so cai quem largou a tela parada.
+//
+// Conta como atividade: clique, tecla, rolagem, toque na tela e qualquer
+// chamada ao banco. Movimento do mouse NAO conta de proposito — esbarrar
+// na mesa manteria a sessao viva a noite inteira, que e justamente o que
+// este controle existe para evitar.
+//
+// ATENCAO: isto e um controle de USO, nao de seguranca. O prazo vive no
+// sessionStorage do navegador, entao quem abrir o console consegue mexer
+// nele. Barrar de verdade exigiria a sessao ser validada no servidor.
+const SESSAO_MINUTOS = 30;
+const SESSAO_KEY = 'cn_sessao_expira';
+// A cada sinal de uso o prazo poderia ser reescrito, mas rolagem dispara
+// dezenas de vezes por segundo. Regravamos no maximo uma vez por minuto:
+// o usuario perde no maximo 1 minuto de prazo e o storage fica em paz.
+const SESSAO_PASSO_MS = 60*1000;
+let _sessaoTimer = null, _sessaoUltimaRenovacao = 0;
+
+function renovarSessao(forcar){
+  if(!USER && !forcar) return;
+  const agora = Date.now();
+  if(!forcar && agora - _sessaoUltimaRenovacao < SESSAO_PASSO_MS) return;
+  _sessaoUltimaRenovacao = agora;
+  try{ sessionStorage.setItem(SESSAO_KEY, String(agora + SESSAO_MINUTOS*60*1000)); }catch(e){}
+  agendarFimSessao();
+}
+function iniciarSessao(){ _sessaoUltimaRenovacao = 0; renovarSessao(true); }
+
+function sessaoExpirada(){
+  const fim = parseInt(sessionStorage.getItem(SESSAO_KEY),10);
+  // sem marca gravada tratamos como expirada: e o caso de uma aba antiga,
+  // aberta antes deste controle existir, que ficaria logada para sempre.
+  if(!Number.isFinite(fim)) return true;
+  return Date.now() >= fim;
+}
+
+// O timer sozinho nao basta: aba em segundo plano tem setTimeout limitado
+// pelo navegador, e se a maquina suspender ele acorda atrasado. Por isso a
+// verificacao tambem roda ao voltar para a aba e antes de cada chamada.
+function agendarFimSessao(){
+  clearTimeout(_sessaoTimer);
+  const fim = parseInt(sessionStorage.getItem(SESSAO_KEY),10);
+  if(!Number.isFinite(fim)) return;
+  _sessaoTimer = setTimeout(verificarSessao, Math.max(1000, fim - Date.now()));
+}
+function verificarSessao(){
+  if(!USER) return true;
+  if(sessaoExpirada()){ sair(MSG_SESSAO); return false; }
+  agendarFimSessao();
+  return true;
+}
+const MSG_SESSAO = 'Sua sessão expirou após '+SESSAO_MINUTOS+' minutos sem atividade. Entre novamente para continuar.';
+
+// sinais de uso. passive:true porque nenhum deles altera o evento; capture
+// para contar mesmo quando a tela interrompe a propagacao do clique.
+['click','keydown','scroll','touchstart'].forEach(function(ev){
+  document.addEventListener(ev, function(){ renovarSessao(); }, {passive:true, capture:true});
+});
+document.addEventListener('visibilitychange', function(){ if(!document.hidden) verificarSessao(); });
 
 let USER=null, PERMISSOES=new Set();
 function temPermissao(a){ return PERMISSOES.has(a); }
@@ -1900,7 +1971,9 @@ async function entrar(){
   try{
     const r=await rpc('autenticar',{p_login:login,p_senha:senha});
     if(!r||r.length===0) throw new Error('Usuário ou senha inválidos.');
-    USER=r[0]; sessionStorage.setItem('cn_user',JSON.stringify(USER)); await abrirApp();
+    USER=r[0]; sessionStorage.setItem('cn_user',JSON.stringify(USER));
+    iniciarSessao();
+    await abrirApp();
   }catch(e){ $('login-erro').textContent=e.message||'Falha ao entrar.'; }
   finally{ $('btn-entrar').disabled=false; $('btn-entrar').textContent='Entrar'; }
 }
@@ -1966,7 +2039,16 @@ function mostrarTela(t){
   if(TELAS[t] && !CARREGADO[t]){ CARREGADO[t]=true; TELAS[t].init(); }
   if(typeof atualizarBadges==='function') atualizarBadges();
 }
-function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new Set(); Object.keys(CARREGADO).forEach(k=>CARREGADO[k]=false); $('app').classList.remove('on'); $('login').style.display='flex'; $('in-senha').value=''; aplicarBadgeGlobal(0); }
+function sair(aviso){
+  clearTimeout(_sessaoTimer);
+  sessionStorage.removeItem('cn_user'); sessionStorage.removeItem(SESSAO_KEY);
+  USER=null; PERMISSOES=new Set();
+  Object.keys(CARREGADO).forEach(k=>CARREGADO[k]=false);
+  $('app').classList.remove('on'); $('login').style.display='flex';
+  $('in-senha').value=''; aplicarBadgeGlobal(0);
+  // aviso so aparece quando a saida foi automatica; clicar em Sair nao mostra nada
+  $('login-erro').textContent = (typeof aviso==='string') ? aviso : '';
+}
 </script>
 </div>
 
@@ -1994,7 +2076,7 @@ function sair(){ sessionStorage.removeItem('cn_user'); USER=null; PERMISSOES=new
 $('btn-entrar').addEventListener('click', entrar);
 $('in-senha').addEventListener('keydown', e=>{ if(e.key==='Enter') entrar(); });
 $('in-login').addEventListener('keydown', e=>{ if(e.key==='Enter') $('in-senha').focus(); });
-$('btn-sair').addEventListener('click', sair);
+$('btn-sair').addEventListener('click', function(){ sair(); });
 // ================== "IR PARA A PAGINA" NAS PAGINACOES ==================
 // Uma unica implementacao para as 11 telas paginadas. O controle e criado
 // na primeira chamada e depois so atualizado — nao mexe no HTML das telas.
@@ -2228,7 +2310,18 @@ instalarTodas();
 let _instTimer=null;
 new MutationObserver(function(){ clearTimeout(_instTimer); _instTimer=setTimeout(instalarTodas, 100); }).observe(document.body, {childList:true, subtree:true});
 
-(function init(){ const s=sessionStorage.getItem('cn_user'); if(s){ try{ USER=JSON.parse(s); abrirApp(); }catch{} } })();
+(function init(){
+  const s=sessionStorage.getItem('cn_user');
+  if(!s) return;
+  // recarregar a pagina conta como atividade e estica o prazo, mas so se
+  // ele ainda nao tiver vencido
+  if(sessaoExpirada()){
+    sessionStorage.removeItem('cn_user'); sessionStorage.removeItem(SESSAO_KEY);
+    $('login-erro').textContent=MSG_SESSAO;
+    return;
+  }
+  try{ USER=JSON.parse(s); renovarSessao(true); abrirApp(); }catch{}
+})();
 </script>
 </body>
 </html>
