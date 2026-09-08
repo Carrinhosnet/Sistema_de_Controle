@@ -263,20 +263,27 @@ const MED = (function(){
   // impediria de registrar um estado novo.
   const UFS=['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
              'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
-  let CANAIS=[], ENVIOS=[];
+  let CANAIS=[], ENVIOS=[], SKUS=[];
 
   async function carregarCanais(){
     try{ const r=await rpc('cn_opcoes_mediacao',{p_usuario_id:USER.id}) || {};
       CANAIS=(r.canais||[]).filter(Boolean);
       ENVIOS=(r.tipos_envio||[]).filter(Boolean);
-    }catch(e){ CANAIS=[]; ENVIOS=[]; }
+      SKUS=(r.skus||[]).filter(Boolean);
+      // SKU usa datalist em vez de select: são centenas, e digitar parte
+      // do código filtra a lista. Aceita valor fora dela de propósito —
+      // produto descontinuado some do cadastro mas o caso continua real.
+      $('med-skus').innerHTML = SKUS.map(v=>`<option value="${v}">`).join('');
+    }catch(e){ CANAIS=[]; ENVIOS=[]; SKUS=[]; }
   }
 
   // Campos que vêm da venda. Quando o pedido TEM venda, ela manda e
   // estes ficam bloqueados — mesma regra das telas de destino. O banco
   // aplica isso de qualquer jeito (arquivo 97): a tela só reflete.
   // Quando não há venda, são a única forma de informar o dado.
-  const CAMPOS_DA_VENDA=['e-dvenda','e-canal','e-envio','e-cliente','e-uf','e-valor','e-qtd'];
+  // O campo de quantidade é 'e-itens' (med-e-itens), não 'e-qtd': com o
+  // id errado ele não era travado quando o caso tinha venda.
+  const CAMPOS_DA_VENDA=['e-dvenda','e-canal','e-envio','e-sku','e-cliente','e-uf','e-valor','e-itens'];
 
   async function aplicarTrava(idPedido){
     let tem=false;
@@ -313,6 +320,7 @@ const MED = (function(){
     f('e-dvenda').value=l.data_venda||'';
     preencherSel('e-canal', CANAIS, l.canal||'', 'Selecione o canal');
     preencherSel('e-envio', ENVIOS, l.tipo_envio||'', 'Selecione o tipo de envio');
+    f('e-sku').value=l.modelo||'';
     f('e-cliente').value=l.cliente||'';
     preencherSel('e-uf', UFS, (l.uf||'').toUpperCase(), 'Selecione a UF');
     f('e-valor').value=l.valor_pedido??'';
@@ -338,6 +346,7 @@ const MED = (function(){
         p_data_venda:f('e-dvenda').value||null,
         p_canal:f('e-canal').value||null,
         p_tipo_envio:f('e-envio').value||null,
+        p_modelo:f('e-sku').value.trim()||null,
         p_cliente:f('e-cliente').value.trim()||null,
         p_uf:f('e-uf').value||null,
         p_valor_pedido:num('e-valor'),
