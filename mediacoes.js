@@ -256,19 +256,35 @@ const MED = (function(){
   // existe ou uma UF inventada, e o valor ia para o banco assim mesmo.
   // Agora são listas.
   //
-  // CANAL vem do banco (cn_canais_para_mediacao, que lê de vendas +
-  // mediações) porque a lista muda conforme os canais da operação.
+  // CANAL e TIPO DE ENVIO vêm do banco (cn_opcoes_mediacao, que lê de
+  // vendas + mediações) porque as listas mudam conforme a operação.
   // UF é fixa aqui: são as 27 unidades federativas, não mudam, e
   // buscar no banco só devolveria as UFs onde já houve venda — o que
   // impediria de registrar um estado novo.
   const UFS=['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
              'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
-  let CANAIS=[];
+  let CANAIS=[], ENVIOS=[];
 
   async function carregarCanais(){
-    try{ const r=await rpc('cn_canais_para_mediacao',{p_usuario_id:USER.id});
-      CANAIS=(r||[]).map(x=>x.canal).filter(Boolean);
-    }catch(e){ CANAIS=[]; }
+    try{ const r=await rpc('cn_opcoes_mediacao',{p_usuario_id:USER.id}) || {};
+      CANAIS=(r.canais||[]).filter(Boolean);
+      ENVIOS=(r.tipos_envio||[]).filter(Boolean);
+    }catch(e){ CANAIS=[]; ENVIOS=[]; }
+  }
+
+  // Campos que vêm da venda. Quando o pedido TEM venda, ela manda e
+  // estes ficam bloqueados — mesma regra das telas de destino. O banco
+  // aplica isso de qualquer jeito (arquivo 97): a tela só reflete.
+  // Quando não há venda, são a única forma de informar o dado.
+  const CAMPOS_DA_VENDA=['e-dvenda','e-canal','e-envio','e-cliente','e-uf','e-valor','e-qtd'];
+
+  async function aplicarTrava(idPedido){
+    let tem=false;
+    try{ tem = await rpc('cn_pedido_tem_venda',{p_usuario_id:USER.id,p_id_pedido:idPedido}); }
+    catch(e){ tem=false; }   // na dúvida deixa editar: quem decide é o banco no salvar
+    CAMPOS_DA_VENDA.forEach(id=>{ const el=f(id); if(el){ el.disabled=!!tem;
+      el.title = tem ? 'Preenchido pela venda do sistema' : ''; } });
+    const av=f('e-travado'); if(av) av.style.display = tem ? '' : 'none';
   }
 
   // Monta o select. O valor atual entra na lista mesmo se não estiver
@@ -296,10 +312,12 @@ const MED = (function(){
     f('e-abertura').value=l.data_abertura||'';
     f('e-dvenda').value=l.data_venda||'';
     preencherSel('e-canal', CANAIS, l.canal||'', 'Selecione o canal');
+    preencherSel('e-envio', ENVIOS, l.tipo_envio||'', 'Selecione o tipo de envio');
     f('e-cliente').value=l.cliente||'';
     preencherSel('e-uf', UFS, (l.uf||'').toUpperCase(), 'Selecione a UF');
     f('e-valor').value=l.valor_pedido??'';
     f('e-itens').value=l.qtd_itens??''; f('e-obs').value=l.observacao||'';
+    aplicarTrava(l.id_pedido);
     $('med-overlay').classList.add('open'); $('med-drawer').classList.add('open');
     setTimeout(()=>f('e-idped').focus(),50);
   }
@@ -319,6 +337,7 @@ const MED = (function(){
         p_data_abertura:f('e-abertura').value||null,
         p_data_venda:f('e-dvenda').value||null,
         p_canal:f('e-canal').value||null,
+        p_tipo_envio:f('e-envio').value||null,
         p_cliente:f('e-cliente').value.trim()||null,
         p_uf:f('e-uf').value||null,
         p_valor_pedido:num('e-valor'),
