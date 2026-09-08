@@ -49,7 +49,7 @@ const MED = (function(){
     p_canal:f('canal').value||null
   }; }
 
-  async function init(){ await carregarFiltros(); await carregar(); bind(); }
+  async function init(){ await carregarFiltros(); await carregarCanais(); await carregar(); bind(); }
 
   async function carregarFiltros(){
     try{ const meses=await rpc('cn_meses_mediacoes',{p_usuario_id:USER.id});
@@ -251,6 +251,39 @@ const MED = (function(){
   // por isso o aviso na coluna e o botão de correção.
   function semVenda(l){ return String(l.id_pedido||'').startsWith('sem-pedido:'); }
 
+  // ---- listas fechadas do drawer de edição ----
+  // Canal e UF eram campos livres: dava para digitar um canal que não
+  // existe ou uma UF inventada, e o valor ia para o banco assim mesmo.
+  // Agora são listas.
+  //
+  // CANAL vem do banco (cn_canais_para_mediacao, que lê de vendas +
+  // mediações) porque a lista muda conforme os canais da operação.
+  // UF é fixa aqui: são as 27 unidades federativas, não mudam, e
+  // buscar no banco só devolveria as UFs onde já houve venda — o que
+  // impediria de registrar um estado novo.
+  const UFS=['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
+             'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+  let CANAIS=[];
+
+  async function carregarCanais(){
+    try{ const r=await rpc('cn_canais_para_mediacao',{p_usuario_id:USER.id});
+      CANAIS=(r||[]).map(x=>x.canal).filter(Boolean);
+    }catch(e){ CANAIS=[]; }
+  }
+
+  // Monta o select. O valor atual entra na lista mesmo se não estiver
+  // entre as opções — abrir um caso não pode apagar em silêncio o que
+  // já estava gravado. Mesmo critério das telas de Cancelamentos e
+  // Devoluções com os motivos.
+  function preencherSel(id, opcoes, atual, vazio){
+    const sel=f(id); sel.innerHTML='<option value="">'+(vazio||'—')+'</option>';
+    const opts=[...opcoes];
+    if(atual && !opts.includes(atual)) opts.unshift(atual);
+    opts.forEach(v=>{ const o=document.createElement('option');
+      o.value=v; o.textContent=v; if(v===atual)o.selected=true; sel.appendChild(o); });
+    sel.value=atual||'';
+  }
+
   let EDIT_ID=null;
 
   function abrir(id){
@@ -261,8 +294,10 @@ const MED = (function(){
     f('e-claim').value=l.claim_id||'—';
     f('e-idped').value = semVenda(l) ? '' : (l.id_pedido||'');
     f('e-abertura').value=l.data_abertura||'';
-    f('e-canal').value=l.canal||''; f('e-cliente').value=l.cliente||'';
-    f('e-uf').value=l.uf||''; f('e-valor').value=l.valor_pedido??'';
+    preencherSel('e-canal', CANAIS, l.canal||'', 'Selecione o canal');
+    f('e-cliente').value=l.cliente||'';
+    preencherSel('e-uf', UFS, (l.uf||'').toUpperCase(), 'Selecione a UF');
+    f('e-valor').value=l.valor_pedido??'';
     f('e-itens').value=l.qtd_itens??''; f('e-obs').value=l.observacao||'';
     $('med-overlay').classList.add('open'); $('med-drawer').classList.add('open');
     setTimeout(()=>f('e-idped').focus(),50);
@@ -281,9 +316,9 @@ const MED = (function(){
         p_usuario_id:USER.id, p_mediacao_id:EDIT_ID,
         p_id_pedido:f('e-idped').value.trim()||null,
         p_data_abertura:f('e-abertura').value||null,
-        p_canal:f('e-canal').value.trim()||null,
+        p_canal:f('e-canal').value||null,
         p_cliente:f('e-cliente').value.trim()||null,
-        p_uf:f('e-uf').value.trim().toUpperCase()||null,
+        p_uf:f('e-uf').value||null,
         p_valor_pedido:num('e-valor'),
         p_qtd_itens:num('e-itens'),
         p_observacao:f('e-obs').value.trim()||null
