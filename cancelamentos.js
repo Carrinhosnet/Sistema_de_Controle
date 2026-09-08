@@ -110,13 +110,16 @@ const CAN = (function(){
            `<div class="val">${valor}</div></div>`;
   }
 
-  // box que filtra: a classe de cor liga ao recorte, .on mostra que está
-  // aplicado. onclick chama CAN.foco, exposto no retorno do módulo.
+  // Mesmo formato dos boxes clicáveis da tela de Vendas: classe
+  // .kpi.click, número na cor e a tarja "filtro ativo · clique para
+  // remover" que só aparece quando .on está presente. Um padrão só
+  // para as duas telas.
   function cardFiltro(cls,acao,ativo,titulo,valor,hint){
-    return `<div class="kpi kpi-filtro ${cls}${ativo?' on':''}" onclick="CAN.foco('${acao}')">`+
+    return `<div class="kpi click ${cls} ${ativo?'on':''}" onclick="CAN.foco('${acao}')">`+
            `<div class="lbl">${titulo}</div>`+
            (hint?`<div class="hint">${hint}</div>`:'')+
-           `<div class="val">${valor}</div></div>`;
+           `<div class="val">${valor}</div>`+
+           `<div class="flag">filtro ativo · clique para remover</div></div>`;
   }
 
   function renderKpis(k){
@@ -126,17 +129,17 @@ const CAN = (function(){
       cardHtml('Valor cancelado', brl(k.valor_cancelado), 'Soma do valor das vendas canceladas') +
       cardHtml('Comissão cancelada', brl(k.total_comissao), 'Comissão que deixou de ser cobrada') +
       cardHtml('Pedidos cancelados', n0(k.qtd_pedidos), 'Pedidos distintos, não linhas') +
-      cardFiltro('k-todos','todos', semFoco,
+      cardFiltro('cn-todos','todos', semFoco,
         'Registros', n0(k.total), 'Uma linha por SKU — clique para ver todos') +
-      cardFiltro('k-pendentes','pendentes', SO_PENDENTES,
+      cardFiltro('cn-pendentes','pendentes', SO_PENDENTES,
         'Faltam conferir', n0(k.faltam), 'Ainda não conferidos') +
-      cardFiltro('k-cliente','Cliente', RESPONSAVEL==='Cliente',
+      cardFiltro('cn-cliente','Cliente', RESPONSAVEL==='Cliente',
         'Cancelados pelo cliente', n0(k.por_cliente), 'Desistência ou erro do comprador') +
-      cardFiltro('k-vendedor','Vendedor', RESPONSAVEL==='Vendedor',
+      cardFiltro('cn-vendedor','Vendedor', RESPONSAVEL==='Vendedor',
         'Cancelados pelo vendedor', n0(k.por_vendedor), 'Sem estoque, preço errado, não conseguimos entregar') +
-      cardFiltro('k-plataforma','Plataforma', RESPONSAVEL==='Plataforma',
+      cardFiltro('cn-plataforma','Plataforma', RESPONSAVEL==='Plataforma',
         'Cancelados pela plataforma', n0(k.por_plataforma), 'Cancelado pelo próprio marketplace') +
-      cardFiltro('k-indireta','Indireta', RESPONSAVEL==='Indireta',
+      cardFiltro('cn-indireta','Indireta', RESPONSAVEL==='Indireta',
         'Cancelados indiretamente', n0(k.por_indireta), 'Refeitos por nós, como divisão em vários envios');
   }
 

@@ -284,24 +284,20 @@
   /* cinco colunas fixas: a comparação entre canais só funciona se as
      caixas ficarem alinhadas na mesma posição em todas as faixas */
   .met-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-  /* ---- boxes de KPI que filtram (tela de Cancelamentos) ----
-     A cor não é decoração: cada box liga a um recorte da tabela, e a
-     mesma cor volta na pílula do Responsável, para o olho ligar o box
-     à linha sem precisar ler. A borda esquerda carrega a cor; o fundo
-     fica quase neutro para não competir com o número. */
-  .kpi-filtro{cursor:pointer;border-left:3px solid var(--kc,var(--border));transition:background .15s}
-  .kpi-filtro:hover{background:var(--surface2)}
-  .kpi-filtro.on{background:color-mix(in srgb, var(--kc) 16%, var(--surface));border-color:var(--kc)}
-  .kpi-filtro .val{color:var(--kc)}
-  /* marca de ativo: o box vira botão apertado, não só destacado */
-  .kpi-filtro.on .lbl::after{content:" · filtrando";font-weight:600;color:var(--kc)}
-  .k-todos     {--kc:#3b82f6}
-  .k-pendentes {--kc:#ef4444}
-  .k-cliente   {--kc:#f97316}
-  .k-vendedor  {--kc:#a855f7}
-  .k-plataforma{--kc:#eab308}
-  .k-indireta  {--kc:#94a3b8}
-  /* pílula do responsável na linha, mesma cor do box */
+  /* ---- cores dos boxes clicáveis da tela de Cancelamentos ----
+     O comportamento (borda, número colorido, tarja "filtro ativo") já
+     vem de .kpi.click, definido lá em cima e usado na tela de Vendas.
+     Aqui entram só as cores, para não haver dois jeitos de fazer a
+     mesma coisa no sistema. */
+  .kpi.cn-todos     {--kpc:#3b82f6}   /* azul */
+  .kpi.cn-pendentes {--kpc:#ef4444}   /* vermelho */
+  .kpi.cn-cliente   {--kpc:#f97316}   /* laranja */
+  .kpi.cn-vendedor  {--kpc:#a855f7}   /* roxo */
+  .kpi.cn-plataforma{--kpc:#eab308}   /* amarelo */
+  .kpi.cn-indireta  {--kpc:#94a3b8}   /* cinza */
+
+  /* Pílula do responsável na linha, na mesma cor do box: liga o número
+     de cima à linha de baixo sem precisar ler o texto. */
   .resp{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;
         border:1px solid var(--rc,var(--border));color:var(--rc,var(--muted))}
   .resp.r-cliente   {--rc:#f97316}
