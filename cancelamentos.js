@@ -11,42 +11,78 @@
 // A ENTRADA VEM DA TRIAGEM: casos classificados no Controle de
 // Mediações chegam aqui. A reconciliação do Bling continua existindo,
 // mas quem decide o destino é a triagem.
+//
+// RESPONSÁVEL x MOTIVO (08/09/2026)
+// São duas colunas independentes. `responsavel` diz QUEM originou o
+// cancelamento (Cliente, Vendedor, Plataforma, Indireta) e é o que os
+// boxes coloridos filtram; `motivo` continua sendo a lista aberta de
+// Opções Comerciais. Separados porque a mesma origem tem vários
+// motivos, e agrupar pelo texto do motivo seria frágil.
+//
+// FILTROS SÃO AUTOMÁTICOS: qualquer mudança recarrega, sem botão de
+// aplicar. Só a busca espera, para não disparar a cada tecla.
 // =====================================================================
 const CAN = (function(){
   let LINHAS=[], PAGINA=0, TOTAL=0, KPIS=null; const POR=100;
+  // recortes dos boxes clicáveis. Ficam fora dos selects porque a
+  // função de KPIs os trata diferente dos demais filtros: os contadores
+  // por responsável precisam ignorá-los para continuarem clicáveis.
+  let RESPONSAVEL=null;      // 'Cliente' | 'Vendedor' | 'Plataforma' | 'Indireta'
+  let SO_PENDENTES=false;
   const f=(id)=>$('can-'+id);
+
+  const RESPS=['Cliente','Vendedor','Plataforma','Indireta'];
+  const classeResp=(r)=>'r-'+String(r||'').toLowerCase();
 
   function filtros(){ return {
     p_usuario_id:USER.id,
     p_mes:f('mes').value||null,
+    p_mes_venda:f('mes-venda').value||null,
     p_canal:f('canal').value||null,
+    p_tipo_envio:f('envio').value||null,
+    p_uf:f('uf').value||null,
+    p_motivo:f('motivo').value||null,
+    p_responsavel:RESPONSAVEL,
+    p_conferido:SO_PENDENTES ? false : null,
     p_busca:f('busca').value.trim()||null
   }; }
 
   async function init(){ await carregarMotivos(); await carregarFiltros(); await carregar(); bind(); }
 
+  // Seis listas para os selects, numa chamada só. Seis funções seriam
+  // seis idas ao servidor a cada abertura de tela; o excesso de chamadas
+  // por tela já é pendência registrada no roteiro.
   async function carregarFiltros(){
-    try{ const meses=await rpc('cn_meses_cancelamentos',{p_usuario_id:USER.id});
-      (meses||[]).forEach(m=>{ const o=document.createElement('option');
-        o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); });
+    try{
+      const r=await rpc('cn_filtros_cancelamentos',{p_usuario_id:USER.id}) || {};
+      encherMeses('mes-venda', r.meses_venda);
+      encherMeses('mes',       r.meses_cancel);
+      encher('canal',  r.canais);
+      encher('envio',  r.tipos_envio);
+      encher('uf',     r.ufs);
+      encher('motivo', r.motivos);
     }catch(e){}
-    try{ const canais=await rpc('cn_canais_cancelamentos',{p_usuario_id:USER.id});
-      (canais||[]).forEach(c=>{ const o=document.createElement('option');
-        o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); });
-    }catch(e){}
+  }
+  function encher(id, lista){
+    (lista||[]).forEach(v=>{ const o=document.createElement('option');
+      o.value=v; o.textContent=v; f(id).appendChild(o); });
+  }
+  function encherMeses(id, lista){
+    (lista||[]).forEach(v=>{ const o=document.createElement('option');
+      o.value=v; o.textContent=mesLabel(v); f(id).appendChild(o); });
   }
 
   async function carregar(reset, opts){
     if(reset) PAGINA=0;
     const precisaKpis = !(opts && opts.kpis===false) || KPIS===null;
-    f('tbody').innerHTML='<tr><td colspan="12" class="loading">Carregando cancelamentos…</td></tr>';
+    f('tbody').innerHTML='<tr><td colspan="13" class="loading">Carregando cancelamentos…</td></tr>';
     const fl=filtros();
     try{
       const chamadas=[
         rpc('cn_listar_cancelamentos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_cancelamentos',fl)
       ];
-      if(precisaKpis) chamadas.push(rpc('cn_kpis_cancelamentos',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal}));
+      if(precisaKpis) chamadas.push(rpc('cn_kpis_cancelamentos',fl));
       const res=await Promise.all(chamadas);
       LINHAS=res[0]||[]; TOTAL=Number(res[1])||0;
       if(precisaKpis) KPIS=(res[2]&&res[2][0])||null;
@@ -54,7 +90,7 @@ const CAN = (function(){
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){
-      f('tbody').innerHTML='<tr><td colspan="12" class="empty">Erro: '+(e.message||e)+'</td></tr>';
+      f('tbody').innerHTML='<tr><td colspan="13" class="empty">Erro: '+(e.message||e)+'</td></tr>';
     }
   }
 
@@ -74,20 +110,49 @@ const CAN = (function(){
            `<div class="val">${valor}</div></div>`;
   }
 
+  // box que filtra: a classe de cor liga ao recorte, .on mostra que está
+  // aplicado. onclick chama CAN.foco, exposto no retorno do módulo.
+  function cardFiltro(cls,acao,ativo,titulo,valor,hint){
+    return `<div class="kpi kpi-filtro ${cls}${ativo?' on':''}" onclick="CAN.foco('${acao}')">`+
+           `<div class="lbl">${titulo}</div>`+
+           (hint?`<div class="hint">${hint}</div>`:'')+
+           `<div class="val">${valor}</div></div>`;
+  }
+
   function renderKpis(k){
     const box=f('kpis'); if(!k){box.innerHTML='';return;}
+    const semFoco = !RESPONSAVEL && !SO_PENDENTES;
     box.innerHTML =
       cardHtml('Valor cancelado', brl(k.valor_cancelado), 'Soma do valor das vendas canceladas') +
-      cardHtml('Pedidos', n0(k.qtd_pedidos), 'Pedidos distintos cancelados') +
-      cardHtml('Ticket médio', brl(k.ticket_medio), 'Valor cancelado dividido pelos pedidos') +
-      cardHtml('Comissão envolvida', brl(k.total_comissao), 'Comissão das vendas que caíram') +
-      cardHtml('Registros', n0(k.total), 'Uma linha por SKU cancelado') +
-      cardHtml('Faltam conferir', n0(k.faltam), 'Ainda não conferidos');
+      cardHtml('Comissão cancelada', brl(k.total_comissao), 'Comissão que deixou de ser cobrada') +
+      cardHtml('Pedidos cancelados', n0(k.qtd_pedidos), 'Pedidos distintos, não linhas') +
+      cardFiltro('k-todos','todos', semFoco,
+        'Registros', n0(k.total), 'Uma linha por SKU — clique para ver todos') +
+      cardFiltro('k-pendentes','pendentes', SO_PENDENTES,
+        'Faltam conferir', n0(k.faltam), 'Ainda não conferidos') +
+      cardFiltro('k-cliente','Cliente', RESPONSAVEL==='Cliente',
+        'Cancelados pelo cliente', n0(k.por_cliente), 'Desistência ou erro do comprador') +
+      cardFiltro('k-vendedor','Vendedor', RESPONSAVEL==='Vendedor',
+        'Cancelados pelo vendedor', n0(k.por_vendedor), 'Sem estoque, preço errado, não conseguimos entregar') +
+      cardFiltro('k-plataforma','Plataforma', RESPONSAVEL==='Plataforma',
+        'Cancelados pela plataforma', n0(k.por_plataforma), 'Cancelado pelo próprio marketplace') +
+      cardFiltro('k-indireta','Indireta', RESPONSAVEL==='Indireta',
+        'Cancelados indiretamente', n0(k.por_indireta), 'Refeitos por nós, como divisão em vários envios');
+  }
+
+  // Clique nos boxes. Combinam entre si: pendentes + cliente mostra os
+  // pendentes do cliente. Clicar no box já ativo desliga aquele recorte,
+  // então o próprio box serve de ida e volta.
+  function foco(acao){
+    if(acao==='todos'){ RESPONSAVEL=null; SO_PENDENTES=false; }
+    else if(acao==='pendentes'){ SO_PENDENTES=!SO_PENDENTES; }
+    else { RESPONSAVEL = (RESPONSAVEL===acao) ? null : acao; }
+    KPIS=null; carregar(true);
   }
 
   function renderTabela(){
     const tb=f('tbody');
-    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="12" class="empty">Nenhum cancelamento encontrado.</td></tr>'; return; }
+    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="13" class="empty">Nenhum cancelamento encontrado.</td></tr>'; return; }
     const podeConf=temPermissao('cancelamentos.conferir');
     const editavel=temPermissao('cancelamentos.editar');
     tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}"${editavel?` style="cursor:pointer" onclick="CAN.abrir(${l.id})"`:''}>
@@ -101,6 +166,7 @@ const CAN = (function(){
       <td class="num">${brl(l.valor_total)}</td>
       <td>${l.cliente||'—'}</td>
       <td>${l.uf||'—'}</td>
+      <td>${l.responsavel?`<span class="resp ${classeResp(l.responsavel)}">${l.responsavel}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
       <td>${l.motivo||'<span style="color:var(--muted)">—</span>'}</td>
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="CAN.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
     </tr>`).join('');
@@ -153,9 +219,10 @@ const CAN = (function(){
     EDIT_ID=id; f('drawer-erro').textContent='';
     f('e-idped').value=l.id_pedido||''; f('e-modelo').value=l.modelo||'';
     f('e-cliente').value=l.cliente||''; f('e-data').value=dataBr(l.data_compra);
+    f('e-responsavel').value = RESPS.includes(l.responsavel) ? l.responsavel : '';
     fillMotivo(l.motivo);
     f('overlay').classList.add('open'); f('drawer').classList.add('open');
-    setTimeout(()=>f('e-motivo').focus(),50);
+    setTimeout(()=>f('e-responsavel').focus(),50);
   }
   function fechar(){ f('overlay').classList.remove('open'); f('drawer').classList.remove('open'); EDIT_ID=null; }
 
@@ -165,8 +232,9 @@ const CAN = (function(){
     const b=f('drawer-save'); b.disabled=true; b.textContent='Salvando...';
     try{
       await rpc('cn_editar_cancelamento',{p_usuario_id:USER.id,p_cancelamento_id:EDIT_ID,
-        p_motivo:f('e-motivo').value||null});
-      fechar(); carregar();
+        p_motivo:f('e-motivo').value||null,
+        p_responsavel:f('e-responsavel').value||null});
+      fechar(); KPIS=null; carregar();
     }catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); }
     finally{ b.disabled=false; b.textContent='Salvar'; }
   }
@@ -195,8 +263,9 @@ const CAN = (function(){
   }
 
   function limparFiltros(){
-    ['busca','mes','canal'].forEach(id=>{ f(id).value=''; });
+    ['busca','mes','mes-venda','canal','envio','uf','motivo'].forEach(id=>{ f(id).value=''; });
     f('ordem').value='recentes';
+    RESPONSAVEL=null; SO_PENDENTES=false;
     KPIS=null; carregar(true);
   }
 
@@ -207,10 +276,10 @@ const CAN = (function(){
       const todas=await rpc('cn_listar_cancelamentos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0});
       if(!todas||!todas.length)return;
       const cols=['data_venda','data_compra','canal','id_pedido','tipo_envio','modelo','quantidade',
-                  'valor_total','cliente','uf','motivo',
+                  'valor_total','cliente','uf','responsavel','motivo',
                   'valor_comissao','frete','frete_extra','conferido'];
       const head=['Data da Venda','Data de Cancelamento','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade',
-                  'Valor Total','Cliente','UF','Motivo do Cancelamento',
+                  'Valor Total','Cliente','UF','Responsavel','Motivo do Cancelamento',
                   'Comissao','Frete','Frete Extra','Conferido'];
       const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';'));
       const csv=[head.join(';'),...ls].join('\n');
@@ -223,7 +292,8 @@ const CAN = (function(){
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>{ KPIS=null; carregar(true); },400); });
-    ['mes','canal'].forEach(id=>f(id).addEventListener('change',()=>{ KPIS=null; carregar(true); }));
+    ['mes','mes-venda','canal','envio','uf','motivo'].forEach(id=>
+      f(id).addEventListener('change',()=>{ KPIS=null; carregar(true); }));
     f('ordem').addEventListener('change',()=>carregar(true,{kpis:false}));
     f('limpar').addEventListener('click',limparFiltros);
     f('exportar').addEventListener('click',exportar);
@@ -234,7 +304,7 @@ const CAN = (function(){
     f('next').addEventListener('click',()=>{ PAGINA++; carregar(false,{kpis:false}); });
   }
 
-  return { init, conf, abrir };
+  return { init, conf, abrir, foco };
 })();
 window.CAN = CAN;
 registrarTela('cancelamentos', CAN);

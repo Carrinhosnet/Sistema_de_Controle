@@ -284,6 +284,31 @@
   /* cinco colunas fixas: a comparação entre canais só funciona se as
      caixas ficarem alinhadas na mesma posição em todas as faixas */
   .met-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  /* ---- boxes de KPI que filtram (tela de Cancelamentos) ----
+     A cor não é decoração: cada box liga a um recorte da tabela, e a
+     mesma cor volta na pílula do Responsável, para o olho ligar o box
+     à linha sem precisar ler. A borda esquerda carrega a cor; o fundo
+     fica quase neutro para não competir com o número. */
+  .kpi-filtro{cursor:pointer;border-left:3px solid var(--kc,var(--border));transition:background .15s}
+  .kpi-filtro:hover{background:var(--surface2)}
+  .kpi-filtro.on{background:color-mix(in srgb, var(--kc) 16%, var(--surface));border-color:var(--kc)}
+  .kpi-filtro .val{color:var(--kc)}
+  /* marca de ativo: o box vira botão apertado, não só destacado */
+  .kpi-filtro.on .lbl::after{content:" · filtrando";font-weight:600;color:var(--kc)}
+  .k-todos     {--kc:#3b82f6}
+  .k-pendentes {--kc:#ef4444}
+  .k-cliente   {--kc:#f97316}
+  .k-vendedor  {--kc:#a855f7}
+  .k-plataforma{--kc:#eab308}
+  .k-indireta  {--kc:#94a3b8}
+  /* pílula do responsável na linha, mesma cor do box */
+  .resp{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;
+        border:1px solid var(--rc,var(--border));color:var(--rc,var(--muted))}
+  .resp.r-cliente   {--rc:#f97316}
+  .resp.r-vendedor  {--rc:#a855f7}
+  .resp.r-plataforma{--rc:#eab308}
+  .resp.r-indireta  {--rc:#94a3b8}
+
   /* ---- reordenar arrastando (telas de Opções) ----
      A ordem saiu da tela como número e virou posição da linha. A alça
      dá o aviso visual de que a linha se move; a linha inteira é
@@ -568,9 +593,13 @@
       <div class="toolbar">
         <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           <input id="can-busca" placeholder="Buscar cliente, ID do pedido ou SKU" /></div>
-        <select id="can-mes"><option value="">Todos os meses</option></select>
+        <select id="can-mes-venda"><option value="">Mês da venda: todos</option></select>
+        <select id="can-mes"><option value="">Mês do cancelamento: todos</option></select>
         <select id="can-canal"><option value="">Todos os canais</option></select>
-        <select id="can-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
+        <select id="can-envio"><option value="">Todos os tipos de envio</option></select>
+        <select id="can-uf"><option value="">Todas as UFs</option></select>
+        <select id="can-motivo"><option value="">Todos os motivos</option></select>
+        <select id="can-ordem"><option value="recentes">Cancelamento mais recente</option><option value="antigos">Cancelamento mais antigo</option><option value="venda_nova">Venda mais recente</option><option value="venda_antiga">Venda mais antiga</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
         <button class="act prim" id="can-limpar" title="Remove todos os filtros">Limpar filtros</button>
         <button class="act prim" id="can-exportar">Exportar CSV</button>
         <span id="can-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
@@ -580,7 +609,7 @@
         <th>Data da Venda</th><th>Data de Cancelamento</th><th>Canal de Venda</th>
         <th>ID do Pedido</th><th>Tipo de Envio</th><th>SKU</th>
         <th class="num">Quantidade</th><th class="num">Valor Total</th>
-        <th>Nome do Cliente</th><th>UF</th><th>Motivo do Cancelamento</th>
+        <th>Nome do Cliente</th><th>UF</th><th>Responsável</th><th>Motivo do Cancelamento</th>
         <th style="text-align:center">Conferido</th>
       </tr></thead><tbody id="can-tbody"></tbody></table></div>
       <div class="foot"><span id="can-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
@@ -1256,6 +1285,9 @@
     </div>
     <div class="sec-tit">Classificação</div>
     <div class="grid">
+      <div class="fld full"><label>Responsável pelo cancelamento</label><select id="can-e-responsavel">
+        <option value="">—</option><option>Cliente</option><option>Vendedor</option>
+        <option>Plataforma</option><option>Indireta</option></select></div>
       <div class="fld full"><label>Motivo do cancelamento</label><select id="can-e-motivo"></select></div>
     </div>
     <p style="font-size:12px;color:var(--muted);margin:10px 0 0">
