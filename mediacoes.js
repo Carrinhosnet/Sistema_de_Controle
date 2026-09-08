@@ -294,6 +294,7 @@ const MED = (function(){
     f('e-claim').value=l.claim_id||'—';
     f('e-idped').value = semVenda(l) ? '' : (l.id_pedido||'');
     f('e-abertura').value=l.data_abertura||'';
+    f('e-dvenda').value=l.data_venda||'';
     preencherSel('e-canal', CANAIS, l.canal||'', 'Selecione o canal');
     f('e-cliente').value=l.cliente||'';
     preencherSel('e-uf', UFS, (l.uf||'').toUpperCase(), 'Selecione a UF');
@@ -316,6 +317,7 @@ const MED = (function(){
         p_usuario_id:USER.id, p_mediacao_id:EDIT_ID,
         p_id_pedido:f('e-idped').value.trim()||null,
         p_data_abertura:f('e-abertura').value||null,
+        p_data_venda:f('e-dvenda').value||null,
         p_canal:f('e-canal').value||null,
         p_cliente:f('e-cliente').value.trim()||null,
         p_uf:f('e-uf').value||null,
