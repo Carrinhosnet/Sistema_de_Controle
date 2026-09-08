@@ -106,6 +106,29 @@ const REC = (function(){
       fechar(); carregar(); }
     catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; } }
 
+
+  // ---- devolver para a fila de Mediações ----
+  // O erro de classificação costuma ser percebido aqui, não na tela de
+  // Mediações — onde o caso nem aparece mais, por ter saído da fila.
+  // Este botão dispara a mesma ação de lá: apaga esta linha e devolve o
+  // caso para triagem. Só funciona em registro que VEIO da triagem;
+  // lançamento manual ou de rotina é recusado pelo banco.
+  async function devolver(){
+    if(EDIT_ID==null) return;
+    if(!temPermissao('mediacoes.classificar')){
+      alert('Você não tem permissão para devolver casos à triagem.'); return;
+    }
+    if(!confirm('Devolver este reclamação para a fila de Mediações?\n\nA linha sai desta tela e o caso volta para a triagem.')) return;
+    const b=f('devolver'); b.disabled=true; const t=b.textContent; b.textContent='Devolvendo…';
+    try{
+      await rpc('cn_devolver_para_mediacao',{p_usuario_id:USER.id,p_tipo:'reclamacao',p_registro_id:EDIT_ID});
+      fechar(); await carregar(true);
+      if(typeof atualizarBadges==='function') atualizarBadges();
+      f('msg').textContent='Caso devolvido para a fila de Mediações.';
+    }catch(e){ f('drawer-erro').textContent=(e.message||e); }
+    finally{ b.disabled=false; b.textContent=t; }
+  }
+
   // modal manual
   function abrirModal(){ if(!temPermissao('reclamacoes.lancar')){ alert('Você não tem permissão para lançar reclamações.'); return; } f('m-busca').value=''; f('m-res').innerHTML=''; f('m-erro').textContent=''; f('modal').classList.add('open'); f('m-busca').focus(); }
   function fecharModal(){ f('modal').classList.remove('open'); }
@@ -129,6 +152,7 @@ const REC = (function(){
     const bx=f('buscar'); if(bx){ if(temPermissao('sync.executar')){ bx.addEventListener('click',buscar); } else { bx.style.display='none'; } }
     f('lancar').addEventListener('click',abrirModal); f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
+    f('devolver').addEventListener('click',devolver);
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
     f('modal-x').addEventListener('click',fecharModal); let mt; f('m-busca').addEventListener('input',()=>{ clearTimeout(mt); mt=setTimeout(buscarVendas,400); });
   }

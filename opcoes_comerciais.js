@@ -18,6 +18,8 @@
 const OPC = (function(){
   let TIPO='motivo_cancelamento';
   let LINHAS=[], EDIT_ID=null;
+  // a ordem não é mais digitada: guarda a da linha aberta para reenviar
+  let ORDEM_EDIT=0;
   const o=(id)=>$('opc-'+id);
 
   const TIPOS=['motivo_cancelamento','motivo_devolucao','motivo_reclamacao',
@@ -54,9 +56,12 @@ const OPC = (function(){
       tb.innerHTML='<tr><td colspan="5" class="empty">Nenhuma opção cadastrada. Use o botão acima para criar a primeira.</td></tr>';
       return;
     }
-    tb.innerHTML=LINHAS.map(l=>`<tr>
+    // A coluna Ordem saiu: a posição na tabela É a ordem.
+    tb.innerHTML=LINHAS.map(l=>`<tr class="ord-row" draggable="true"
+      ondragstart="OPC.dragInicio(event,${l.id})" ondragover="OPC.dragSobre(event,${l.id})"
+      ondrop="OPC.soltar(event,${l.id})" ondragend="OPC.dragFim()">
+      <td class="ord-alca" title="Arraste para reordenar">⠿</td>
       <td><b>${l.valor}</b></td>
-      <td class="num">${l.ordem}</td>
       <td>${l.ativo?'<span class="pill">Ativa</span>':'<span class="pill" style="color:var(--muted)">Inativa</span>'}</td>
       <td class="num">${l.em_uso||0}</td>
       <td class="acoes" style="text-align:right">
@@ -70,7 +75,7 @@ const OPC = (function(){
     EDIT_ID=null; o('erro').textContent='';
     o('titulo').firstChild.textContent='Nova opção · '+ROTULO[TIPO]+' ';
     o('e-valor').value='';
-    o('e-ordem').value=(LINHAS.length?Math.max(...LINHAS.map(x=>x.ordem))+1:1);
+    ORDEM_EDIT=(LINHAS.length?Math.max(...LINHAS.map(x=>x.ordem))+1:1);
     o('e-ativo').value='true';
     abre();
   }
@@ -79,7 +84,7 @@ const OPC = (function(){
     const l=LINHAS.find(x=>x.id===id); if(!l)return;
     EDIT_ID=id; o('erro').textContent='';
     o('titulo').firstChild.textContent='Editar opção · '+ROTULO[TIPO]+' ';
-    o('e-valor').value=l.valor; o('e-ordem').value=l.ordem; o('e-ativo').value=String(l.ativo);
+    o('e-valor').value=l.valor; ORDEM_EDIT=l.ordem; o('e-ativo').value=String(l.ativo);
     abre();
   }
 
@@ -94,7 +99,7 @@ const OPC = (function(){
       await rpc('cn_salvar_opcao_comercial',{
         p_usuario_id:USER.id, p_id:EDIT_ID, p_tipo:TIPO,
         p_valor:o('e-valor').value.trim(),
-        p_ordem:Number(o('e-ordem').value)||0,
+        p_ordem:ORDEM_EDIT,
         p_ativo:o('e-ativo').value==='true'
       });
       fechar(); await carregar();
@@ -115,6 +120,75 @@ const OPC = (function(){
     catch(e){ alert(e.message||e); }
   }
 
+
+  // ---- reordenar arrastando ----
+  // A ordem deixou de ser digitada: ela é a posição da linha na tabela.
+  // Arrastar a linha 8 para cima da 3 põe a 8 na posição 3 e empurra as
+  // demais uma para baixo — é o que "tirar da lista e inserir na nova
+  // posição" faz naturalmente, sem cálculo de índice caso a caso.
+  let ARRASTA=null;   // id da linha sendo arrastada
+
+  function dragInicio(ev, id){
+    ARRASTA=id;
+    ev.dataTransfer.effectAllowed='move';
+    // Firefox só inicia o arrasto se algo for escrito no dataTransfer
+    try{ ev.dataTransfer.setData('text/plain', String(id)); }catch(e){}
+    ev.currentTarget.classList.add('ord-arrastando');
+  }
+
+  function dragSobre(ev, id){
+    if(ARRASTA==null || ARRASTA===id) return;
+    ev.preventDefault();                     // sem isso o soltar não dispara
+    ev.dataTransfer.dropEffect='move';
+    const tr=ev.currentTarget;
+    // metade de cima da linha = cair antes dela; metade de baixo = depois
+    const r=tr.getBoundingClientRect();
+    const acima=(ev.clientY - r.top) < r.height/2;
+    limparMarcas();
+    tr.classList.add(acima?'ord-alvo-cima':'ord-alvo-baixo');
+  }
+
+  function limparMarcas(){
+    [...document.querySelectorAll('.ord-alvo-cima,.ord-alvo-baixo')]
+      .forEach(x=>x.classList.remove('ord-alvo-cima','ord-alvo-baixo'));
+  }
+
+  function dragFim(){
+    ARRASTA=null; limparMarcas();
+    [...document.querySelectorAll('.ord-arrastando')]
+      .forEach(x=>x.classList.remove('ord-arrastando'));
+  }
+
+  async function soltar(ev, id){
+    ev.preventDefault();
+    const origem=ARRASTA;
+    const tr=ev.currentTarget;
+    const r=tr.getBoundingClientRect();
+    const acima=(ev.clientY - r.top) < r.height/2;
+    dragFim();
+    if(origem==null || origem===id) return;
+
+    const de=LINHAS.findIndex(x=>x.id===origem);
+    if(de<0) return;
+    const movida=LINHAS[de];
+    const resto=LINHAS.filter(x=>x.id!==origem);
+    let para=resto.findIndex(x=>x.id===id);
+    if(para<0) return;
+    if(!acima) para++;                       // soltou na metade de baixo
+    resto.splice(para, 0, movida);
+
+    const anterior=LINHAS;                   // para desfazer se o banco recusar
+    LINHAS=resto; render();                  // move na hora, sem esperar a rede
+
+    try{
+      await rpc('cn_reordenar_opcoes_comerciais',{p_usuario_id:USER.id,p_tipo:TIPO,p_ids:LINHAS.map(x=>x.id)});
+      o('msg').textContent='Ordem atualizada.';
+    }catch(e){
+      LINHAS=anterior; render();             // devolve a tela ao que o banco tem
+      alert('Não foi possível salvar a ordem: '+(e.message||e));
+    }
+  }
+
   function bind(){
     TIPOS.forEach(t=>o('tab-'+t).addEventListener('click',()=>subTab(t)));
     o('novo').addEventListener('click',novo);
@@ -125,7 +199,7 @@ const OPC = (function(){
     o('e-valor').addEventListener('keydown',e=>{ if(e.key==='Enter')salvar(); });
   }
 
-  return { init, editar, excluir };
+  return { init, editar, excluir, dragInicio, dragSobre, dragFim, soltar };
 })();
 window.OPC = OPC;
 registrarTela('opcoes_comerciais', OPC);

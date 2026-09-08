@@ -113,7 +113,11 @@ const CAN = (function(){
       const l=LINHAS.find(x=>x.id===id); if(l)l.conferido=valor;
       const tr=elem.closest('tr'); tr.classList.toggle('pendente',!valor);
       tr.querySelector('.conf-lbl').textContent=valor?'Conferido':'Pendente';
-      KPIS=null; renderKpis(KPIS);
+      // Antes aqui havia "KPIS=null; renderKpis(KPIS)", e renderKpis(null)
+      // esvazia a caixa: os seis cartões sumiam, a página encolhia e a
+      // barra de rolagem desaparecia junto. Conferir muda um número só —
+      // atualiza esse e mantém o resto na tela.
+      if(KPIS){ KPIS.faltam = Math.max(0, Number(KPIS.faltam||0) + (valor ? -1 : 1)); renderKpis(KPIS); }
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){ elem.checked=!valor; alert('Não foi possível marcar: '+(e.message||e)); }
     finally{ elem.disabled=false; }
@@ -167,6 +171,29 @@ const CAN = (function(){
     finally{ b.disabled=false; b.textContent='Salvar'; }
   }
 
+
+  // ---- devolver para a fila de Mediações ----
+  // O erro de classificação costuma ser percebido aqui, não na tela de
+  // Mediações — onde o caso nem aparece mais, por ter saído da fila.
+  // Este botão dispara a mesma ação de lá: apaga esta linha e devolve o
+  // caso para triagem. Só funciona em registro que VEIO da triagem;
+  // lançamento manual ou de rotina é recusado pelo banco.
+  async function devolver(){
+    if(EDIT_ID==null) return;
+    if(!temPermissao('mediacoes.classificar')){
+      alert('Você não tem permissão para devolver casos à triagem.'); return;
+    }
+    if(!confirm('Devolver este cancelamento para a fila de Mediações?\n\nA linha sai desta tela e o caso volta para a triagem.')) return;
+    const b=f('devolver'); b.disabled=true; const t=b.textContent; b.textContent='Devolvendo…';
+    try{
+      await rpc('cn_devolver_para_mediacao',{p_usuario_id:USER.id,p_tipo:'cancelamento',p_registro_id:EDIT_ID});
+      fechar(); KPIS=null; await carregar(true);
+      if(typeof atualizarBadges==='function') atualizarBadges();
+      f('msg').textContent='Caso devolvido para a fila de Mediações.';
+    }catch(e){ f('drawer-erro').textContent=(e.message||e); }
+    finally{ b.disabled=false; b.textContent=t; }
+  }
+
   function limparFiltros(){
     ['busca','mes','canal'].forEach(id=>{ f(id).value=''; });
     f('ordem').value='recentes';
@@ -200,6 +227,7 @@ const CAN = (function(){
     f('ordem').addEventListener('change',()=>carregar(true,{kpis:false}));
     f('limpar').addEventListener('click',limparFiltros);
     f('exportar').addEventListener('click',exportar);
+    f('devolver').addEventListener('click',devolver);
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar);
     f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(false,{kpis:false}); } });

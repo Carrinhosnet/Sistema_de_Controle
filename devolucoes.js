@@ -223,6 +223,29 @@ const DEV = (function(){
     }catch(e){ f('m-erro').textContent=(e.message||e); }
   }
 
+
+  // ---- devolver para a fila de Mediações ----
+  // O erro de classificação costuma ser percebido aqui, não na tela de
+  // Mediações — onde o caso nem aparece mais, por ter saído da fila.
+  // Este botão dispara a mesma ação de lá: apaga esta linha e devolve o
+  // caso para triagem. Só funciona em registro que VEIO da triagem;
+  // lançamento manual ou de rotina é recusado pelo banco.
+  async function devolver(){
+    if(EDIT_ID==null) return;
+    if(!temPermissao('mediacoes.classificar')){
+      alert('Você não tem permissão para devolver casos à triagem.'); return;
+    }
+    if(!confirm('Devolver este devolução para a fila de Mediações?\n\nA linha sai desta tela e o caso volta para a triagem.')) return;
+    const b=f('devolver'); b.disabled=true; const t=b.textContent; b.textContent='Devolvendo…';
+    try{
+      await rpc('cn_devolver_para_mediacao',{p_usuario_id:USER.id,p_tipo:'devolucao',p_registro_id:EDIT_ID});
+      fechar(); KPIS=null; await carregar(true);
+      if(typeof atualizarBadges==='function') atualizarBadges();
+      f('msg').textContent='Caso devolvido para a fila de Mediações.';
+    }catch(e){ f('drawer-erro').textContent=(e.message||e); }
+    finally{ b.disabled=false; b.textContent=t; }
+  }
+
   function limparFiltros(){
     ['busca','mes','canal','status'].forEach(id=>{ f(id).value=''; });
     f('ordem').value='recentes';
@@ -261,6 +284,7 @@ const DEV = (function(){
     f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(false,{kpis:false}); } });
     f('next').addEventListener('click',()=>{ PAGINA++; carregar(false,{kpis:false}); });
+    f('devolver').addEventListener('click',devolver);
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar);
     f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
     f('modal-x').addEventListener('click',fecharModal);

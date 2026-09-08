@@ -284,6 +284,26 @@
   /* cinco colunas fixas: a comparação entre canais só funciona se as
      caixas ficarem alinhadas na mesma posição em todas as faixas */
   .met-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  /* ---- reordenar arrastando (telas de Opções) ----
+     A ordem saiu da tela como número e virou posição da linha. A alça
+     dá o aviso visual de que a linha se move; a linha inteira é
+     arrastável para não exigir mira. */
+  tr.ord-row{cursor:default}
+  tr.ord-row .ord-alca{cursor:grab;color:var(--muted);user-select:none;
+                       text-align:center;line-height:1}
+  tr.ord-row .ord-alca:active{cursor:grabbing}
+  tr.ord-row:hover .ord-alca{color:var(--text)}
+  tr.ord-arrastando{opacity:.4}
+  /* a marca de destino é uma borda na linha sob o cursor: mostra onde a
+     linha vai cair sem deslocar nada enquanto se arrasta */
+  tr.ord-alvo-cima td{box-shadow:inset 0 2px 0 0 var(--accent)}
+  tr.ord-alvo-baixo td{box-shadow:inset 0 -2px 0 0 var(--accent)}
+
+  /* acao destrutiva no rodape do drawer: devolver a fila apaga o
+     registro desta tela, entao nao pode parecer um botao comum */
+  .foot .btn-cancel.dg{border-color:var(--danger);color:var(--danger)}
+  .foot .btn-cancel.dg:hover{background:rgba(239,68,68,.12)}
+
   @media (max-width:1100px){ .met-grid{grid-template-columns:repeat(2,1fr)} }
 
   /* ================== IMPRESSAO / PDF ==================
@@ -812,7 +832,7 @@
         <span id="opc-msg" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th>Valor</th><th class="num">Ordem</th><th>Situação</th><th class="num">Em uso</th><th></th>
+        <th style="width:26px"></th><th>Valor</th><th>Situação</th><th class="num">Em uso</th><th></th>
       </tr></thead><tbody id="opc-tbody"></tbody></table></div></div>
     </section>
 
@@ -831,7 +851,7 @@
         <span id="op-msg" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th>Valor</th><th class="num">Ordem</th><th>Situação</th><th class="num">Em uso</th><th></th>
+        <th style="width:26px"></th><th>Valor</th><th>Situação</th><th class="num">Em uso</th><th></th>
       </tr></thead><tbody id="op-tbody"></tbody></table></div></div>
     </section>
 
@@ -1226,7 +1246,10 @@
       As opções são cadastradas em Opções Comerciais.
     </p>
   </div>
-  <div class="foot"><button class="btn-cancel" id="can-drawer-cancel">Cancelar</button><button class="btn-save" id="can-drawer-save">Salvar</button></div>
+  <div class="foot">
+    <button class="btn-cancel dg" id="can-devolver" style="margin-right:auto">Devolver para Mediações</button>
+    <button class="btn-cancel" id="can-drawer-cancel">Cancelar</button><button class="btn-save" id="can-drawer-save">Salvar</button>
+  </div>
 </aside>
 
 <!-- ===== DRAWER DEVOLUÇÃO (tela Devoluções) ===== -->
@@ -1271,7 +1294,10 @@
       <div class="fld full"><label>Observações</label><input id="dev-e-obs"></div>
     </div>
   </div>
-  <div class="foot"><button class="btn-cancel" id="dev-drawer-cancel">Cancelar</button><button class="btn-save" id="dev-drawer-save">Salvar</button></div>
+  <div class="foot">
+    <button class="btn-cancel dg" id="dev-devolver" style="margin-right:auto">Devolver para Mediações</button>
+    <button class="btn-cancel" id="dev-drawer-cancel">Cancelar</button><button class="btn-save" id="dev-drawer-save">Salvar</button>
+  </div>
 </aside>
 
 <!-- ===== MODAL LANÇAMENTO MANUAL (DEVOLUÇÕES) ===== -->
@@ -1312,7 +1338,10 @@
       <div class="fld full"><label>Observações</label><input id="rc-e-obs"></div>
     </div>
   </div>
-  <div class="foot"><button class="btn-cancel" id="rc-drawer-cancel">Cancelar</button><button class="btn-save" id="rc-drawer-save">Salvar</button></div>
+  <div class="foot">
+    <button class="btn-cancel dg" id="rc-devolver" style="margin-right:auto">Devolver para Mediações</button>
+    <button class="btn-cancel" id="rc-drawer-cancel">Cancelar</button><button class="btn-save" id="rc-drawer-save">Salvar</button>
+  </div>
 </aside>
 
 <!-- ===== MODAL LANÇAMENTO MANUAL (RECLAMAÇÕES) ===== -->
@@ -1582,7 +1611,6 @@
   <div class="body">
     <div class="grid">
       <div class="fld full"><label>Valor *</label><input id="opc-e-valor" placeholder="Ex.: Produto com defeito"></div>
-      <div class="fld"><label>Ordem</label><input type="number" id="opc-e-ordem" value="0"></div>
       <div class="fld"><label>Situação</label><select id="opc-e-ativo"><option value="true">Ativa</option><option value="false">Inativa</option></select></div>
     </div>
   </div>
@@ -1597,7 +1625,6 @@
   <div class="body">
     <div class="grid">
       <div class="fld full"><label>Valor *</label><input id="op-e-valor" placeholder="Ex.: Rodas"></div>
-      <div class="fld"><label>Ordem</label><input type="number" id="op-e-ordem" value="0"></div>
       <div class="fld"><label>Situação</label><select id="op-e-ativo"><option value="true">Ativa</option><option value="false">Inativa</option></select></div>
     </div>
   </div>
