@@ -52,7 +52,7 @@ const REC = (function(){
     try{ const canais=await rpc('cn_canais_reclamacoes',{p_usuario_id:USER.id}); (canais||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); }); }catch(e){}
   }
 
-  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="17" class="loading">Carregando reclamações…</td></tr>'; const fl=filtros();
+  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="18" class="loading">Carregando reclamações…</td></tr>'; const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([
         rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_reclamacoes',fl),
@@ -60,7 +60,7 @@ const REC = (function(){
       ]);
       LINHAS=aplicarResolucao(linhas||[]); TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
       msgAtualizado('rc-msg','reclamacoes');
-    }catch(e){ f('tbody').innerHTML='<tr><td colspan="17" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
+    }catch(e){ f('tbody').innerHTML='<tr><td colspan="18" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
     // campo "Ir para a pagina" (helper global do index.html)
@@ -72,12 +72,13 @@ const REC = (function(){
       ['Faltam conferir',Number(k.faltam||0).toLocaleString('pt-BR')],
       ['Resolvidas',Number(k.resolvidas||0).toLocaleString('pt-BR')],
       ['Em andamento',Number(k.em_aberto||0).toLocaleString('pt-BR')],
-      ['Canceladas',Number(k.canceladas||0).toLocaleString('pt-BR')]
+      ['Canceladas',Number(k.canceladas||0).toLocaleString('pt-BR')],
+      ['Prejuízo',brl(k.soma_prejuizo)]
     ];
     box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join('');
   }
 
-  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="17" class="empty">Nenhuma reclamação encontrada.</td></tr>'; return; }
+  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="18" class="empty">Nenhuma reclamação encontrada.</td></tr>'; return; }
     const podeConf=temPermissao('reclamacoes.conferir');
     tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}" onclick="REC.abrir(${l.id})">
       <td>${dataBr(l.data_venda)}</td>
@@ -96,6 +97,7 @@ const REC = (function(){
       <td>${l.status?`<span class="pill">${l.status}</span>`:'—'}</td>
       <td>${l.tipo_resolucao||'<span style="color:var(--muted)">—</span>'}</td>
       <td>${dataBr(l.data_resolucao)}</td>
+      <td class="num">${l.custo_prejuizo==null?'<span style="color:var(--muted)">—</span>':brl(l.custo_prejuizo)}</td>
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="REC.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
     </tr>`).join('');
   }
@@ -119,6 +121,7 @@ const REC = (function(){
     fillSelLista('e-motivo', MOTIVO_OPC, l.motivo);
     f('e-resolucao').value=l.data_resolucao||''; f('e-numnf').value=l.numero_nf||'';
     f('e-nfd').value=l.nfd||''; f('e-valortotal').value=l.valor_total??'';
+    f('e-prejuizo').value=l.custo_prejuizo??'';
     f('e-obs').value=l.observacoes||'';
     f('overlay').classList.add('open'); f('drawer').classList.add('open'); }
   function fechar(){ f('overlay').classList.remove('open'); f('drawer').classList.remove('open'); EDIT_ID=null; }
@@ -130,7 +133,8 @@ const REC = (function(){
       p_data_resolucao:f('e-resolucao').value||null,
       p_numero_nf:f('e-numnf').value||null,p_observacoes:f('e-obs').value||null,
       p_nfd:f('e-nfd').value||null,
-      p_valor_total:f('e-valortotal').value===''?null:Number(f('e-valortotal').value)});
+      p_valor_total:f('e-valortotal').value===''?null:Number(f('e-valortotal').value),
+      p_custo_prejuizo:f('e-prejuizo').value===''?null:Number(f('e-prejuizo').value)});
       fechar(); carregar(); }
     catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; } }
 
@@ -171,7 +175,7 @@ const REC = (function(){
       await carregar(true); if(typeof atualizarBadges==='function') atualizarBadges(); f('msg').textContent='Reclamações atualizadas '+new Date().toLocaleTimeString('pt-BR');
     }catch(e){ alert('Erro ao buscar reclamações: '+(e.message||e)); f('msg').textContent=''; } finally{ b.disabled=false; b.textContent=t; } }
 
-  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_venda','data_abertura','canal','id_pedido','tipo_envio','modelo','quantidade','valor_total','numero_nf','cliente','uf','nfd','motivo','status','tipo_resolucao','data_resolucao','observacoes','origem_lancamento','conferido']; const head=['Data da Venda','Data de Abertura','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade','Valor Total','N NF','Cliente','UF','N NFD','Motivo','Status','Tipo de Resolucao','Data da Resolucao','Observacoes','Origem','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='reclamacoes_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
+  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_venda','data_abertura','canal','id_pedido','tipo_envio','modelo','quantidade','valor_total','numero_nf','cliente','uf','nfd','motivo','status','tipo_resolucao','data_resolucao','custo_prejuizo','observacoes','origem_lancamento','conferido']; const head=['Data da Venda','Data de Abertura','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade','Valor Total','N NF','Cliente','UF','N NFD','Motivo','Status','Tipo de Resolucao','Data da Resolucao','Prejuizo','Observacoes','Origem','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='reclamacoes_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
