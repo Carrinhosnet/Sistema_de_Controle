@@ -5,18 +5,33 @@
 // =====================================================================
 const REC = (function(){
   let LINHAS=[], PAGINA=0, TOTAL=0, EDIT_ID=null; const POR=100;
-  let STATUS_OPC=[];
+  let RESOL_OPC=[];
   const f=(id)=>$('rc-'+id);
 
   function filtros(){ return { p_usuario_id:USER.id, p_mes:f('mes').value||null, p_canal:f('canal').value||null, p_status:f('status').value||null, p_busca:f('busca').value.trim()||null }; }
+  // o filtro por tipo de resolução é aplicado na tela: a função de
+  // listagem não o recebe, e criar mais um parâmetro exigiria derrubar
+  // e recriar a assinatura dela por um filtro de uso pontual
+  function aplicarResolucao(linhas){
+    const r=f('resolucao').value;
+    return r ? linhas.filter(l=>l.tipo_resolucao===r) : linhas;
+  }
 
   async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarOpcoes(); await carregarFiltros(); carregar(); bind(); }
 
   let MOTIVO_OPC=[];
+  // tipo de resolução só faz sentido em caso resolvido; o banco limpa o
+  // campo quando o status é outro, e a tela acompanha
+  const RESOLVIDA='Reclamação resolvida';
 
+  // O status virou lista FIXA de três valores, escritos direto no HTML
+  // (filtro e drawer) e garantidos por CHECK no banco. Não vem mais de
+  // listas_opcoes. O que veio do banco agora é o tipo de resolução.
   async function carregarOpcoes(){
-    try{ const r=await rpc('cn_listar_opcoes',{p_usuario_id:USER.id,p_tipo:'status_reclamacao'}); STATUS_OPC=(r||[]).map(o=>o.valor); }catch(e){ STATUS_OPC=[]; }
-    STATUS_OPC.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; f('status').appendChild(o); });
+    try{ const r=await rpc('cn_listar_opcoes_comerciais',{p_usuario_id:USER.id,p_tipo:'tipo_resolucao_reclamacao'});
+      RESOL_OPC=(r||[]).filter(o=>o.ativo).map(o=>o.valor);
+    }catch(e){ RESOL_OPC=[]; }
+    RESOL_OPC.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; f('resolucao').appendChild(o); });
     // motivos vêm da tela de Opções Comerciais; lista fechada
     try{ const r=await rpc('cn_listar_opcoes_comerciais',{p_usuario_id:USER.id,p_tipo:'motivo_reclamacao'});
       MOTIVO_OPC=(r||[]).filter(o=>o.ativo).map(o=>o.valor);
@@ -37,15 +52,15 @@ const REC = (function(){
     try{ const canais=await rpc('cn_canais_reclamacoes',{p_usuario_id:USER.id}); (canais||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); }); }catch(e){}
   }
 
-  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="16" class="loading">Carregando reclamações…</td></tr>'; const fl=filtros();
+  async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="17" class="loading">Carregando reclamações…</td></tr>'; const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([
         rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_reclamacoes',fl),
         rpc('cn_kpis_reclamacoes',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal,p_status:fl.p_status})
       ]);
-      LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
+      LINHAS=aplicarResolucao(linhas||[]); TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
       msgAtualizado('rc-msg','reclamacoes');
-    }catch(e){ f('tbody').innerHTML='<tr><td colspan="16" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
+    }catch(e){ f('tbody').innerHTML='<tr><td colspan="17" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
     // campo "Ir para a pagina" (helper global do index.html)
@@ -56,12 +71,13 @@ const REC = (function(){
       ['Total de reclamações',Number(k.total||0).toLocaleString('pt-BR')],
       ['Faltam conferir',Number(k.faltam||0).toLocaleString('pt-BR')],
       ['Resolvidas',Number(k.resolvidas||0).toLocaleString('pt-BR')],
-      ['Em aberto',Number(k.em_aberto||0).toLocaleString('pt-BR')]
+      ['Em andamento',Number(k.em_aberto||0).toLocaleString('pt-BR')],
+      ['Canceladas',Number(k.canceladas||0).toLocaleString('pt-BR')]
     ];
     box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join('');
   }
 
-  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="16" class="empty">Nenhuma reclamação encontrada.</td></tr>'; return; }
+  function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="17" class="empty">Nenhuma reclamação encontrada.</td></tr>'; return; }
     const podeConf=temPermissao('reclamacoes.conferir');
     tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}" onclick="REC.abrir(${l.id})">
       <td>${dataBr(l.data_venda)}</td>
@@ -78,6 +94,7 @@ const REC = (function(){
       <td>${l.nfd||'—'}</td>
       <td>${l.motivo||'—'}</td>
       <td>${l.status?`<span class="pill">${l.status}</span>`:'—'}</td>
+      <td>${l.tipo_resolucao||'<span style="color:var(--muted)">—</span>'}</td>
       <td>${dataBr(l.data_resolucao)}</td>
       <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="REC.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
     </tr>`).join('');
@@ -85,11 +102,20 @@ const REC = (function(){
 
   async function conf(id,valor,elem){ elem.disabled=true; try{ await rpc('cn_marcar_conferido_reclamacao',{p_usuario_id:USER.id,p_reclamacao_id:id,p_conferido:valor}); const l=LINHAS.find(x=>x.id===id); if(l)l.conferido=valor; const tr=elem.closest('tr'); tr.classList.toggle('pendente',!valor); tr.querySelector('.conf-lbl').textContent=valor?'Conferido':'Pendente'; if(typeof atualizarBadges==='function') atualizarBadges(); }catch(e){ elem.checked=!valor; alert('Não foi possível marcar: '+(e.message||e)); } finally{ elem.disabled=false; } }
 
-  function fillStatusSel(atual){ const sel=f('e-status'); sel.innerHTML='<option value="">—</option>'; const opts=[...STATUS_OPC]; if(atual&&!opts.includes(atual))opts.unshift(atual); opts.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; if(v===atual)o.selected=true; sel.appendChild(o); }); sel.value=atual||''; }
+  // o select de status é fixo no HTML: aqui só marca o valor atual
+  function fillStatusSel(atual){ f('e-status').value = atual||''; }
+  // habilita o tipo de resolução apenas quando o status é "resolvida"
+  function sincResolucao(){
+    const resolvida = f('e-status').value===RESOLVIDA;
+    f('e-tiporesol').disabled = !resolvida;
+    if(!resolvida) f('e-tiporesol').value='';
+    f('e-tiporesol').title = resolvida ? '' : 'Só se aplica quando a reclamação está resolvida';
+  }
 
   function abrir(id){ if(!temPermissao('reclamacoes.editar'))return; const l=LINHAS.find(x=>x.id===id); if(!l)return; EDIT_ID=id; f('drawer-erro').textContent='';
     f('e-dvenda').value=dataBr(l.data_venda); f('e-canal').value=l.canal||''; f('e-idped').value=l.id_pedido||''; f('e-modelo').value=l.modelo||''; f('e-cliente').value=l.cliente||''; f('e-uf').value=l.uf||'';
     f('e-abertura').value=l.data_abertura||''; fillStatusSel(l.status);
+    fillSelLista('e-tiporesol', RESOL_OPC, l.tipo_resolucao); sincResolucao();
     fillSelLista('e-motivo', MOTIVO_OPC, l.motivo);
     f('e-resolucao').value=l.data_resolucao||''; f('e-numnf').value=l.numero_nf||'';
     f('e-nfd').value=l.nfd||''; f('e-valortotal').value=l.valor_total??'';
@@ -99,7 +125,9 @@ const REC = (function(){
   async function salvar(){ if(EDIT_ID==null)return; f('drawer-erro').textContent=''; const b=f('drawer-save'); b.disabled=true; b.textContent='Salvando...';
     try{ await rpc('cn_editar_reclamacao',{p_usuario_id:USER.id,p_reclamacao_id:EDIT_ID,
       p_data_abertura:f('e-abertura').value||null,p_motivo:f('e-motivo').value||null,
-      p_status:f('e-status').value||null,p_data_resolucao:f('e-resolucao').value||null,
+      p_status:f('e-status').value||null,
+      p_tipo_resolucao:f('e-tiporesol').value||null,
+      p_data_resolucao:f('e-resolucao').value||null,
       p_numero_nf:f('e-numnf').value||null,p_observacoes:f('e-obs').value||null,
       p_nfd:f('e-nfd').value||null,
       p_valor_total:f('e-valortotal').value===''?null:Number(f('e-valortotal').value)});
@@ -143,7 +171,7 @@ const REC = (function(){
       await carregar(true); if(typeof atualizarBadges==='function') atualizarBadges(); f('msg').textContent='Reclamações atualizadas '+new Date().toLocaleTimeString('pt-BR');
     }catch(e){ alert('Erro ao buscar reclamações: '+(e.message||e)); f('msg').textContent=''; } finally{ b.disabled=false; b.textContent=t; } }
 
-  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_venda','data_abertura','canal','id_pedido','tipo_envio','modelo','quantidade','valor_total','numero_nf','cliente','uf','nfd','motivo','status','data_resolucao','observacoes','origem_lancamento','conferido']; const head=['Data da Venda','Data de Abertura','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade','Valor Total','N NF','Cliente','UF','N NFD','Motivo','Status','Data da Resolucao','Observacoes','Origem','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='reclamacoes_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
+  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_venda','data_abertura','canal','id_pedido','tipo_envio','modelo','quantidade','valor_total','numero_nf','cliente','uf','nfd','motivo','status','tipo_resolucao','data_resolucao','observacoes','origem_lancamento','conferido']; const head=['Data da Venda','Data de Abertura','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade','Valor Total','N NF','Cliente','UF','N NFD','Motivo','Status','Tipo de Resolucao','Data da Resolucao','Observacoes','Origem','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='reclamacoes_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
@@ -153,6 +181,8 @@ const REC = (function(){
     f('lancar').addEventListener('click',abrirModal); f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     f('devolver').addEventListener('click',devolver);
+    f('e-status').addEventListener('change',sincResolucao);
+    f('resolucao').addEventListener('change',()=>carregar(true));
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
     f('modal-x').addEventListener('click',fecharModal); let mt; f('m-busca').addEventListener('input',()=>{ clearTimeout(mt); mt=setTimeout(buscarVendas,400); });
   }

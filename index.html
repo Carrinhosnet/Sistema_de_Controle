@@ -650,7 +650,10 @@
           <input id="rc-busca" placeholder="Buscar cliente, ID do pedido, SKU ou NF" /></div>
         <select id="rc-mes"><option value="">Todos os meses (abertura)</option></select>
         <select id="rc-canal"><option value="">Todos os canais</option></select>
-        <select id="rc-status"><option value="">Todos os status</option></select>
+        <select id="rc-status"><option value="">Todos os status</option>
+          <option>Reclamação em andamento</option><option>Reclamação resolvida</option>
+          <option>Reclamação cancelada</option></select>
+        <select id="rc-resolucao"><option value="">Todos os tipos de resolução</option></select>
         <select id="rc-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
         <button class="act prim" id="rc-btn-filtrar">Filtrar</button>
         <button class="act prim" id="rc-lancar">+ Lançar reclamação</button>
@@ -664,7 +667,7 @@
         <th>ID do Pedido</th><th>Tipo de Envio</th><th>SKU</th>
         <th class="num">Quantidade</th><th class="num">Valor Total</th><th>N° NF</th>
         <th>Nome do Cliente</th><th>UF</th><th>N° NFD</th>
-        <th>Motivo da Reclamação</th><th>Status</th><th>Data da Resolução</th>
+        <th>Motivo da Reclamação</th><th>Status</th><th>Tipo de Resolução</th><th>Data da Resolução</th>
         <th style="text-align:center">Conferido</th>
       </tr></thead><tbody id="rc-tbody"></tbody></table></div>
       <div class="foot"><span id="rc-contagem">—</span><span style="display:flex;align-items:center;gap:10px">
@@ -867,7 +870,7 @@
         <button id="opc-tab-motivo_devolucao">Motivos de Devolução</button>
         <button id="opc-tab-motivo_reclamacao">Motivos de Reclamação</button>
         <button id="opc-tab-status_devolucao">Status de Devolução</button>
-        <button id="opc-tab-status_reclamacao">Status de Reclamação</button>
+        <button id="opc-tab-tipo_resolucao_reclamacao">Tipos de Resolução</button>
       </div>
       <div class="toolbar">
         <button class="act prim" id="opc-novo">+ Nova opção</button>
@@ -1386,7 +1389,10 @@
     <div class="grid">
       <div class="fld"><label>Data de abertura</label><input type="date" id="rc-e-abertura"></div>
       <div class="fld"><label>Data da resolução</label><input type="date" id="rc-e-resolucao"></div>
-      <div class="fld"><label>Status</label><select id="rc-e-status"></select></div>
+      <div class="fld"><label>Status</label><select id="rc-e-status">
+        <option value="">—</option><option>Reclamação em andamento</option>
+        <option>Reclamação resolvida</option><option>Reclamação cancelada</option></select></div>
+      <div class="fld"><label>Tipo de resolução</label><select id="rc-e-tiporesol"></select></div>
       <div class="fld"><label>Valor total (R$)</label><input type="number" step="0.01" id="rc-e-valortotal"></div>
       <div class="fld"><label>Nº NF</label><input id="rc-e-numnf"></div>
       <div class="fld"><label>Nº NFD</label><input id="rc-e-nfd"></div>

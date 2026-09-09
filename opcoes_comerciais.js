@@ -22,14 +22,18 @@ const OPC = (function(){
   let ORDEM_EDIT=0;
   const o=(id)=>$('opc-'+id);
 
+  // O status de reclamação saiu daqui em 08/09: passou a ser lista fixa
+  // de três valores, garantida por CHECK no banco. No lugar entrou o
+  // tipo de resolução, que descreve COMO o caso terminou. As opções
+  // antigas de status continuam em listas_opcoes, sem uso.
   const TIPOS=['motivo_cancelamento','motivo_devolucao','motivo_reclamacao',
-               'status_devolucao','status_reclamacao'];
+               'status_devolucao','tipo_resolucao_reclamacao'];
   const ROTULO={
     motivo_cancelamento:'Motivo de Cancelamento',
     motivo_devolucao:'Motivo de Devolução',
     motivo_reclamacao:'Motivo de Reclamação',
     status_devolucao:'Status de Devolução',
-    status_reclamacao:'Status de Reclamação'
+    tipo_resolucao_reclamacao:'Tipo de Resolução'
   };
 
   async function init(){ bind(); subTab('motivo_cancelamento'); }
