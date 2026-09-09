@@ -281,9 +281,11 @@ const MED = (function(){
   // estes ficam bloqueados — mesma regra das telas de destino. O banco
   // aplica isso de qualquer jeito (arquivo 97): a tela só reflete.
   // Quando não há venda, são a única forma de informar o dado.
-  // O campo de quantidade é 'e-itens' (med-e-itens), não 'e-qtd': com o
-  // id errado ele não era travado quando o caso tinha venda.
-  const CAMPOS_DA_VENDA=['e-dvenda','e-canal','e-envio','e-sku','e-cliente','e-uf','e-valor','e-itens'];
+  // Dois números diferentes, de propósito:
+  //   e-qtd   -> UNIDADES do item; é o que a triagem leva para o destino
+  //   e-itens -> quantos SKUs o pedido tem; informativo
+  // Confundir os dois fazia contagem de SKU virar quantidade no destino.
+  const CAMPOS_DA_VENDA=['e-dvenda','e-canal','e-envio','e-sku','e-cliente','e-uf','e-valor','e-qtd','e-itens'];
 
   async function aplicarTrava(idPedido){
     let tem=false;
@@ -324,7 +326,8 @@ const MED = (function(){
     f('e-cliente').value=l.cliente||'';
     preencherSel('e-uf', UFS, (l.uf||'').toUpperCase(), 'Selecione a UF');
     f('e-valor').value=l.valor_pedido??'';
-    f('e-itens').value=l.qtd_itens??''; f('e-obs').value=l.observacao||'';
+    f('e-qtd').value=l.quantidade??''; f('e-itens').value=l.qtd_itens??'';
+    f('e-obs').value=l.observacao||'';
     aplicarTrava(l.id_pedido);
     $('med-overlay').classList.add('open'); $('med-drawer').classList.add('open');
     setTimeout(()=>f('e-idped').focus(),50);
@@ -350,6 +353,7 @@ const MED = (function(){
         p_cliente:f('e-cliente').value.trim()||null,
         p_uf:f('e-uf').value||null,
         p_valor_pedido:num('e-valor'),
+        p_quantidade:num('e-qtd'),
         p_qtd_itens:num('e-itens'),
         p_observacao:f('e-obs').value.trim()||null
       });

@@ -1267,7 +1267,10 @@
       <div class="fld"><label>Cliente</label><input id="med-e-cliente"></div>
       <div class="fld"><label>UF</label><select id="med-e-uf"></select></div>
       <div class="fld"><label>Valor do pedido (R$)</label><input type="number" step="0.01" id="med-e-valor"></div>
-      <div class="fld"><label>Quantidade de itens</label><input type="number" step="1" id="med-e-itens"></div>
+      <div class="fld"><label>Quantidade (unidades)</label><input type="number" step="1" min="0" id="med-e-qtd"
+           title="Unidades do item — é o que vai para a tela de destino"></div>
+      <div class="fld"><label>SKUs no pedido</label><input type="number" step="1" id="med-e-itens"
+           title="Quantos SKUs diferentes o pedido tem. Informativo."></div>
       <div class="fld full"><label>Observação</label><input id="med-e-obs"></div>
     </div>
   </div>
