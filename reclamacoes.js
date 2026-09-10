@@ -23,6 +23,18 @@ const REC = (function(){
   // tipo de resolução só faz sentido em caso resolvido; o banco limpa o
   // campo quando o status é outro, e a tela acompanha
   const RESOLVIDA='Reclamação resolvida';
+  const RESOLVIDA_DEV='Reclamação resolvida (devolução)';
+  // as duas formas de resolvido; é o que libera a conferência
+  const RESOLVIDAS=[RESOLVIDA, RESOLVIDA_DEV];
+
+  // Espelha a regra da cn_marcar_conferido_reclamacao. Quem recusa de
+  // fato é o banco — aqui só evita o clique que ia dar erro, e explica
+  // o porquê no title do checkbox.
+  function podeConferir(l){
+    if(!RESOLVIDAS.includes(l.status)) return 'Só é possível conferir uma reclamação resolvida';
+    if(l.status===RESOLVIDA_DEV && !String(l.nfd||'').trim()) return 'Informe a NFD antes de conferir';
+    return null;   // null = pode
+  }
 
   // O status virou lista FIXA de três valores, escritos direto no HTML
   // (filtro e drawer) e garantidos por CHECK no banco. Não vem mais de
@@ -72,7 +84,7 @@ const REC = (function(){
       ['Faltam conferir',Number(k.faltam||0).toLocaleString('pt-BR')],
       ['Resolvidas',Number(k.resolvidas||0).toLocaleString('pt-BR')],
       ['Em andamento',Number(k.em_aberto||0).toLocaleString('pt-BR')],
-      ['Canceladas',Number(k.canceladas||0).toLocaleString('pt-BR')],
+      ['Resolvidas com devolução',Number(k.resolvidas_devolucao||0).toLocaleString('pt-BR')],
       ['Prejuízo',brl(k.soma_prejuizo)]
     ];
     box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join('');
@@ -98,7 +110,14 @@ const REC = (function(){
       <td>${l.tipo_resolucao||'<span style="color:var(--muted)">—</span>'}</td>
       <td>${dataBr(l.data_resolucao)}</td>
       <td class="num">${l.custo_prejuizo==null?'<span style="color:var(--muted)">—</span>':brl(l.custo_prejuizo)}</td>
-      <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="REC.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
+      <td class="conf" onclick="event.stopPropagation()">${(()=>{
+        const impede=podeConferir(l);
+        // já conferido pode sempre ser desmarcado, mesmo que hoje não
+        // atenda à regra: destravar um engano não pode ficar bloqueado
+        const trava = impede && !l.conferido;
+        return `<input type="checkbox" class="chk" ${l.conferido?'checked':''} ${(podeConf&&!trava)?'':'disabled'} title="${trava?impede:''}" onchange="REC.conf(${l.id},this.checked,this)">`+
+               `<span class="conf-lbl" ${trava?`style="color:var(--muted)" title="${impede}"`:''}>${l.conferido?'Conferido':(trava?'—':'Pendente')}</span>`;
+      })()}</td>
     </tr>`).join('');
   }
 
@@ -108,7 +127,7 @@ const REC = (function(){
   function fillStatusSel(atual){ f('e-status').value = atual||''; }
   // habilita o tipo de resolução apenas quando o status é "resolvida"
   function sincResolucao(){
-    const resolvida = f('e-status').value===RESOLVIDA;
+    const resolvida = RESOLVIDAS.includes(f('e-status').value);
     f('e-tiporesol').disabled = !resolvida;
     if(!resolvida) f('e-tiporesol').value='';
     f('e-tiporesol').title = resolvida ? '' : 'Só se aplica quando a reclamação está resolvida';
