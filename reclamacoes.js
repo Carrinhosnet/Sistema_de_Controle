@@ -23,16 +23,12 @@ const REC = (function(){
   // tipo de resolução só faz sentido em caso resolvido; o banco limpa o
   // campo quando o status é outro, e a tela acompanha
   const RESOLVIDA='Reclamação resolvida';
-  const RESOLVIDA_DEV='Reclamação resolvida (devolução)';
-  // as duas formas de resolvido; é o que libera a conferência
-  const RESOLVIDAS=[RESOLVIDA, RESOLVIDA_DEV];
 
   // Espelha a regra da cn_marcar_conferido_reclamacao. Quem recusa de
   // fato é o banco — aqui só evita o clique que ia dar erro, e explica
   // o porquê no title do checkbox.
   function podeConferir(l){
-    if(!RESOLVIDAS.includes(l.status)) return 'Só é possível conferir uma reclamação resolvida';
-    if(l.status===RESOLVIDA_DEV && !String(l.nfd||'').trim()) return 'Informe a NFD antes de conferir';
+    if(l.status!==RESOLVIDA) return 'Só é possível conferir uma reclamação resolvida';
     return null;   // null = pode
   }
 
@@ -84,7 +80,7 @@ const REC = (function(){
       ['Faltam conferir',Number(k.faltam||0).toLocaleString('pt-BR')],
       ['Resolvidas',Number(k.resolvidas||0).toLocaleString('pt-BR')],
       ['Em andamento',Number(k.em_aberto||0).toLocaleString('pt-BR')],
-      ['Resolvidas com devolução',Number(k.resolvidas_devolucao||0).toLocaleString('pt-BR')],
+
       ['Prejuízo',brl(k.soma_prejuizo)]
     ];
     box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join('');
@@ -127,7 +123,7 @@ const REC = (function(){
   function fillStatusSel(atual){ f('e-status').value = atual||''; }
   // habilita o tipo de resolução apenas quando o status é "resolvida"
   function sincResolucao(){
-    const resolvida = RESOLVIDAS.includes(f('e-status').value);
+    const resolvida = f('e-status').value===RESOLVIDA;
     f('e-tiporesol').disabled = !resolvida;
     if(!resolvida) f('e-tiporesol').value='';
     f('e-tiporesol').title = resolvida ? '' : 'Só se aplica quando a reclamação está resolvida';
@@ -180,6 +176,31 @@ const REC = (function(){
     finally{ b.disabled=false; b.textContent=t; }
   }
 
+  // ---- a reclamação virou devolução ----
+  // MOVE a linha: cria o registro em Devoluções e apaga daqui. A
+  // reclamação deixa de contar nas métricas desta tela porque o caso
+  // passou a pertencer à outra — contar nas duas seria contar duas
+  // vezes o mesmo acontecimento.
+  async function paraDevolucao(){
+    if(EDIT_ID==null) return;
+    const l=LINHAS.find(x=>x.id===EDIT_ID);
+    if(!temPermissao('devolucoes.lancar')){
+      alert('Você não tem permissão para lançar devoluções.'); return;
+    }
+    if(!confirm('Enviar esta reclamação para o Controle de Devoluções?\n\n'+
+                'A linha sai desta tela. Os dados preenchidos vão junto; o motivo da '+
+                'reclamação fica registrado nas observações da devolução, porque as '+
+                'duas telas usam listas de motivo diferentes.')) return;
+    const b=f('para-devolucao'); b.disabled=true; const t=b.textContent; b.textContent='Enviando…';
+    try{
+      await rpc('cn_reclamacao_para_devolucao',{p_usuario_id:USER.id,p_reclamacao_id:EDIT_ID});
+      fechar(); await carregar(true);
+      if(typeof atualizarBadges==='function') atualizarBadges();
+      f('msg').textContent='Reclamação enviada para o Controle de Devoluções.';
+    }catch(e){ f('drawer-erro').textContent=(e.message||e); }
+    finally{ b.disabled=false; b.textContent=t; }
+  }
+
   // modal manual
   function abrirModal(){ if(!temPermissao('reclamacoes.lancar')){ alert('Você não tem permissão para lançar reclamações.'); return; } f('m-busca').value=''; f('m-res').innerHTML=''; f('m-erro').textContent=''; f('modal').classList.add('open'); f('m-busca').focus(); }
   function fecharModal(){ f('modal').classList.remove('open'); }
@@ -204,6 +225,7 @@ const REC = (function(){
     f('lancar').addEventListener('click',abrirModal); f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     f('devolver').addEventListener('click',devolver);
+    f('para-devolucao').addEventListener('click',paraDevolucao);
     f('e-status').addEventListener('change',sincResolucao);
     f('resolucao').addEventListener('change',()=>carregar(true));
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);

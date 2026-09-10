@@ -284,6 +284,17 @@
   /* cinco colunas fixas: a comparação entre canais só funciona se as
      caixas ficarem alinhadas na mesma posição em todas as faixas */
   .met-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  /* Ação que MOVE a linha para outra tela: não é destrutiva como o
+     "Devolver para Mediações" (que apaga), mas também tira o registro
+     daqui — então destaca em âmbar, entre o neutro e o vermelho. */
+  .foot .btn-cancel.ac{
+    flex:0 0 auto; white-space:nowrap; font-size:12px; padding:10px 12px;
+    background:rgba(245,158,11,.15); border:1px solid rgba(245,158,11,.45);
+    color:#fbbf24;
+  }
+  .foot .btn-cancel.ac:hover{background:rgba(245,158,11,.28);color:#fcd34d}
+  .foot .btn-cancel.ac:disabled{opacity:.5;cursor:not-allowed}
+
   /* ---- cores dos boxes clicáveis da tela de Cancelamentos ----
      O comportamento (borda, número colorido, tarja "filtro ativo") já
      vem de .kpi.click, definido lá em cima e usado na tela de Vendas.
@@ -652,7 +663,7 @@
         <select id="rc-canal"><option value="">Todos os canais</option></select>
         <select id="rc-status"><option value="">Todos os status</option>
           <option>Reclamação em andamento</option><option>Reclamação resolvida</option>
-          <option>Reclamação resolvida (devolução)</option></select>
+</select>
         <select id="rc-resolucao"><option value="">Todos os tipos de resolução</option></select>
         <select id="rc-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
         <button class="act prim" id="rc-btn-filtrar">Filtrar</button>
@@ -1393,8 +1404,7 @@
            title="Perda que não se recupera: peça de reposição, reembolso parcial, desconto"></div>
       <div class="fld"><label>Status</label><select id="rc-e-status">
         <option value="">—</option><option>Reclamação em andamento</option>
-        <option>Reclamação resolvida</option>
-        <option>Reclamação resolvida (devolução)</option></select></div>
+        <option>Reclamação resolvida</option></select></div>
       <div class="fld"><label>Tipo de resolução</label><select id="rc-e-tiporesol"></select></div>
       <div class="fld"><label>Valor total (R$)</label><input type="number" step="0.01" id="rc-e-valortotal"></div>
       <div class="fld"><label>Nº NF</label><input id="rc-e-numnf"></div>
@@ -1405,6 +1415,7 @@
   </div>
   <div class="foot">
     <button class="btn-cancel dg" id="rc-devolver">Devolver para Mediações</button>
+    <button class="btn-cancel ac" id="rc-para-devolucao">Virou devolução</button>
     <button class="btn-cancel" id="rc-drawer-cancel">Cancelar</button><button class="btn-save" id="rc-drawer-save">Salvar</button>
   </div>
 </aside>
