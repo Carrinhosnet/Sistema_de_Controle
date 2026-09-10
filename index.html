@@ -284,6 +284,16 @@
   /* cinco colunas fixas: a comparação entre canais só funciona se as
      caixas ficarem alinhadas na mesma posição em todas as faixas */
   .met-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  /* Rodapé em DUAS LINHAS: quatro botões não cabem lado a lado nos
+     440px do drawer sem espremer os rótulos. Em cima as duas ações que
+     tiram o registro desta tela; embaixo cancelar e salvar, na posição
+     de sempre. Dentro de cada linha os botões dividem a largura por
+     igual — daí o flex:1 sobrepondo o flex:0 0 auto de .dg e .ac, que
+     só existe para o rodapé de uma linha das outras telas. */
+  .foot.foot-2l{flex-direction:column;gap:10px;align-items:stretch}
+  .foot-2l .foot-linha{display:flex;gap:10px}
+  .foot-2l .foot-linha button{flex:1;margin:0}
+
   /* Ação que MOVE a linha para outra tela: não é destrutiva como o
      "Devolver para Mediações" (que apaga), mas também tira o registro
      daqui — então destaca em âmbar, entre o neutro e o vermelho. */
@@ -1413,10 +1423,14 @@
       <div class="fld full"><label>Observações</label><input id="rc-e-obs"></div>
     </div>
   </div>
-  <div class="foot">
-    <button class="btn-cancel dg" id="rc-devolver">Devolver para Mediações</button>
-    <button class="btn-cancel ac" id="rc-para-devolucao">Virou devolução</button>
-    <button class="btn-cancel" id="rc-drawer-cancel">Cancelar</button><button class="btn-save" id="rc-drawer-save">Salvar</button>
+  <div class="foot foot-2l">
+    <div class="foot-linha">
+      <button class="btn-cancel dg" id="rc-devolver">Devolver para Mediações</button>
+      <button class="btn-cancel ac" id="rc-para-devolucao">Virou devolução</button>
+    </div>
+    <div class="foot-linha">
+      <button class="btn-cancel" id="rc-drawer-cancel">Cancelar</button><button class="btn-save" id="rc-drawer-save">Salvar</button>
+    </div>
   </div>
 </aside>
 
