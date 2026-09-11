@@ -62,7 +62,7 @@ const PD = (function(){
 
   const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
   function cardHtml(cls,titulo,valor,hint){
-    return `<div class="kpi ${cls}"><div class="lbl">${titulo}</div>`+
+    return `<div class="kpi${cls?' '+cls:''}"><div class="lbl">${titulo}</div>`+
            `<div class="hint">${hint}</div><div class="val">${valor}</div></div>`;
   }
   // Mesmo formato dos boxes clicáveis de Vendas, Cancelamentos e
@@ -82,11 +82,14 @@ const PD = (function(){
     try{ CONF=await rpc('cn_ultima_conferencia_produtos',{p_usuario_id:USER.id}); }
     catch(e){ CONF=null; }
   }
+  // O número é um retrato do momento da conferência, não o estado de
+  // agora: sem a data ao lado, um valor de semanas atrás seria lido
+  // como atual.
   function dataConf(){
-    if(!CONF||!CONF.houve) return 'Nunca conferido com o Bling';
+    if(!CONF||!CONF.houve) return 'Conferência com o Bling ainda não executada.';
     const d=new Date(CONF.executado_em);
-    return 'Conferido em '+d.toLocaleDateString('pt-BR')+' às '+
-           d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    return 'Última conferência: '+d.toLocaleDateString('pt-BR')+' às '+
+           d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.';
   }
 
   function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
@@ -96,24 +99,26 @@ const PD = (function(){
     const cv=(campo)=> (CONF&&CONF.houve) ? n0(CONF[campo]) : '—';
     const quando=dataConf();
     box.innerHTML =
-      cardHtml('pd-total','Total de produtos', n0(k.total),
-               'Produtos que atendem aos filtros acima') +
+      // informativos: sem classe de cor. Colorir os nove ao mesmo tempo
+      // tira da cor a função de destacar o que é clicável.
+      cardHtml('','Total de produtos', n0(k.total),
+               'Produtos no filtro atual') +
       cardFiltro('pd-ativo','ativo', at==='true',
-               'Ativos', n0(k.ativos), 'Em linha, disponíveis para venda') +
+               'Ativos', n0(k.ativos), 'Em linha e disponíveis para venda') +
       cardFiltro('pd-inativo','inativo', at==='false',
-               'Inativos', n0(k.inativos), 'Fora de linha ou suspensos') +
+               'Inativos', n0(k.inativos), 'Descontinuados ou suspensos') +
       cardFiltro('pd-basico','Básico', st==='Básico',
-               'Cadastro Básico', n0(k.basico), 'Só o essencial preenchido') +
+               'Cadastro Básico', n0(k.basico), 'Apenas os campos obrigatórios preenchidos') +
       cardFiltro('pd-inter','Intermediário', st==='Intermediário',
-               'Intermediário', n0(k.intermediario), 'Falta parte das informações') +
+               'Intermediário', n0(k.intermediario), 'Parte das informações ainda em falta') +
       cardFiltro('pd-compl','Completo', st==='Completo',
-               'Completo', n0(k.completo), 'Cadastro sem lacunas') +
-      cardHtml('pd-bling','Só no Bling', cv('so_bling'),
-               'Existem lá e não aqui · '+quando) +
-      cardHtml('pd-sistema','Só no sistema', cv('so_sistema'),
-               'Existem aqui e não no Bling · '+quando) +
-      cardHtml('pd-ambos','Nos dois', cv('ambos'),
-               'Encontrados dos dois lados · '+quando);
+               'Completo', n0(k.completo), 'Todos os campos do cadastro preenchidos') +
+      cardHtml('','Apenas no Bling', cv('so_bling'),
+               'Cadastrados no Bling e ausentes neste sistema. '+quando) +
+      cardHtml('','Apenas no sistema', cv('so_sistema'),
+               'Cadastrados aqui e não localizados no Bling. '+quando) +
+      cardHtml('','Presentes nos dois', cv('ambos'),
+               'Cadastro encontrado em ambas as bases. '+quando);
   }
 
   // Clique nos boxes. Ativos/Inativos mexem no select de situação;
