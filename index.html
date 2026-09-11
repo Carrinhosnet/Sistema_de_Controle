@@ -291,8 +291,12 @@
      igual — daí o flex:1 sobrepondo o flex:0 0 auto de .dg e .ac, que
      só existe para o rodapé de uma linha das outras telas. */
   .foot.foot-2l{flex-direction:column;gap:10px;align-items:stretch}
-  .foot-2l .foot-linha{display:flex;gap:10px}
-  .foot-2l .foot-linha button{flex:1;margin:0}
+  .foot.foot-2l .foot-linha{display:flex;gap:10px}
+  /* .foot .btn-cancel.dg tem TRÊS classes; um seletor com duas classes
+     + elemento perde para ele e o margin-right:auto de lá continuava
+     empurrando os botões para os cantos. Por isso .foot.foot-2l aqui:
+     três classes + elemento, que vence. */
+  .foot.foot-2l .foot-linha button{flex:1 1 0;margin:0;width:auto}
 
   /* Ação que MOVE a linha para outra tela: não é destrutiva como o
      "Devolver para Mediações" (que apaga), mas também tira o registro
