@@ -314,6 +314,13 @@
      vem de .kpi.click, definido lá em cima e usado na tela de Vendas.
      Aqui entram só as cores, para não haver dois jeitos de fazer a
      mesma coisa no sistema. */
+  /* tela de Reclamações — mesmas cores já usadas em outras telas */
+  .kpi.rc-total  {--kpc:#1e40af}   /* azul escuro, como b-total e m-triar */
+  .kpi.rc-prej   {--kpc:#ef4444}   /* vermelho, como k-devol */
+  .kpi.rc-conf   {--kpc:#f97316}   /* laranja, como k-atraso */
+  .kpi.rc-resolv {--kpc:#22c55e}   /* verde, como k-entregue */
+  .kpi.rc-andam  {--kpc:#eab308}   /* amarelo, como k-caminho */
+
   .kpi.cn-todos     {--kpc:#3b82f6}   /* azul */
   .kpi.cn-pendentes {--kpc:#ef4444}   /* vermelho */
   .kpi.cn-cliente   {--kpc:#f97316}   /* laranja */
@@ -673,16 +680,18 @@
       <div class="toolbar">
         <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           <input id="rc-busca" placeholder="Buscar cliente, ID do pedido, SKU ou NF" /></div>
-        <select id="rc-mes"><option value="">Todos os meses (abertura)</option></select>
+        <select id="rc-mes-venda"><option value="">Mês da venda: todos</option></select>
+        <select id="rc-mes"><option value="">Mês da abertura: todos</option></select>
         <select id="rc-canal"><option value="">Todos os canais</option></select>
+        <select id="rc-envio"><option value="">Todos os tipos de envio</option></select>
+        <select id="rc-uf"><option value="">Todas as UFs</option></select>
+        <select id="rc-motivo"><option value="">Todos os motivos</option></select>
         <select id="rc-status"><option value="">Todos os status</option>
-          <option>Reclamação em andamento</option><option>Reclamação resolvida</option>
-</select>
+          <option>Reclamação em andamento</option><option>Reclamação resolvida</option></select>
         <select id="rc-resolucao"><option value="">Todos os tipos de resolução</option></select>
-        <select id="rc-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
-        <button class="act prim" id="rc-btn-filtrar">Filtrar</button>
+        <select id="rc-ordem"><option value="recentes">Abertura mais recente</option><option value="antigos">Abertura mais antiga</option><option value="venda_nova">Venda mais recente</option><option value="venda_antiga">Venda mais antiga</option><option value="maior_prej">Maior prejuízo primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
+        <button class="act prim" id="rc-limpar" title="Remove todos os filtros">Limpar filtros</button>
         <button class="act prim" id="rc-lancar">+ Lançar reclamação</button>
-        <button class="act prim" id="rc-buscar">↻ Buscar reclamações (180d)</button>
         <button class="act" id="rc-exportar">Exportar CSV</button>
         <span id="rc-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>

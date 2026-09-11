@@ -8,14 +8,24 @@ const REC = (function(){
   let RESOL_OPC=[];
   const f=(id)=>$('rc-'+id);
 
-  function filtros(){ return { p_usuario_id:USER.id, p_mes:f('mes').value||null, p_canal:f('canal').value||null, p_status:f('status').value||null, p_busca:f('busca').value.trim()||null }; }
-  // o filtro por tipo de resolução é aplicado na tela: a função de
-  // listagem não o recebe, e criar mais um parâmetro exigiria derrubar
-  // e recriar a assinatura dela por um filtro de uso pontual
-  function aplicarResolucao(linhas){
-    const r=f('resolucao').value;
-    return r ? linhas.filter(l=>l.tipo_resolucao===r) : linhas;
-  }
+  // recorte dos boxes clicáveis; fica fora dos selects porque a função
+  // de KPIs o trata diferente — os contadores precisam ignorá-lo para
+  // continuarem clicáveis depois de aplicados
+  let SO_PENDENTES=false;
+
+  function filtros(){ return {
+    p_usuario_id:USER.id,
+    p_mes:f('mes').value||null,
+    p_mes_venda:f('mes-venda').value||null,
+    p_canal:f('canal').value||null,
+    p_tipo_envio:f('envio').value||null,
+    p_uf:f('uf').value||null,
+    p_motivo:f('motivo').value||null,
+    p_status:f('status').value||null,
+    p_tipo_resolucao:f('resolucao').value||null,
+    p_conferido:SO_PENDENTES ? false : null,
+    p_busca:f('busca').value.trim()||null
+  }; }
 
   async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarOpcoes(); await carregarFiltros(); carregar(); bind(); }
 
@@ -23,6 +33,7 @@ const REC = (function(){
   // tipo de resolução só faz sentido em caso resolvido; o banco limpa o
   // campo quando o status é outro, e a tela acompanha
   const RESOLVIDA='Reclamação resolvida';
+  const ANDAMENTO='Reclamação em andamento';
 
   // Espelha a regra da cn_marcar_conferido_reclamacao. Quem recusa de
   // fato é o banco — aqui só evita o clique que ia dar erro, e explica
@@ -36,10 +47,12 @@ const REC = (function(){
   // (filtro e drawer) e garantidos por CHECK no banco. Não vem mais de
   // listas_opcoes. O que veio do banco agora é o tipo de resolução.
   async function carregarOpcoes(){
+    // lista do DRAWER (só as ativas). O select do filtro é preenchido
+    // pelo carregarFiltros, que inclui também valores já gravados que
+    // saíram da lista — lá o objetivo é alcançar linhas existentes.
     try{ const r=await rpc('cn_listar_opcoes_comerciais',{p_usuario_id:USER.id,p_tipo:'tipo_resolucao_reclamacao'});
       RESOL_OPC=(r||[]).filter(o=>o.ativo).map(o=>o.valor);
     }catch(e){ RESOL_OPC=[]; }
-    RESOL_OPC.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; f('resolucao').appendChild(o); });
     // motivos vêm da tela de Opções Comerciais; lista fechada
     try{ const r=await rpc('cn_listar_opcoes_comerciais',{p_usuario_id:USER.id,p_tipo:'motivo_reclamacao'});
       MOTIVO_OPC=(r||[]).filter(o=>o.ativo).map(o=>o.valor);
@@ -55,18 +68,37 @@ const REC = (function(){
       if(v===atual)o.selected=true; sel.appendChild(o); });
     sel.value=atual||'';
   }
+  // Sete listas numa chamada só. Sete idas ao servidor por abertura de
+  // tela seriam desperdício — o excesso de chamadas já é pendência no
+  // roteiro. O status não vem daqui: é lista fixa, escrita no HTML.
   async function carregarFiltros(){
-    try{ const meses=await rpc('cn_meses_reclamacoes',{p_usuario_id:USER.id}); (meses||[]).forEach(m=>{ const o=document.createElement('option'); o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); }); }catch(e){}
-    try{ const canais=await rpc('cn_canais_reclamacoes',{p_usuario_id:USER.id}); (canais||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); }); }catch(e){}
+    try{
+      const r=await rpc('cn_filtros_reclamacoes',{p_usuario_id:USER.id}) || {};
+      encherMeses('mes-venda', r.meses_venda);
+      encherMeses('mes',       r.meses_abertura);
+      encher('canal',     r.canais);
+      encher('envio',     r.tipos_envio);
+      encher('uf',        r.ufs);
+      encher('motivo',    r.motivos);
+      encher('resolucao', r.resolucoes);
+    }catch(e){}
+  }
+  function encher(id, lista){
+    (lista||[]).forEach(v=>{ const o=document.createElement('option');
+      o.value=v; o.textContent=v; f(id).appendChild(o); });
+  }
+  function encherMeses(id, lista){
+    (lista||[]).forEach(v=>{ const o=document.createElement('option');
+      o.value=v; o.textContent=mesLabel(v); f(id).appendChild(o); });
   }
 
   async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="18" class="loading">Carregando reclamações…</td></tr>'; const fl=filtros();
     try{ const [linhas,total,kpis]=await Promise.all([
         rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_reclamacoes',fl),
-        rpc('cn_kpis_reclamacoes',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal,p_status:fl.p_status})
+        rpc('cn_kpis_reclamacoes',fl)
       ]);
-      LINHAS=aplicarResolucao(linhas||[]); TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
+      LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
       msgAtualizado('rc-msg','reclamacoes');
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="18" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
@@ -74,16 +106,43 @@ const REC = (function(){
     // campo "Ir para a pagina" (helper global do index.html)
     if(typeof montarIrPara==='function') montarIrPara('rc',p,tp,(n)=>{ PAGINA=n-1; carregar(); }); }
 
-  function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
-    const cards=[
-      ['Total de reclamações',Number(k.total||0).toLocaleString('pt-BR')],
-      ['Faltam conferir',Number(k.faltam||0).toLocaleString('pt-BR')],
-      ['Resolvidas',Number(k.resolvidas||0).toLocaleString('pt-BR')],
-      ['Em andamento',Number(k.em_aberto||0).toLocaleString('pt-BR')],
+  const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
+  function cardHtml(cls,titulo,valor,hint){
+    return `<div class="kpi ${cls}"><div class="lbl">${titulo}</div>`+
+           `<div class="hint">${hint}</div><div class="val">${valor}</div></div>`;
+  }
+  // Mesmo formato dos boxes clicáveis de Vendas e Cancelamentos: classe
+  // .kpi.click, número na cor e a tarja "filtro ativo · clique para
+  // remover" que só aparece com .on. Um padrão para todas as telas.
+  function cardFiltro(cls,acao,ativo,titulo,valor,hint){
+    return `<div class="kpi click ${cls} ${ativo?'on':''}" onclick="REC.foco('${acao}')">`+
+           `<div class="lbl">${titulo}</div><div class="hint">${hint}</div>`+
+           `<div class="val">${valor}</div>`+
+           `<div class="flag">filtro ativo · clique para remover</div></div>`;
+  }
 
-      ['Prejuízo',brl(k.soma_prejuizo)]
-    ];
-    box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join('');
+  function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
+    const st=f('status').value;
+    box.innerHTML =
+      cardHtml('rc-total','Total de reclamações', n0(k.total),
+               'Reclamações que atendem aos filtros acima') +
+      cardHtml('rc-prej','Prejuízo', brl(k.soma_prejuizo),
+               'Soma do que se perdeu e não se recupera') +
+      cardFiltro('rc-conf','pendentes', SO_PENDENTES,
+               'Faltam conferir', n0(k.faltam), 'Ainda não conferidas') +
+      cardFiltro('rc-resolv', RESOLVIDA, st===RESOLVIDA,
+               'Resolvidas', n0(k.resolvidas), 'Caso encerrado, com ou sem prejuízo') +
+      cardFiltro('rc-andam', ANDAMENTO, st===ANDAMENTO,
+               'Em andamento', n0(k.em_aberto), 'Ainda em tratativa com o cliente');
+  }
+
+  // Clique nos boxes. Combinam entre si: pendentes + em andamento mostra
+  // as que faltam conferir e ainda não terminaram. Clicar no box já
+  // ativo desliga aquele recorte, então ele serve de ida e volta.
+  function foco(acao){
+    if(acao==='pendentes'){ SO_PENDENTES=!SO_PENDENTES; }
+    else { f('status').value = (f('status').value===acao) ? '' : acao; }
+    carregar(true);
   }
 
   function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="18" class="empty">Nenhuma reclamação encontrada.</td></tr>'; return; }
@@ -207,32 +266,38 @@ const REC = (function(){
   async function buscarVendas(){ const busca=f('m-busca').value.trim(); if(!busca){ f('m-res').innerHTML=''; return; } try{ const r=await rpc('cn_buscar_vendas_sem_reclamacao',{p_usuario_id:USER.id,p_busca:busca,p_limite:30}); if(!r||!r.length){ f('m-res').innerHTML='<p style="color:var(--muted);font-size:13px">Nenhum pedido encontrado (ou já está em Reclamações).</p>'; return; } f('m-res').innerHTML='<table class="res"><thead><tr><th>Data</th><th>Canal</th><th>ID</th><th>SKU</th><th>Cliente</th><th></th></tr></thead><tbody>'+r.map(v=>`<tr><td>${dataBr(v.data_compra)}</td><td>${v.canal||'—'}</td><td>${v.id_pedido||'—'}</td><td>${v.modelo||'—'}</td><td>${v.cliente||'—'}</td><td><button onclick="REC.lancar(${v.venda_id})">Lançar</button></td></tr>`).join('')+'</tbody></table>'; }catch(e){ f('m-erro').textContent='Erro na busca: '+(e.message||e); } }
   async function lancar(vendaId){ f('m-erro').textContent=''; try{ await rpc('cn_lancar_reclamacao_manual',{p_usuario_id:USER.id,p_venda_id:vendaId}); fecharModal(); await carregar(true); if(typeof atualizarBadges==='function') atualizarBadges(); f('msg').textContent='Reclamação lançada.'; }catch(e){ f('m-erro').textContent=(e.message||e); } }
 
-  // busca automática (ML) sob demanda
-  async function buscar(){ const b=f('buscar'); if(b.disabled)return; b.disabled=true; const t=b.textContent;
-    try{ f('msg').textContent='Buscando reclamações no Mercado Livre…'; let g=0;
-      while(true){ const r=await chamarFuncao('sync-reclamacoes',{dias:180,limite:5}); g++; if(r.restantes>0){ f('msg').textContent=`Buscando reclamações… (faltam ~${r.restantes})`; } else break; if(g>800) break; }
-      f('msg').textContent='Processando reclamações…'; await rpc('cn_processar_reclamacoes',{p_usuario_id:USER.id});
-      await carregar(true); if(typeof atualizarBadges==='function') atualizarBadges(); f('msg').textContent='Reclamações atualizadas '+new Date().toLocaleTimeString('pt-BR');
-    }catch(e){ alert('Erro ao buscar reclamações: '+(e.message||e)); f('msg').textContent=''; } finally{ b.disabled=false; b.textContent=t; } }
+  // A busca no Mercado Livre saiu daqui em 09/09: quem traz e atualiza
+  // os casos é a rotina que alimenta a tela de Mediações, e de lá eles
+  // chegam pela triagem. Um botão de buscar nesta tela sugeriria uma
+  // segunda porta de entrada que não existe mais.
+
 
   async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const fl=filtros(); const todas=await rpc('cn_listar_reclamacoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return; const cols=['data_venda','data_abertura','canal','id_pedido','tipo_envio','modelo','quantidade','valor_total','numero_nf','cliente','uf','nfd','motivo','status','tipo_resolucao','data_resolucao','custo_prejuizo','observacoes','origem_lancamento','conferido']; const head=['Data da Venda','Data de Abertura','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade','Valor Total','N NF','Cliente','UF','N NFD','Motivo','Status','Tipo de Resolucao','Data da Resolucao','Prejuizo','Observacoes','Origem','Conferido']; const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';')); const csv=[head.join(';'),...ls].join('\n'); const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='reclamacoes_carrinhos_net.csv'; a.click(); }catch(e){ alert('Erro ao exportar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
 
+  function limparFiltros(){
+    ['busca','mes','mes-venda','canal','envio','uf','motivo','status','resolucao']
+      .forEach(id=>{ f(id).value=''; });
+    f('ordem').value='recentes';
+    SO_PENDENTES=false;
+    carregar(true);
+  }
+
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
-    f('mes').addEventListener('change',()=>carregar(true)); f('canal').addEventListener('change',()=>carregar(true)); f('status').addEventListener('change',()=>carregar(true)); f('ordem').addEventListener('change',()=>carregar(true));
-    f('btn-filtrar').addEventListener('click',()=>carregar(true));
-    const bx=f('buscar'); if(bx){ if(temPermissao('sync.executar')){ bx.addEventListener('click',buscar); } else { bx.style.display='none'; } }
+    // filtros automáticos: nenhum botão de aplicar
+    ['mes','mes-venda','canal','envio','uf','motivo','status','resolucao','ordem']
+      .forEach(id=>f(id).addEventListener('change',()=>carregar(true)));
+    f('limpar').addEventListener('click',limparFiltros);
     f('lancar').addEventListener('click',abrirModal); f('exportar').addEventListener('click',exportar);
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     f('devolver').addEventListener('click',devolver);
     f('para-devolucao').addEventListener('click',paraDevolucao);
     f('e-status').addEventListener('change',sincResolucao);
-    f('resolucao').addEventListener('change',()=>carregar(true));
     f('drawer-x').addEventListener('click',fechar); f('drawer-cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('drawer-save').addEventListener('click',salvar);
     f('modal-x').addEventListener('click',fecharModal); let mt; f('m-busca').addEventListener('input',()=>{ clearTimeout(mt); mt=setTimeout(buscarVendas,400); });
   }
 
-  return { init, abrir, conf, lancar };
+  return { init, abrir, conf, lancar, foco };
 })();
 window.REC = REC;
 registrarTela('reclamacoes', REC);
