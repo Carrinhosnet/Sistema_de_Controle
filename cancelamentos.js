@@ -104,8 +104,8 @@ const CAN = (function(){
   }
 
   const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
-  function cardHtml(titulo,valor,hint){
-    return `<div class="kpi"><div class="lbl">${titulo}</div>`+
+  function cardHtml(titulo,valor,hint,cls){
+    return `<div class="kpi ${cls||''}"><div class="lbl">${titulo}</div>`+
            (hint?`<div class="hint">${hint}</div>`:'')+
            `<div class="val">${valor}</div></div>`;
   }
@@ -124,13 +124,16 @@ const CAN = (function(){
 
   function renderKpis(k){
     const box=f('kpis'); if(!k){box.innerHTML='';return;}
-    const semFoco = !RESPONSAVEL && !SO_PENDENTES;
     box.innerHTML =
       cardHtml('Valor cancelado', brl(k.valor_cancelado), 'Soma do valor das vendas canceladas') +
       cardHtml('Comissão cancelada', brl(k.total_comissao), 'Comissão que deixou de ser cobrada') +
       cardHtml('Pedidos cancelados', n0(k.qtd_pedidos), 'Pedidos distintos, não linhas') +
-      cardFiltro('cn-todos','todos', semFoco,
-        'Registros', n0(k.total), 'Uma linha por SKU — clique para ver todos') +
+      // Registros é informativo: ele mostra quantas linhas a tela tem
+      // agora. Como botão ele ficaria com a tarja "filtro ativo" ligada
+      // o tempo todo que nenhum recorte estivesse aplicado, sugerindo
+      // um filtro que não existe. Para limpar os recortes há o botão
+      // Limpar filtros, e cada box desliga a si mesmo no segundo clique.
+      cardHtml('Registros', n0(k.total), 'Uma linha por SKU', 'cn-todos') +
       cardFiltro('cn-pendentes','pendentes', SO_PENDENTES,
         'Faltam conferir', n0(k.faltam), 'Ainda não conferidos') +
       cardFiltro('cn-cliente','Cliente', RESPONSAVEL==='Cliente',
@@ -147,8 +150,7 @@ const CAN = (function(){
   // pendentes do cliente. Clicar no box já ativo desliga aquele recorte,
   // então o próprio box serve de ida e volta.
   function foco(acao){
-    if(acao==='todos'){ RESPONSAVEL=null; SO_PENDENTES=false; }
-    else if(acao==='pendentes'){ SO_PENDENTES=!SO_PENDENTES; }
+    if(acao==='pendentes'){ SO_PENDENTES=!SO_PENDENTES; }
     else { RESPONSAVEL = (RESPONSAVEL===acao) ? null : acao; }
     KPIS=null; carregar(true);
   }

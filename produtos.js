@@ -49,7 +49,8 @@ const PD = (function(){
     try{ const [linhas,total,kpis]=await Promise.all([
         rpc('cn_listar_produtos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_produtos',fl),
-        rpc('cn_kpis_produtos',fl)
+        rpc('cn_kpis_produtos',fl),
+        CONF===null ? carregarConferencia() : null   // só na primeira carga
       ]);
       LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag();
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
@@ -59,16 +60,73 @@ const PD = (function(){
     // campo "Ir para a pagina" (helper global do index.html)
     if(typeof montarIrPara==='function') montarIrPara('pd',p,tp,(n)=>{ PAGINA=n-1; carregar(); }); }
 
+  const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
+  function cardHtml(cls,titulo,valor,hint){
+    return `<div class="kpi ${cls}"><div class="lbl">${titulo}</div>`+
+           `<div class="hint">${hint}</div><div class="val">${valor}</div></div>`;
+  }
+  // Mesmo formato dos boxes clicáveis de Vendas, Cancelamentos e
+  // Reclamações: .kpi.click, número na cor e a tarja "filtro ativo".
+  function cardFiltro(cls,acao,ativo,titulo,valor,hint){
+    return `<div class="kpi click ${cls} ${ativo?'on':''}" onclick="PD.foco('${acao}')">`+
+           `<div class="lbl">${titulo}</div><div class="hint">${hint}</div>`+
+           `<div class="val">${valor}</div>`+
+           `<div class="flag">filtro ativo · clique para remover</div></div>`;
+  }
+
+  // Resultado da última conferência com o Bling. Fica guardado à parte
+  // porque não vem dos filtros: é um retrato do momento em que alguém
+  // rodou a conferência, e não muda quando se filtra a tabela.
+  let CONF=null;
+  async function carregarConferencia(){
+    try{ CONF=await rpc('cn_ultima_conferencia_produtos',{p_usuario_id:USER.id}); }
+    catch(e){ CONF=null; }
+  }
+  function dataConf(){
+    if(!CONF||!CONF.houve) return 'Nunca conferido com o Bling';
+    const d=new Date(CONF.executado_em);
+    return 'Conferido em '+d.toLocaleDateString('pt-BR')+' às '+
+           d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  }
+
   function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
-    const cards=[
-      ['Total de produtos',Number(k.total||0).toLocaleString('pt-BR')],
-      ['Ativos',Number(k.ativos||0).toLocaleString('pt-BR')],
-      ['Inativos',Number(k.inativos||0).toLocaleString('pt-BR')],
-      ['Cadastro Básico',Number(k.basico||0).toLocaleString('pt-BR')],
-      ['Intermediário',Number(k.intermediario||0).toLocaleString('pt-BR')],
-      ['Completo',Number(k.completo||0).toLocaleString('pt-BR')]
-    ];
-    box.innerHTML=cards.map(c=>`<div class="kpi"><div class="lbl">${c[0]}</div><div class="val">${c[1]}</div></div>`).join('');
+    const st=f('status').value, at=f('ativo').value;
+    // sem conferência não se escreve 0: zero diria "não há divergência",
+    // conclusão diferente de "ninguém conferiu ainda"
+    const cv=(campo)=> (CONF&&CONF.houve) ? n0(CONF[campo]) : '—';
+    const quando=dataConf();
+    box.innerHTML =
+      cardHtml('pd-total','Total de produtos', n0(k.total),
+               'Produtos que atendem aos filtros acima') +
+      cardFiltro('pd-ativo','ativo', at==='true',
+               'Ativos', n0(k.ativos), 'Em linha, disponíveis para venda') +
+      cardFiltro('pd-inativo','inativo', at==='false',
+               'Inativos', n0(k.inativos), 'Fora de linha ou suspensos') +
+      cardFiltro('pd-basico','Básico', st==='Básico',
+               'Cadastro Básico', n0(k.basico), 'Só o essencial preenchido') +
+      cardFiltro('pd-inter','Intermediário', st==='Intermediário',
+               'Intermediário', n0(k.intermediario), 'Falta parte das informações') +
+      cardFiltro('pd-compl','Completo', st==='Completo',
+               'Completo', n0(k.completo), 'Cadastro sem lacunas') +
+      cardHtml('pd-bling','Só no Bling', cv('so_bling'),
+               'Existem lá e não aqui · '+quando) +
+      cardHtml('pd-sistema','Só no sistema', cv('so_sistema'),
+               'Existem aqui e não no Bling · '+quando) +
+      cardHtml('pd-ambos','Nos dois', cv('ambos'),
+               'Encontrados dos dois lados · '+quando);
+  }
+
+  // Clique nos boxes. Ativos/Inativos mexem no select de situação;
+  // os três de cadastro, no de status. Clicar no box já ativo desliga
+  // aquele recorte, então ele serve de ida e volta.
+  function foco(acao){
+    if(acao==='ativo' || acao==='inativo'){
+      const v = acao==='ativo' ? 'true' : 'false';
+      f('ativo').value = (f('ativo').value===v) ? '' : v;
+    } else {
+      f('status').value = (f('status').value===acao) ? '' : acao;
+    }
+    carregar(true);
   }
 
   function statusPill(st){ const cor = st==='Completo'?'#22c55e':(st==='Intermediário'?'#f59e0b':'#94a3b8');
@@ -285,7 +343,7 @@ const PD = (function(){
     try{ const m=await rpc('cn_listar_masters_fracionamento',{p_usuario_id:USER.id}); MASTERS_CACHE={}; (m||[]).forEach(x=>{ MASTERS_CACHE[x.sku]=x; }); }catch(e){}
   }
 
-  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
+  async function exportar(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando CSV…';
     try{ const fl=filtros(); const todas=await rpc('cn_listar_produtos',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0}); if(!todas||!todas.length)return;
       const cols=['sku','tipo_sku','categoria','descricao','origem','unidade_medida','quantidade','ncm','qtd_componentes','status','ativo'];
       const head=['SKU','Tipo','Categoria','Descricao','Origem','Unidade','Quantidade','NCM','Componentes','Status','Ativo'];
@@ -447,7 +505,7 @@ const PD = (function(){
   }
 
   // -------- EXPORT XLSX (no mesmo formato do template) --------
-  async function exportarXlsx(){ const b=f('exportar-xlsx'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
+  async function exportarXlsx(){ const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando Excel…';
     try{
       const dados=await rpc('cn_exportar_produtos',{p_usuario_id:USER.id}); if(!dados||!dados.length){ alert('Nenhum produto para exportar.'); return; }
       // garante o cache dos masters (p/ derivar a quantidade original dos fracionados)
@@ -570,11 +628,25 @@ const PD = (function(){
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='conferencia_bling_carrinhos_net.csv'; a.click();
   }
 
+  function limparFiltros(){
+    ['busca','tipo','categoria','origem','status','ativo'].forEach(id=>{ f(id).value=''; });
+    f('ordem').value='recentes';
+    carregar(true);
+  }
+
+  // ---------- exportar: um botão, formato escolhido depois ----------
+  function abrirExport(){ $('pd-exp-modal').classList.add('open'); }
+  function fecharExport(){ $('pd-exp-modal').classList.remove('open'); }
+
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
     ['tipo','categoria','origem','status','ativo','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true)));
-    f('btn-filtrar').addEventListener('click',()=>carregar(true));
-    f('novo').addEventListener('click',novo); f('exportar').addEventListener('click',exportar);
+    f('limpar').addEventListener('click',limparFiltros);
+    f('novo').addEventListener('click',novo);
+    f('exportar').addEventListener('click',abrirExport);
+    $('pd-exp-x').addEventListener('click',fecharExport);
+    $('pd-exp-csv').addEventListener('click',()=>{ fecharExport(); exportar(); });
+    $('pd-exp-xlsx').addEventListener('click',()=>{ fecharExport(); exportarXlsx(); });
     f('prev').addEventListener('click',()=>{ if(PAGINA>0){ PAGINA--; carregar(); } }); f('next').addEventListener('click',()=>{ PAGINA++; carregar(); });
     // drawer
     f('x').addEventListener('click',fechar); f('cancel').addEventListener('click',fechar); f('overlay').addEventListener('click',fechar); f('save').addEventListener('click',salvar);
@@ -587,7 +659,6 @@ const PD = (function(){
     f('add-img').addEventListener('click',addImg);
     // import/export
     f('importar').addEventListener('click',abrirImport);
-    f('exportar-xlsx').addEventListener('click',exportarXlsx);
     im('x').addEventListener('click',fecharImport);
     im('processar').addEventListener('click',processarImport);
     im('confirmar').addEventListener('click',confirmarImport);
@@ -611,7 +682,7 @@ const PD = (function(){
     }catch(e){ f('erro').textContent='Erro ao excluir: '+(e.message||e); b.disabled=false; b.textContent=t; }
   }
 
-  return { init, abrir, setComp, rmComp, addComp:()=>addComp(), setImg, rmImg, setPadrao };
+  return { init, foco, abrir, setComp, rmComp, addComp:()=>addComp(), setImg, rmImg, setPadrao };
 })();
 window.PD = PD;
 registrarTela('produtos', PD);

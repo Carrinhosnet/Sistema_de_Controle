@@ -314,6 +314,20 @@
      vem de .kpi.click, definido lá em cima e usado na tela de Vendas.
      Aqui entram só as cores, para não haver dois jeitos de fazer a
      mesma coisa no sistema. */
+  /* tela de Produtos — cores já usadas em outras telas do sistema */
+  .kpi.pd-total  {--kpc:#1e40af}   /* azul escuro, como b-total */
+  .kpi.pd-ativo  {--kpc:#22c55e}   /* verde, como k-entregue */
+  .kpi.pd-inativo{--kpc:#991b1b}   /* vermelho escuro, como b-protesto */
+  .kpi.pd-basico {--kpc:#f87171}   /* vermelho claro, como b-atraso */
+  .kpi.pd-inter  {--kpc:#eab308}   /* amarelo, como k-caminho */
+  .kpi.pd-compl  {--kpc:#15803d}   /* verde escuro */
+  .kpi.pd-bling  {--kpc:#a855f7}   /* roxo, como c-envio */
+  .kpi.pd-sistema{--kpc:#f97316}   /* laranja, como k-atraso */
+  .kpi.pd-ambos  {--kpc:#22c55e}   /* verde, igual ao de ativos */
+  /* informativos precisam das duas regras: --kpc só é lido em .kpi.click */
+  .kpi.pd-total .val,.kpi.pd-bling .val,.kpi.pd-sistema .val,.kpi.pd-ambos .val{color:var(--kpc)}
+  .kpi.pd-total,.kpi.pd-bling,.kpi.pd-sistema,.kpi.pd-ambos{border-left:3px solid var(--kpc)}
+
   /* tela de Reclamações — mesmas cores já usadas em outras telas.
      A cor de --kpc era lida só dentro de .kpi.click; Total e Prejuízo
      não são clicáveis e ficavam sem cor. Estas duas regras dão a eles
@@ -327,6 +341,11 @@
   .kpi.rc-resolv {--kpc:#22c55e}   /* verde, como k-entregue */
   .kpi.rc-andam  {--kpc:#eab308}   /* amarelo, como k-caminho */
 
+  /* Registros é informativo (não clicável), então precisa das mesmas
+     duas regras dos informativos de Reclamações para a cor aparecer:
+     --kpc só é lido dentro de .kpi.click. */
+  .kpi.cn-todos .val{color:var(--kpc)}
+  .kpi.cn-todos{border-left:3px solid var(--kpc)}
   .kpi.cn-todos     {--kpc:#3b82f6}   /* azul */
   .kpi.cn-pendentes {--kpc:#ef4444}   /* vermelho */
   .kpi.cn-cliente   {--kpc:#f97316}   /* laranja */
@@ -883,16 +902,45 @@
           <option value="true">Somente ativos</option>
           <option value="false">Somente inativos</option>
         </select>
-        <select id="pd-ordem"><option value="recentes">Mais recentes</option><option value="sku">SKU (A-Z)</option><option value="descricao">Descrição (A-Z)</option></select>
-        <button class="act prim" id="pd-btn-filtrar">Filtrar</button>
+        <select id="pd-ordem">
+          <option value="recentes">Mais recentes</option>
+          <option value="antigos">Mais antigos</option>
+          <option value="sku">SKU (A-Z)</option>
+          <option value="sku_desc">SKU (Z-A)</option>
+          <option value="descricao">Descrição (A-Z)</option>
+          <option value="descricao_desc">Descrição (Z-A)</option>
+          <option value="tipo">Tipo</option>
+          <option value="categoria">Categoria</option>
+          <option value="status">Status do cadastro</option>
+        </select>
+        <button class="act prim" id="pd-limpar" title="Remove todos os filtros">Limpar filtros</button>
         <button class="act prim" id="pd-novo">+ Novo produto</button>
         <button class="act" id="pd-importar">Importar Excel</button>
         <button class="act" id="pd-conferir">Conferir com Bling</button>
-        <button class="act" id="pd-exportar-xlsx">Exportar Excel</button>
-        <button class="act" id="pd-exportar">Exportar CSV</button>
+        <button class="act" id="pd-exportar">Exportar</button>
         <span id="pd-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
       <div class="kpis" id="pd-kpis"></div>
+      <!-- Os dois botões de exportar viraram um: o formato é escolhido
+           aqui. Mantém a barra menos cheia e deixa o caminho pronto
+           para outros formatos sem criar mais um botão. -->
+      <div class="modal" id="pd-exp-modal">
+        <div class="modal-box" style="max-width:380px">
+          <div class="modal-head"><h3>Exportar produtos</h3>
+            <button class="x" id="pd-exp-x">&times;</button></div>
+          <div class="modal-body">
+            <p style="color:var(--muted);font-size:13px;margin-bottom:14px">
+              Os dois formatos seguem os filtros aplicados na tela.</p>
+            <button class="act prim" id="pd-exp-xlsx" style="width:100%;margin-bottom:10px">
+              Excel (.xlsx)</button>
+            <p style="color:var(--muted);font-size:11px;margin:-4px 0 14px">
+              Mantém colunas e formatação. Melhor para reimportar.</p>
+            <button class="act" id="pd-exp-csv" style="width:100%">CSV (.csv)</button>
+            <p style="color:var(--muted);font-size:11px;margin:6px 0 0">
+              Texto simples, abre em qualquer planilha.</p>
+          </div>
+        </div>
+      </div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
         <th>SKU</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th>Origem</th>
         <th>Un.</th><th class="num">Qtd</th><th>NCM</th><th class="num">Comp.</th><th>Status</th><th>Situação</th>
