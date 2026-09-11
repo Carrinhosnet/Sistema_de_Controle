@@ -13,26 +13,54 @@
 // =====================================================================
 const DEV = (function(){
   let LINHAS=[], PAGINA=0, TOTAL=0, EDIT_ID=null, KPIS=null; const POR=100;
-  let STATUS_OPC=[];
   const f=(id)=>$('dev-'+id);
+
+  // Os 11 status são fixos (CHECK no banco): a tela e o banco usam a
+  // mesma lista, e cada box corresponde a um deles exatamente.
+  const ST=['Aguardando devolução do produto','Devolução em preparação',
+            'Devolução a caminho','Devolução atrasada',
+            'Devolução entregue, com necessidade de reclamação',
+            'Devolução entregue, sem necessidade de reclamação',
+            'Devolução entregue, reclamação encerrada com sucesso',
+            'Devolução entregue, reclamação encerrada com prejuízo',
+            'Devolução não entregue, produto reembolsado somente ao cliente',
+            'Devolução não entregue, produto reembolsado ao cliente e ao vendedor',
+            'Devolução cancelada'];
+  // os sete de desfecho liberam a conferência; os quatro primeiros não
+  const DESFECHO=ST.slice(4);
 
   function filtros(){ return {
     p_usuario_id:USER.id,
     p_mes:f('mes').value||null,
+    p_mes_venda:f('mes-venda').value||null,
     p_canal:f('canal').value||null,
+    p_tipo_envio:f('envio').value||null,
+    p_uf:f('uf').value||null,
+    p_motivo:f('motivo').value||null,
     p_status:f('status').value||null,
+    p_solicitante:f('solicitante').value||null,
     p_busca:f('busca').value.trim()||null
   }; }
+
+  // Espelha a cn_marcar_conferido_devolucao. Quem recusa de fato é o
+  // banco; aqui só evita o clique que ia dar erro e explica o motivo.
+  // Zero é valor válido — o que bloqueia é o campo em branco.
+  function podeConferir(l){
+    if(!DESFECHO.includes(l.status)) return 'Só é possível conferir uma devolução com desfecho';
+    const falta=[];
+    if(l.custo_prejuizo==null)  falta.push('custo do prejuízo');
+    if(l.custo_devolucao==null) falta.push('custo de devolução');
+    if(l.status!=='Devolução cancelada' && !String(l.nfd||'').trim()) falta.push('NFD');
+    return falta.length ? 'Preencha antes de conferir: '+falta.join(', ') : null;
+  }
 
   async function init(){ await carregarOpcoes(); await carregarFiltros(); await carregar(); bind(); }
 
   let MOTIVO_OPC=[];
 
   async function carregarOpcoes(){
-    try{ const r=await rpc('cn_listar_opcoes',{p_usuario_id:USER.id,p_tipo:'status_devolucao'});
-      STATUS_OPC=(r||[]).map(o=>o.valor);
-    }catch(e){ STATUS_OPC=[]; }
-    STATUS_OPC.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; f('status').appendChild(o); });
+    // o status deixou de vir de listas_opcoes: virou lista fixa no HTML
+    // e no CHECK do banco
     // motivos vêm da tela de Opções Comerciais; lista fechada
     try{ const r=await rpc('cn_listar_opcoes_comerciais',{p_usuario_id:USER.id,p_tipo:'motivo_devolucao'});
       MOTIVO_OPC=(r||[]).filter(o=>o.ativo).map(o=>o.valor);
@@ -49,28 +77,39 @@ const DEV = (function(){
     sel.value=atual||'';
   }
 
+  // Seis listas numa chamada só. Status e solicitante não vêm daqui:
+  // são fixos e já estão escritos no HTML.
   async function carregarFiltros(){
-    try{ const meses=await rpc('cn_meses_devolucoes',{p_usuario_id:USER.id});
-      (meses||[]).forEach(m=>{ const o=document.createElement('option');
-        o.value=m.mes;o.textContent=mesLabel(m.mes); f('mes').appendChild(o); });
+    try{
+      const r=await rpc('cn_filtros_devolucoes',{p_usuario_id:USER.id}) || {};
+      encherMeses('mes-venda', r.meses_venda);
+      encherMeses('mes',       r.meses_chegada);
+      encher('canal',  r.canais);
+      encher('envio',  r.tipos_envio);
+      encher('uf',     r.ufs);
+      encher('motivo', r.motivos);
     }catch(e){}
-    try{ const canais=await rpc('cn_canais_devolucoes',{p_usuario_id:USER.id});
-      (canais||[]).forEach(c=>{ const o=document.createElement('option');
-        o.value=c.canal;o.textContent=c.canal; f('canal').appendChild(o); });
-    }catch(e){}
+  }
+  function encher(id, lista){
+    (lista||[]).forEach(v=>{ const o=document.createElement('option');
+      o.value=v; o.textContent=v; f(id).appendChild(o); });
+  }
+  function encherMeses(id, lista){
+    (lista||[]).forEach(v=>{ const o=document.createElement('option');
+      o.value=v; o.textContent=mesLabel(v); f(id).appendChild(o); });
   }
 
   async function carregar(reset, opts){
     if(reset) PAGINA=0;
     const precisaKpis = !(opts && opts.kpis===false) || KPIS===null;
-    f('tbody').innerHTML='<tr><td colspan="19" class="loading">Carregando devoluções…</td></tr>';
+    f('tbody').innerHTML='<tr><td colspan="20" class="loading">Carregando devoluções…</td></tr>';
     const fl=filtros();
     try{
       const chamadas=[
-        rpc('cn_listar_devolucoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}),
+        rpc('cn_listar_devolucoes',{...fl,p_ordem:f('ordem').value||'venda_nova',p_limite:POR,p_offset:PAGINA*POR}),
         rpc('cn_contar_devolucoes',fl)
       ];
-      if(precisaKpis) chamadas.push(rpc('cn_kpis_devolucoes',{p_usuario_id:USER.id,p_mes:fl.p_mes,p_canal:fl.p_canal,p_status:fl.p_status}));
+      if(precisaKpis) chamadas.push(rpc('cn_kpis_devolucoes',fl));
       const res=await Promise.all(chamadas);
       LINHAS=res[0]||[]; TOTAL=Number(res[1])||0;
       if(precisaKpis) KPIS=(res[2]&&res[2][0])||null;
@@ -78,7 +117,7 @@ const DEV = (function(){
       f('msg').textContent='Atualizado '+new Date().toLocaleTimeString('pt-BR');
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){
-      f('tbody').innerHTML='<tr><td colspan="19" class="empty">Erro: '+(e.message||e)+'</td></tr>';
+      f('tbody').innerHTML='<tr><td colspan="20" class="empty">Erro: '+(e.message||e)+'</td></tr>';
     }
   }
 
@@ -98,19 +137,58 @@ const DEV = (function(){
            `<div class="val">${valor}</div></div>`;
   }
 
+  // Mesmo formato das outras telas: .kpi.click, número na cor e a tarja
+  // "filtro ativo". Os quatro informativos ficam neutros — onze boxes
+  // coloridos já bastam, e a cor precisa marcar o que é clicável.
+  function cardFiltro(cls,status,titulo,valor,hint){
+    const ativo = f('status').value===status;
+    const arg = status.replace(/'/g,"\\'");
+    return `<div class="kpi click ${cls} ${ativo?'on':''}" onclick="DEV.foco('${arg}')">`+
+           `<div class="lbl">${titulo}</div><div class="hint">${hint}</div>`+
+           `<div class="val">${valor}</div>`+
+           `<div class="flag">filtro ativo · clique para remover</div></div>`;
+  }
+
   function renderKpis(k){
     const box=f('kpis'); if(!k){box.innerHTML='';return;}
     box.innerHTML =
-      cardHtml('Devoluções', n0(k.total), 'Uma linha por SKU devolvido') +
-      cardHtml('Valor devolvido', brl(k.soma_valor_nf), 'Soma do valor das notas') +
-      cardHtml('Custo do retorno', brl(k.soma_custo_devolucao), 'Frete pago para o produto voltar') +
-      cardHtml('Prejuízo', brl(k.soma_prejuizo), 'Perda que não se recupera') +
-      cardHtml('Faltam conferir', n0(k.faltam), 'Ainda não conferidas');
+      cardHtml('Vendas devolvidas', n0(k.total), 'Linhas no filtro atual, uma por SKU') +
+      cardHtml('Valor devolvido', brl(k.soma_valor_devolvido), 'Total restituído ao cliente') +
+      cardHtml('Custo de devolução', brl(k.soma_custo_devolucao), 'Frete pago para o produto retornar') +
+      cardHtml('Custo de prejuízo', brl(k.soma_prejuizo), 'Perda sem possibilidade de recuperação') +
+      cardFiltro('dv-aguard', ST[0],  'Aguardando devolução', n0(k.st_aguardando),
+                 'Cliente ainda não despachou o produto') +
+      cardFiltro('dv-prep',   ST[1],  'Em preparação', n0(k.st_preparacao),
+                 'Postagem em processamento') +
+      cardFiltro('dv-camin',  ST[2],  'A caminho', n0(k.st_caminho),
+                 'Em trânsito de volta para nós') +
+      cardFiltro('dv-atras',  ST[3],  'Atrasada', n0(k.st_atrasada),
+                 'Prazo de retorno vencido sem entrega') +
+      cardFiltro('dv-ecom',   ST[4],  'Entregue · abrir reclamação', n0(k.st_ent_com_recl),
+                 'Recebida com avaria ou divergência a tratar') +
+      cardFiltro('dv-esem',   ST[5],  'Entregue · sem reclamação', n0(k.st_ent_sem_recl),
+                 'Recebida conforme, sem pendência') +
+      cardFiltro('dv-eok',    ST[6],  'Reclamação resolvida', n0(k.st_ent_recl_ok),
+                 'Encerrada a nosso favor, sem perda') +
+      cardFiltro('dv-eprej',  ST[7],  'Reclamação com prejuízo', n0(k.st_ent_recl_prej),
+                 'Encerrada com perda assumida por nós') +
+      cardFiltro('dv-ncli',   ST[8],  'Reembolso ao cliente', n0(k.st_nent_cliente),
+                 'Produto não retornou; só o cliente foi ressarcido') +
+      cardFiltro('dv-namb',   ST[9],  'Reembolso a ambos', n0(k.st_nent_ambos),
+                 'Produto não retornou; cliente e vendedor ressarcidos') +
+      cardFiltro('dv-canc',   ST[10], 'Cancelada', n0(k.st_cancelada),
+                 'Devolução desfeita antes de se concluir');
+  }
+
+  // Clicar no box aplica o status; clicar de novo no mesmo desliga.
+  function foco(status){
+    f('status').value = (f('status').value===status) ? '' : status;
+    KPIS=null; carregar(true);
   }
 
   function renderTabela(){
     const tb=f('tbody');
-    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="19" class="empty">Nenhuma devolução encontrada.</td></tr>'; return; }
+    if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="20" class="empty">Nenhuma devolução encontrada.</td></tr>'; return; }
     const podeConf=temPermissao('devolucoes.conferir');
     const editavel=temPermissao('devolucoes.editar');
     tb.innerHTML=LINHAS.map(l=>`<tr class="${l.conferido?'':'pendente'}"${editavel?` style="cursor:pointer" onclick="DEV.abrir(${l.id})"`:''}>
@@ -126,13 +204,21 @@ const DEV = (function(){
       <td>${l.cliente||'—'}</td>
       <td>${l.uf||'—'}</td>
       <td>${l.nfd||'—'}</td>
+      <td>${l.solicitante||'—'}</td>
       <td>${l.motivo||'—'}</td>
       <td>${l.status?`<span class="pill">${l.status}</span>`:'—'}</td>
       <td>${dataBr(l.data_chegada)}</td>
       <td class="num">${brl(l.valor_devolvido)}</td>
       <td class="num">${brl(l.custo_devolucao)}</td>
       <td class="num">${brl(l.custo_prejuizo)}</td>
-      <td class="conf" onclick="event.stopPropagation()"><input type="checkbox" class="chk" ${l.conferido?'checked':''} ${podeConf?'':'disabled'} onchange="DEV.conf(${l.id},this.checked,this)"><span class="conf-lbl">${l.conferido?'Conferido':'Pendente'}</span></td>
+      <td class="conf" onclick="event.stopPropagation()">${(()=>{
+        const impede=podeConferir(l);
+        // já conferido pode sempre ser desmarcado: destravar um engano
+        // não pode ficar bloqueado
+        const trava = impede && !l.conferido;
+        return `<input type="checkbox" class="chk" ${l.conferido?'checked':''} ${(podeConf&&!trava)?'':'disabled'} title="${trava?impede:''}" onchange="DEV.conf(${l.id},this.checked,this)">`+
+               `<span class="conf-lbl" ${trava?`style="color:var(--muted)" title="${impede}"`:''}>${l.conferido?'Conferido':(trava?'—':'Pendente')}</span>`;
+      })()}</td>
     </tr>`).join('');
   }
 
@@ -149,12 +235,6 @@ const DEV = (function(){
   }
 
   // ---- edição ----
-  function fillStatusSel(atual){
-    const sel=f('e-status'); sel.innerHTML='<option value="">—</option>';
-    const opts=[...STATUS_OPC]; if(atual&&!opts.includes(atual))opts.unshift(atual);
-    opts.forEach(v=>{ const o=document.createElement('option'); o.value=v;o.textContent=v; if(v===atual)o.selected=true; sel.appendChild(o); });
-    sel.value=atual||'';
-  }
 
   function abrir(id){
     if(!temPermissao('devolucoes.editar'))return;
@@ -164,13 +244,14 @@ const DEV = (function(){
     f('e-idped').value=l.id_pedido||''; f('e-modelo').value=l.modelo||'';
     f('e-cliente').value=l.cliente||''; f('e-uf').value=l.uf||'';
     f('e-previsao').value=l.previsao_chegada||'';
-    f('e-chegada').value=l.data_chegada||''; f('e-tipo').value=l.tipo_devolucao||'';
-    fillStatusSel(l.status);
+    f('e-chegada').value=l.data_chegada||'';
+    f('e-solicitante').value=l.solicitante||'';
+    f('e-status').value=l.status||'';
     fillSelLista('e-motivo', MOTIVO_OPC, l.motivo);
     f('e-valortotal').value=l.valor_total??''; f('e-valordev').value=l.valor_devolvido??'';
     f('e-valornf').value=l.valor_nf??''; f('e-numnf').value=l.numero_nf||''; f('e-nfd').value=l.nfd||'';
     f('e-custodev').value=l.custo_devolucao??''; f('e-custoprej').value=l.custo_prejuizo??'';
-    f('e-incluidas').value=l.incluidas||''; f('e-obs').value=l.observacoes||'';
+    f('e-obs').value=l.observacoes||'';
     f('overlay').classList.add('open'); f('drawer').classList.add('open');
   }
   function fechar(){ f('overlay').classList.remove('open'); f('drawer').classList.remove('open'); EDIT_ID=null; }
@@ -181,14 +262,14 @@ const DEV = (function(){
     const num=(id)=>{const v=f(id).value;return v===''?null:Number(v);};
     try{
       await rpc('cn_editar_devolucao',{p_usuario_id:USER.id,p_devolucao_id:EDIT_ID,
-        p_data_chegada:f('e-chegada').value||null,p_tipo_devolucao:f('e-tipo').value||null,
+        p_data_chegada:f('e-chegada').value||null,
+        p_previsao_chegada:f('e-previsao').value||null,
+        p_solicitante:f('e-solicitante').value||null,
         p_motivo:f('e-motivo').value||null,p_status:f('e-status').value||null,
         p_valor_nf:num('e-valornf'),p_numero_nf:f('e-numnf').value||null,p_nfd:f('e-nfd').value||null,
         p_custo_devolucao:num('e-custodev'),p_custo_prejuizo:num('e-custoprej'),
-        p_incluidas:f('e-incluidas').value||null,p_observacoes:f('e-obs').value||null,
-        p_previsao_chegada:f('e-previsao').value||null,
-        p_valor_total:num('e-valortotal'),
-        p_valor_devolvido:num('e-valordev')});
+        p_valor_total:num('e-valortotal'),p_valor_devolvido:num('e-valordev'),
+        p_observacoes:f('e-obs').value||null});
       fechar(); KPIS=null; carregar();
     }catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); }
     finally{ b.disabled=false; b.textContent='Salvar'; }
@@ -247,8 +328,9 @@ const DEV = (function(){
   }
 
   function limparFiltros(){
-    ['busca','mes','canal','status'].forEach(id=>{ f(id).value=''; });
-    f('ordem').value='recentes';
+    ['busca','mes','mes-venda','canal','envio','uf','motivo','status','solicitante']
+      .forEach(id=>{ f(id).value=''; });
+    f('ordem').value='venda_nova';
     KPIS=null; carregar(true);
   }
 
@@ -256,16 +338,16 @@ const DEV = (function(){
     const b=f('exportar'); b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
     try{
       const fl=filtros();
-      const todas=await rpc('cn_listar_devolucoes',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:100000,p_offset:0});
+      const todas=await rpc('cn_listar_devolucoes',{...fl,p_ordem:f('ordem').value||'venda_nova',p_limite:100000,p_offset:0});
       if(!todas||!todas.length)return;
       const cols=['data_venda','previsao_chegada','canal','id_pedido','tipo_envio','modelo','quantidade',
-                  'valor_total','numero_nf','cliente','uf','nfd','motivo','status','data_chegada',
+                  'valor_total','numero_nf','cliente','uf','nfd','solicitante','motivo','status','data_chegada',
                   'valor_devolvido','custo_devolucao','custo_prejuizo',
-                  'valor_nf','tipo_devolucao','incluidas','observacoes','conferido'];
+                  'valor_nf','solicitante','observacoes','conferido'];
       const head=['Data da Venda','Previsao de Chegada','Canal','ID Pedido','Tipo de Envio','SKU','Quantidade',
-                  'Valor Total','N NF','Cliente','UF','N NFD','Motivo','Status','Data da Chegada',
+                  'Valor Total','N NF','Cliente','UF','N NFD','Solicitante','Motivo','Status','Data da Chegada',
                   'Valor Devolvido','Custo para Devolucao','Prejuizo',
-                  'Valor NF Devolucao','Tipo de Devolucao','Incluidas','Observacoes','Conferido'];
+                  'Valor NF Devolucao','Solicitante','Observacoes','Conferido'];
       const ls=todas.map(l=>cols.map(c=>{let v=l[c];if(v==null)v='';v=String(v).replace(/"/g,'""');return /[",;\n]/.test(v)?`"${v}"`:v;}).join(';'));
       const csv=[head.join(';'),...ls].join('\n');
       const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
@@ -277,7 +359,8 @@ const DEV = (function(){
 
   function bind(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>{ KPIS=null; carregar(true); },400); });
-    ['mes','canal','status'].forEach(id=>f(id).addEventListener('change',()=>{ KPIS=null; carregar(true); }));
+    ['mes','mes-venda','canal','envio','uf','motivo','status','solicitante']
+      .forEach(id=>f(id).addEventListener('change',()=>{ KPIS=null; carregar(true); }));
     f('ordem').addEventListener('change',()=>carregar(true,{kpis:false}));
     f('limpar').addEventListener('click',limparFiltros);
     f('lancar').addEventListener('click',abrirModal);
@@ -291,7 +374,7 @@ const DEV = (function(){
     let mt; f('m-busca').addEventListener('input',()=>{ clearTimeout(mt); mt=setTimeout(buscarVendas,400); });
   }
 
-  return { init, abrir, conf, lancar };
+  return { init, abrir, conf, lancar, devolver, foco };
 })();
 window.DEV = DEV;
 registrarTela('devolucoes', DEV);

@@ -314,6 +314,21 @@
      vem de .kpi.click, definido lá em cima e usado na tela de Vendas.
      Aqui entram só as cores, para não haver dois jeitos de fazer a
      mesma coisa no sistema. */
+  /* tela de Devoluções — os quatro informativos ficam neutros; a cor
+     marca os 11 status, que são os boxes clicáveis. Todas já usadas em
+     outras telas do sistema. */
+  .kpi.dv-aguard {--kpc:#eab308}   /* amarelo  — esperando o produto */
+  .kpi.dv-prep   {--kpc:#3b82f6}   /* azul     — em preparação */
+  .kpi.dv-camin  {--kpc:#a855f7}   /* roxo     — a caminho */
+  .kpi.dv-atras  {--kpc:#ef4444}   /* vermelho — atrasada */
+  .kpi.dv-ecom   {--kpc:#f97316}   /* laranja  — entregue, abrir reclamação */
+  .kpi.dv-esem   {--kpc:#22c55e}   /* verde    — entregue, sem pendência */
+  .kpi.dv-eok    {--kpc:#15803d}   /* verde escuro   — reclamação resolvida */
+  .kpi.dv-eprej  {--kpc:#991b1b}   /* vermelho escuro — resolvida com perda */
+  .kpi.dv-ncli   {--kpc:#b45309}   /* âmbar escuro   — reembolso ao cliente */
+  .kpi.dv-namb   {--kpc:#7e22ce}   /* roxo escuro    — reembolso aos dois */
+  .kpi.dv-canc   {--kpc:#94a3b8}   /* cinza    — cancelada */
+
   /* tela de Produtos — cor SÓ nos boxes que filtram.
      Nove cartões coloridos ao mesmo tempo viram ruído: a cor perde a
      função de destacar e passa a ser enfeite. Aqui ela marca o que é
@@ -672,13 +687,25 @@
       <div class="toolbar">
         <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           <input id="dev-busca" placeholder="Buscar cliente, ID do pedido, SKU ou NF" /></div>
-        <select id="dev-mes"><option value="">Todos os meses</option></select>
+        <select id="dev-mes-venda"><option value="">Mês da venda: todos</option></select>
+        <select id="dev-mes"><option value="">Mês da chegada: todos</option></select>
         <select id="dev-canal"><option value="">Todos os canais</option></select>
-        <select id="dev-status"><option value="">Todos os status</option></select>
-        <select id="dev-ordem"><option value="recentes">Mais recentes primeiro</option><option value="antigos">Mais antigos primeiro</option><option value="maior_valor">Maior valor primeiro</option><option value="menor_valor">Menor valor primeiro</option><option value="pendentes">Pendentes primeiro</option></select>
+        <select id="dev-envio"><option value="">Todos os tipos de envio</option></select>
+        <select id="dev-uf"><option value="">Todas as UFs</option></select>
+        <select id="dev-motivo"><option value="">Todos os motivos</option></select>
+        <select id="dev-status"><option value="">Todos os status</option><option>Aguardando devolução do produto</option><option>Devolução em preparação</option><option>Devolução a caminho</option><option>Devolução atrasada</option><option>Devolução entregue, com necessidade de reclamação</option><option>Devolução entregue, sem necessidade de reclamação</option><option>Devolução entregue, reclamação encerrada com sucesso</option><option>Devolução entregue, reclamação encerrada com prejuízo</option><option>Devolução não entregue, produto reembolsado somente ao cliente</option><option>Devolução não entregue, produto reembolsado ao cliente e ao vendedor</option><option>Devolução cancelada</option></select>
+        <select id="dev-solicitante"><option value="">Todos os solicitantes</option><option>Cliente</option><option>Plataforma</option><option>Vendedor</option></select>
+        <select id="dev-ordem">
+          <option value="venda_nova">Venda mais recente</option>
+          <option value="venda_antiga">Venda mais antiga</option>
+          <option value="chegada_nova">Chegada mais recente</option>
+          <option value="chegada_antiga">Chegada mais antiga</option>
+          <option value="maior_prej">Maior prejuízo primeiro</option>
+          <option value="pendentes">Pendentes primeiro</option>
+        </select>
         <button class="act prim" id="dev-limpar" title="Remove todos os filtros">Limpar filtros</button>
         <button class="act prim" id="dev-lancar">+ Lançar devolução</button>
-        <button class="act prim" id="dev-exportar">Exportar CSV</button>
+        <button class="act prim" id="dev-exportar">Exportar</button>
         <span id="dev-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
       <div class="kpis" id="dev-kpis"></div>
@@ -687,7 +714,7 @@
         <th>ID do Pedido</th><th>Tipo de Envio</th><th>SKU</th>
         <th class="num">Quantidade</th><th class="num">Valor Total</th><th>N° NF</th>
         <th>Nome do Cliente</th><th>UF</th><th>N° NFD</th>
-        <th>Motivo da Devolução</th><th>Status</th><th>Data da Chegada</th>
+        <th>Solicitante</th><th>Motivo da Devolução</th><th>Status</th><th>Data da Chegada</th>
         <th class="num">Valor Devolvido</th>
         <th class="num">Custo para Devolução</th><th class="num">Prejuízo</th>
         <th style="text-align:center">Conferido</th>
@@ -1408,8 +1435,9 @@
     <div class="grid">
       <div class="fld"><label>Previsão de chegada</label><input type="date" id="dev-e-previsao"></div>
       <div class="fld"><label>Data de chegada</label><input type="date" id="dev-e-chegada"></div>
-      <div class="fld"><label>Tipo de devolução</label><select id="dev-e-tipo"><option value="">—</option><option>Reclamação</option><option>Mediação</option><option>Devolução Simples</option></select></div>
-      <div class="fld"><label>Status</label><select id="dev-e-status"></select></div>
+      <div class="fld"><label>Solicitante da devolução</label><select id="dev-e-solicitante">
+        <option value="">—</option><option>Cliente</option><option>Plataforma</option><option>Vendedor</option></select></div>
+      <div class="fld full"><label>Status</label><select id="dev-e-status"><option value="">—</option><option>Aguardando devolução do produto</option><option>Devolução em preparação</option><option>Devolução a caminho</option><option>Devolução atrasada</option><option>Devolução entregue, com necessidade de reclamação</option><option>Devolução entregue, sem necessidade de reclamação</option><option>Devolução entregue, reclamação encerrada com sucesso</option><option>Devolução entregue, reclamação encerrada com prejuízo</option><option>Devolução não entregue, produto reembolsado somente ao cliente</option><option>Devolução não entregue, produto reembolsado ao cliente e ao vendedor</option><option>Devolução cancelada</option></select></div>
       <div class="fld full"><label>Motivo da devolução</label><select id="dev-e-motivo"></select></div>
     </div>
     <div class="sec-tit">Valores</div>
@@ -1427,7 +1455,6 @@
     <div class="grid">
       <div class="fld"><label>Custo de devolução (R$)</label><input type="number" step="0.01" id="dev-e-custodev"></div>
       <div class="fld"><label>Custo do prejuízo (R$)</label><input type="number" step="0.01" id="dev-e-custoprej"></div>
-      <div class="fld"><label>Incluídas</label><input id="dev-e-incluidas"></div>
       <div class="fld full"><label>Observações</label><input id="dev-e-obs"></div>
     </div>
   </div>
