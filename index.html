@@ -314,7 +314,13 @@
      vem de .kpi.click, definido lá em cima e usado na tela de Vendas.
      Aqui entram só as cores, para não haver dois jeitos de fazer a
      mesma coisa no sistema. */
-  /* tela de Reclamações — mesmas cores já usadas em outras telas */
+  /* tela de Reclamações — mesmas cores já usadas em outras telas.
+     A cor de --kpc era lida só dentro de .kpi.click; Total e Prejuízo
+     não são clicáveis e ficavam sem cor. Estas duas regras dão a eles
+     a mesma borda e o mesmo número colorido dos clicáveis, sem tocar
+     em cartão de outra tela. */
+  .kpi.rc-total .val, .kpi.rc-prej .val{color:var(--kpc)}
+  .kpi.rc-total, .kpi.rc-prej{border-left:3px solid var(--kpc)}
   .kpi.rc-total  {--kpc:#1e40af}   /* azul escuro, como b-total e m-triar */
   .kpi.rc-prej   {--kpc:#ef4444}   /* vermelho, como k-devol */
   .kpi.rc-conf   {--kpc:#f97316}   /* laranja, como k-atraso */
