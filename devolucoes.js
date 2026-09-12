@@ -50,7 +50,18 @@ const DEV = (function(){
     return falta.length ? 'Preencha antes de conferir: '+falta.join(', ') : null;
   }
 
-  async function init(){ await carregarOpcoes(); await carregarFiltros(); await carregar(); bind(); }
+  async function init(){
+    // Devolução em trânsito cuja previsão já passou vira "atrasada".
+    // A rotina diária faz isso de madrugada; aqui é para o caso que
+    // vence hoje aparecer certo agora, sem esperar até amanhã.
+    // Uma vez por abertura da tela, não a cada filtro — é escrita, e
+    // repetir a cada busca digitada seria desperdício.
+    try{
+      const n = await rpc('cn_atualizar_atrasos_devolucoes',{p_usuario_id:USER.id});
+      if(n>0) f('msg').textContent = n+' devolução(ões) passaram para atrasada.';
+    }catch(e){}   // falhar aqui não pode impedir a tela de abrir
+    await carregarOpcoes(); await carregarFiltros(); await carregar(); bind();
+  }
 
   let MOTIVO_OPC=[];
 
