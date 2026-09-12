@@ -17,17 +17,13 @@ const DEV = (function(){
 
   // Os 11 status são fixos (CHECK no banco): a tela e o banco usam a
   // mesma lista, e cada box corresponde a um deles exatamente.
-  const ST=['Aguardando devolução do produto','Devolução em preparação',
-            'Devolução a caminho','Devolução atrasada',
-            'Devolução entregue, com necessidade de reclamação',
-            'Devolução entregue, sem necessidade de reclamação',
-            'Devolução entregue, reclamação encerrada com sucesso',
-            'Devolução entregue, reclamação encerrada com prejuízo',
-            'Devolução não entregue, produto reembolsado somente ao cliente',
-            'Devolução não entregue, produto reembolsado ao cliente e ao vendedor',
-            'Devolução cancelada'];
-  // os sete de desfecho liberam a conferência; os quatro primeiros não
-  const DESFECHO=ST.slice(4);
+  const ST=['Aguardando despacho','Em trânsito','Devolução atrasada',
+            'Entregue, com pendência para reclamação','Entregue, sem qualquer pendência',
+            'Reclamação resolvida','Reclamação resolvida com prejuízo',
+            'Reembolso ao cliente, com prejuízo ao vendedor',
+            'Reembolso ao cliente e vendedor','Devolução cancelada'];
+  // os sete de desfecho liberam a conferência; os três primeiros não
+  const DESFECHO=ST.slice(3);
 
   function filtros(){ return {
     p_usuario_id:USER.id,
@@ -152,32 +148,44 @@ const DEV = (function(){
   function renderKpis(k){
     const box=f('kpis'); if(!k){box.innerHTML='';return;}
     box.innerHTML =
-      cardHtml('Vendas devolvidas', n0(k.total), 'Linhas no filtro atual, uma por SKU') +
-      cardHtml('Valor devolvido', brl(k.soma_valor_devolvido), 'Total restituído ao cliente') +
-      cardHtml('Custo de devolução', brl(k.soma_custo_devolucao), 'Frete pago para o produto retornar') +
-      cardHtml('Custo de prejuízo', brl(k.soma_prejuizo), 'Perda sem possibilidade de recuperação') +
-      cardFiltro('dv-aguard', ST[0],  'Aguardando devolução', n0(k.st_aguardando),
-                 'Cliente ainda não despachou o produto') +
-      cardFiltro('dv-prep',   ST[1],  'Em preparação', n0(k.st_preparacao),
-                 'Postagem em processamento') +
-      cardFiltro('dv-camin',  ST[2],  'A caminho', n0(k.st_caminho),
-                 'Em trânsito de volta para nós') +
-      cardFiltro('dv-atras',  ST[3],  'Atrasada', n0(k.st_atrasada),
-                 'Prazo de retorno vencido sem entrega') +
-      cardFiltro('dv-ecom',   ST[4],  'Entregue · abrir reclamação', n0(k.st_ent_com_recl),
-                 'Recebida com avaria ou divergência a tratar') +
-      cardFiltro('dv-esem',   ST[5],  'Entregue · sem reclamação', n0(k.st_ent_sem_recl),
-                 'Recebida conforme, sem pendência') +
-      cardFiltro('dv-eok',    ST[6],  'Reclamação resolvida', n0(k.st_ent_recl_ok),
-                 'Encerrada a nosso favor, sem perda') +
-      cardFiltro('dv-eprej',  ST[7],  'Reclamação com prejuízo', n0(k.st_ent_recl_prej),
-                 'Encerrada com perda assumida por nós') +
-      cardFiltro('dv-ncli',   ST[8],  'Reembolso ao cliente', n0(k.st_nent_cliente),
-                 'Produto não retornou; só o cliente foi ressarcido') +
-      cardFiltro('dv-namb',   ST[9],  'Reembolso a ambos', n0(k.st_nent_ambos),
-                 'Produto não retornou; cliente e vendedor ressarcidos') +
-      cardFiltro('dv-canc',   ST[10], 'Cancelada', n0(k.st_cancelada),
-                 'Devolução desfeita antes de se concluir');
+      // ---- agregados por grupo (informativos) ----
+      cardHtml('Pedidos com devolução pendente', n0(k.ped_pendente),
+        'Processo de devolução iniciado e ainda não concluído.') +
+      cardHtml('Pedidos devolvidos', n0(k.ped_devolvido),
+        'Devoluções concluídas no período e nos filtros aplicados.') +
+      cardHtml('Pedidos com devolução cancelada', n0(k.ped_cancelada),
+        'Processo iniciado, devolução cancelada e cliente ficou com o produto.') +
+      cardHtml('Valor com reembolso pendente', brl(k.vlr_pendente),
+        'Vendas em devolução ainda sem resultado financeiro definido.') +
+      cardHtml('Valor reembolsado', brl(k.vlr_reembolsado),
+        'Total restituído aos clientes em decorrência de devoluções.') +
+      cardHtml('Valor mantido como faturamento', brl(k.vlr_mantido),
+        'Devoluções que não geraram perda de faturamento, por cancelamento ou reembolso integral ao vendedor.') +
+      cardHtml('Custo de devolução', brl(k.custo_devolucao),
+        'Frete de retorno dos produtos devolvidos.') +
+      cardHtml('Prejuízo com devolução', brl(k.prejuizo),
+        'Perdas financeiras decorrentes das devoluções, sem contar o frete de retorno.') +
+      // ---- um box por status (clicáveis) ----
+      cardFiltro('dv-aguard', ST[0], 'Aguardando despacho', n0(k.st_aguardando),
+        'Cliente orientado a devolver, produto ainda não despachado.') +
+      cardFiltro('dv-transi', ST[1], 'Em trânsito', n0(k.st_transito),
+        'Produto despachado pelo cliente, a caminho do vendedor.') +
+      cardFiltro('dv-atras',  ST[2], 'Devolução atrasada', n0(k.st_atrasada),
+        'Prazo de entrega ultrapassado. Acompanhar com a transportadora ou a plataforma.') +
+      cardFiltro('dv-epend',  ST[3], 'Entregue, com pendência para reclamação', n0(k.st_ent_pend),
+        'Recebida com divergência ou irregularidade que exige abertura de reclamação.') +
+      cardFiltro('dv-eok',    ST[4], 'Entregue, sem qualquer pendência', n0(k.st_ent_ok),
+        'Recebida e conferida, sem divergências nem reclamação a abrir.') +
+      cardFiltro('dv-rok',    ST[5], 'Reclamação resolvida', n0(k.st_recl_ok),
+        'Irregularidade solucionada de forma satisfatória, sem prejuízo financeiro.') +
+      cardFiltro('dv-rprej',  ST[6], 'Reclamação resolvida com prejuízo', n0(k.st_recl_prej),
+        'Irregularidade encerrada de forma insatisfatória, com prejuízo financeiro.') +
+      cardFiltro('dv-rcli',   ST[7], 'Reembolso ao cliente, com prejuízo ao vendedor', n0(k.st_reemb_cliente),
+        'Devolução não concluída; cliente reembolsado e prejuízo absorvido pelo vendedor.') +
+      cardFiltro('dv-ramb',   ST[8], 'Reembolso ao cliente e vendedor', n0(k.st_reemb_ambos),
+        'Devolução não concluída; plataforma ou transportadora reembolsou os dois lados.') +
+      cardFiltro('dv-canc',   ST[9], 'Devolução cancelada', n0(k.st_cancelada),
+        'Cancelada a pedido do cliente, que permaneceu com o produto. Sem prejuízo.');
   }
 
   // Clicar no box aplica o status; clicar de novo no mesmo desliga.

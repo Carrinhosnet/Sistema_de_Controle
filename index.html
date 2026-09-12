@@ -317,17 +317,17 @@
   /* tela de Devoluções — os quatro informativos ficam neutros; a cor
      marca os 11 status, que são os boxes clicáveis. Todas já usadas em
      outras telas do sistema. */
-  .kpi.dv-aguard {--kpc:#eab308}   /* amarelo  — esperando o produto */
-  .kpi.dv-prep   {--kpc:#3b82f6}   /* azul     — em preparação */
-  .kpi.dv-camin  {--kpc:#a855f7}   /* roxo     — a caminho */
-  .kpi.dv-atras  {--kpc:#ef4444}   /* vermelho — atrasada */
-  .kpi.dv-ecom   {--kpc:#f97316}   /* laranja  — entregue, abrir reclamação */
-  .kpi.dv-esem   {--kpc:#22c55e}   /* verde    — entregue, sem pendência */
-  .kpi.dv-eok    {--kpc:#15803d}   /* verde escuro   — reclamação resolvida */
-  .kpi.dv-eprej  {--kpc:#991b1b}   /* vermelho escuro — resolvida com perda */
-  .kpi.dv-ncli   {--kpc:#b45309}   /* âmbar escuro   — reembolso ao cliente */
-  .kpi.dv-namb   {--kpc:#7e22ce}   /* roxo escuro    — reembolso aos dois */
-  .kpi.dv-canc   {--kpc:#94a3b8}   /* cinza    — cancelada */
+  /* dez status; "em preparação" foi fundido com "aguardando despacho" */
+  .kpi.dv-aguard {--kpc:#eab308}   /* amarelo         — esperando despacho */
+  .kpi.dv-transi {--kpc:#a855f7}   /* roxo            — em trânsito */
+  .kpi.dv-atras  {--kpc:#ef4444}   /* vermelho        — atrasada */
+  .kpi.dv-epend  {--kpc:#f97316}   /* laranja         — entregue com pendência */
+  .kpi.dv-eok    {--kpc:#22c55e}   /* verde           — entregue sem pendência */
+  .kpi.dv-rok    {--kpc:#15803d}   /* verde escuro    — reclamação resolvida */
+  .kpi.dv-rprej  {--kpc:#991b1b}   /* vermelho escuro — resolvida com prejuízo */
+  .kpi.dv-rcli   {--kpc:#b45309}   /* âmbar escuro    — reembolso ao cliente */
+  .kpi.dv-ramb   {--kpc:#7e22ce}   /* roxo escuro     — reembolso aos dois */
+  .kpi.dv-canc   {--kpc:#94a3b8}   /* cinza           — cancelada */
 
   /* tela de Produtos — cor SÓ nos boxes que filtram.
      Nove cartões coloridos ao mesmo tempo viram ruído: a cor perde a
@@ -693,7 +693,7 @@
         <select id="dev-envio"><option value="">Todos os tipos de envio</option></select>
         <select id="dev-uf"><option value="">Todas as UFs</option></select>
         <select id="dev-motivo"><option value="">Todos os motivos</option></select>
-        <select id="dev-status"><option value="">Todos os status</option><option>Aguardando devolução do produto</option><option>Devolução em preparação</option><option>Devolução a caminho</option><option>Devolução atrasada</option><option>Devolução entregue, com necessidade de reclamação</option><option>Devolução entregue, sem necessidade de reclamação</option><option>Devolução entregue, reclamação encerrada com sucesso</option><option>Devolução entregue, reclamação encerrada com prejuízo</option><option>Devolução não entregue, produto reembolsado somente ao cliente</option><option>Devolução não entregue, produto reembolsado ao cliente e ao vendedor</option><option>Devolução cancelada</option></select>
+        <select id="dev-status"><option value="">Todos os status</option><option>Aguardando despacho</option><option>Em trânsito</option><option>Devolução atrasada</option><option>Entregue, com pendência para reclamação</option><option>Entregue, sem qualquer pendência</option><option>Reclamação resolvida</option><option>Reclamação resolvida com prejuízo</option><option>Reembolso ao cliente, com prejuízo ao vendedor</option><option>Reembolso ao cliente e vendedor</option><option>Devolução cancelada</option></select>
         <select id="dev-solicitante"><option value="">Todos os solicitantes</option><option>Cliente</option><option>Plataforma</option><option>Vendedor</option></select>
         <select id="dev-ordem">
           <option value="venda_nova">Venda mais recente</option>
@@ -974,7 +974,6 @@
         <button id="opc-tab-motivo_cancelamento" class="active">Motivos de Cancelamento</button>
         <button id="opc-tab-motivo_devolucao">Motivos de Devolução</button>
         <button id="opc-tab-motivo_reclamacao">Motivos de Reclamação</button>
-        <button id="opc-tab-status_devolucao">Status de Devolução</button>
         <button id="opc-tab-tipo_resolucao_reclamacao">Tipos de Resolução</button>
       </div>
       <div class="toolbar">
@@ -1437,7 +1436,7 @@
       <div class="fld"><label>Data de chegada</label><input type="date" id="dev-e-chegada"></div>
       <div class="fld"><label>Solicitante da devolução</label><select id="dev-e-solicitante">
         <option value="">—</option><option>Cliente</option><option>Plataforma</option><option>Vendedor</option></select></div>
-      <div class="fld full"><label>Status</label><select id="dev-e-status"><option value="">—</option><option>Aguardando devolução do produto</option><option>Devolução em preparação</option><option>Devolução a caminho</option><option>Devolução atrasada</option><option>Devolução entregue, com necessidade de reclamação</option><option>Devolução entregue, sem necessidade de reclamação</option><option>Devolução entregue, reclamação encerrada com sucesso</option><option>Devolução entregue, reclamação encerrada com prejuízo</option><option>Devolução não entregue, produto reembolsado somente ao cliente</option><option>Devolução não entregue, produto reembolsado ao cliente e ao vendedor</option><option>Devolução cancelada</option></select></div>
+      <div class="fld full"><label>Status</label><select id="dev-e-status"><option value="">—</option><option>Aguardando despacho</option><option>Em trânsito</option><option>Devolução atrasada</option><option>Entregue, com pendência para reclamação</option><option>Entregue, sem qualquer pendência</option><option>Reclamação resolvida</option><option>Reclamação resolvida com prejuízo</option><option>Reembolso ao cliente, com prejuízo ao vendedor</option><option>Reembolso ao cliente e vendedor</option><option>Devolução cancelada</option></select></div>
       <div class="fld full"><label>Motivo da devolução</label><select id="dev-e-motivo"></select></div>
     </div>
     <div class="sec-tit">Valores</div>

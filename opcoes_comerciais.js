@@ -26,13 +26,15 @@ const OPC = (function(){
   // de três valores, garantida por CHECK no banco. No lugar entrou o
   // tipo de resolução, que descreve COMO o caso terminou. As opções
   // antigas de status continuam em listas_opcoes, sem uso.
+  // O status de DEVOLUÇÃO saiu em 09/09, junto com o de reclamação:
+  // ambos viraram listas fixas com CHECK no banco. Manter a aba
+  // sugeriria que ainda dá para editar.
   const TIPOS=['motivo_cancelamento','motivo_devolucao','motivo_reclamacao',
-               'status_devolucao','tipo_resolucao_reclamacao'];
+               'tipo_resolucao_reclamacao'];
   const ROTULO={
     motivo_cancelamento:'Motivo de Cancelamento',
     motivo_devolucao:'Motivo de Devolução',
     motivo_reclamacao:'Motivo de Reclamação',
-    status_devolucao:'Status de Devolução',
     tipo_resolucao_reclamacao:'Tipo de Resolução'
   };
 
