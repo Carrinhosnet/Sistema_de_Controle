@@ -161,9 +161,9 @@ const DEV = (function(){
         'Total restituído aos clientes em decorrência de devoluções.') +
       cardHtml('Valor mantido como faturamento', brl(k.vlr_mantido),
         'Devoluções que não geraram perda de faturamento, por cancelamento ou reembolso integral ao vendedor.') +
-      cardHtml('Custo de devolução', brl(k.custo_devolucao),
+      cardHtml('Custo de devolução', brl(k.soma_custo_devolucao),
         'Frete de retorno dos produtos devolvidos.') +
-      cardHtml('Prejuízo com devolução', brl(k.prejuizo),
+      cardHtml('Prejuízo com devolução', brl(k.soma_prejuizo),
         'Perdas financeiras decorrentes das devoluções, sem contar o frete de retorno.') +
       // ---- um box por status (clicáveis) ----
       cardFiltro('dv-aguard', ST[0], 'Aguardando despacho', n0(k.st_aguardando),
