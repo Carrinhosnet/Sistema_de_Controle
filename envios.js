@@ -43,7 +43,7 @@ const EN = (function(){
     p_busca:f('busca').value.trim()||null
   }; }
 
-  async function init(){ if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarOpcoes(); await carregarFiltros(); selecionarMesAtual(); carregar(); bind(); }
+  async function init(){ await verTrava(); if(typeof carregarUltimaAuto==='function') await carregarUltimaAuto(); await carregarOpcoes(); await carregarFiltros(); selecionarMesAtual(); carregar(); bind(); }
 
   // Abre no mês corrente: é o recorte que quase sempre interessa e evita
   // varrer o histórico inteiro na primeira carga. Sem envio no mês, cai
@@ -203,7 +203,40 @@ const EN = (function(){
     try{ await rpc('cn_editar_envio',{p_usuario_id:USER.id,p_envio_id:EDIT_ID,p_transportadora:f('e-transp').value||null,p_pagamento_frete:f('e-pgto').value||null,p_tempo_entrega:f('e-tempo').value||null,p_status:f('e-status').value||null,p_protocolo:f('e-protocolo').value||null,p_entrega_prometida:f('e-prometida').value||null,p_entrega_concluida:f('e-concluida').value||null,p_valor_transporte:num('e-transporte'),p_valor_incluso_frete:num('e-incluso')}); fechar(); carregar(); }
     catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; } }
 
-  async function gerar(){ const b=f('gerar'); if(b.disabled)return; b.disabled=true; const t=b.textContent; b.textContent='Gerando…'; try{ const r=await rpc('cn_gerar_envios',{p_usuario_id:USER.id}); const n=(r&&r[0]&&r[0].gerados)||0; f('msg').textContent=n>0?`${n} novo(s) envio(s).`:'Nada novo a gerar.'; await carregar(true); }catch(e){ alert('Erro ao gerar: '+(e.message||e)); } finally{ b.disabled=false; b.textContent=t; } }
+  // ---- trava de 3 minutos após a atualização de vendas ----
+  // Quem recusa de fato é o banco (cn_gerar_envios). Aqui o botão
+  // desabilita e mostra a contagem, para a espera ficar visível em vez
+  // de virar um erro no meio do clique.
+  let TRAVA=null;
+  async function verTrava(){
+    try{ TRAVA = await rpc('cn_estado_trava_envios',{p_usuario_id:USER.id}); }
+    catch(e){ TRAVA=null; }
+    pintarTrava();
+  }
+  function pintarTrava(){
+    const b=f('gerar'); if(!b) return;
+    if(TRAVA && TRAVA.travado){
+      b.disabled=true;
+      b.title='Atualização de vendas em andamento'+(TRAVA.por?' (por '+TRAVA.por+')':'')+
+              '. O tipo de envio ainda está sendo preenchido.';
+      b.textContent='Aguarde '+TRAVA.segundos+'s';
+      // decrementa na tela e libera sozinho ao chegar a zero
+      clearTimeout(pintarTrava._t);
+      pintarTrava._t=setTimeout(()=>{
+        if(!TRAVA||!TRAVA.travado) return;
+        TRAVA.segundos--;
+        if(TRAVA.segundos<=0){ TRAVA=null; b.disabled=false; b.title=''; b.textContent='↻ Gerar envios'; }
+        else pintarTrava();
+      },1000);
+    } else {
+      b.disabled=false; b.title=''; b.textContent='↻ Gerar envios';
+    }
+  }
+
+  async function gerar(){ const b=f('gerar'); if(b.disabled)return; b.disabled=true; const t=b.textContent; b.textContent='Gerando…';
+    try{ const r=await rpc('cn_gerar_envios',{p_usuario_id:USER.id}); const n=(r&&r[0]&&r[0].gerados)||0; f('msg').textContent=n>0?`${n} novo(s) envio(s).`:'Nada novo a gerar.'; await carregar(true); }
+    catch(e){ alert('Erro ao gerar: '+(e.message||e)); await verTrava(); }
+    finally{ if(!(TRAVA&&TRAVA.travado)){ b.disabled=false; b.textContent=t; } } }
 
   // modal manual
   function abrirModal(){ if(!temPermissao('envios.lancar')){ alert('Você não tem permissão para lançar itens.'); return; } f('m-busca').value=''; f('m-res').innerHTML=''; f('m-erro').textContent=''; f('modal').classList.add('open'); f('m-busca').focus(); }

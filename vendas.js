@@ -290,6 +290,14 @@ const VD = (function(){
   function syncUI(msg,p){ f('syncbox').style.display='block'; f('syncmsg').textContent=msg; f('syncpct').textContent=p==null?'':Math.round(p)+'%'; f('syncbar').style.width=(p==null?0:p)+'%'; }
   async function atualizar(){ const b=f('atualizar'); if(b.disabled)return; b.disabled=true; const DIAS=30;
     try{
+      // Trava a geração manual de envios por 3 minutos. A venda entra
+      // pelo Bling sem tipo_envio e só a passagem do ML preenche esse
+      // campo; gerar envios nesse intervalo criaria linhas para vendas
+      // Mercado Envios. Falhar aqui não impede a atualização: a guarda
+      // por dado (arquivo 110) continua valendo de qualquer forma.
+      try{ await rpc('cn_travar_gerar_envios',{p_usuario_id:USER.id}); }
+      catch(e){ console.warn('trava de envios:', e); }
+
       syncUI('Buscando pedidos no Bling…',5); let g=0; while(true){ const r=await chamarFuncao('sync-bling',{dias:DIAS,limite:15}); g++; if(r.restantes>0){ syncUI(`Buscando no Bling… (faltam ~${r.restantes})`,Math.min(40,5+g*3)); } else break; if(g>200)break; }
       syncUI('Processando vendas do Bling…',44); await rpc('cn_processar_staging_bling',{p_usuario_id:USER.id});
       syncUI('Enriquecendo com Mercado Livre…',50); g=0; while(true){ const r=await chamarFuncao('sync-ml',{dias:DIAS,limite:15}); g++; if(r.restantes>0){ syncUI(`Buscando no Mercado Livre… (faltam ~${r.restantes})`,Math.min(80,50+g*3)); } else break; if(g>200)break; }
