@@ -290,7 +290,7 @@ const VD = (function(){
   function syncUI(msg,p){ f('syncbox').style.display='block'; f('syncmsg').textContent=msg; f('syncpct').textContent=p==null?'':Math.round(p)+'%'; f('syncbar').style.width=(p==null?0:p)+'%'; }
   async function atualizar(){ const b=f('atualizar'); if(b.disabled)return; b.disabled=true; const DIAS=30;
     try{
-      // Trava a geração manual de envios por 3 minutos. A venda entra
+      // Trava a geração manual de envios por 90 segundos. A venda entra
       // pelo Bling sem tipo_envio e só a passagem do ML preenche esse
       // campo; gerar envios nesse intervalo criaria linhas para vendas
       // Mercado Envios. Falhar aqui não impede a atualização: a guarda

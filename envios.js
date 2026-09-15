@@ -203,7 +203,7 @@ const EN = (function(){
     try{ await rpc('cn_editar_envio',{p_usuario_id:USER.id,p_envio_id:EDIT_ID,p_transportadora:f('e-transp').value||null,p_pagamento_frete:f('e-pgto').value||null,p_tempo_entrega:f('e-tempo').value||null,p_status:f('e-status').value||null,p_protocolo:f('e-protocolo').value||null,p_entrega_prometida:f('e-prometida').value||null,p_entrega_concluida:f('e-concluida').value||null,p_valor_transporte:num('e-transporte'),p_valor_incluso_frete:num('e-incluso')}); fechar(); carregar(); }
     catch(e){ f('drawer-erro').textContent='Erro ao salvar: '+(e.message||e); } finally{ b.disabled=false; b.textContent='Salvar'; } }
 
-  // ---- trava de 3 minutos após a atualização de vendas ----
+  // ---- trava de 90 segundos após a atualização de vendas ----
   // Quem recusa de fato é o banco (cn_gerar_envios). Aqui o botão
   // desabilita e mostra a contagem, para a espera ficar visível em vez
   // de virar um erro no meio do clique.
