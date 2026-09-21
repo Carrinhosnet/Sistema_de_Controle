@@ -309,8 +309,22 @@ const VD = (function(){
       // venda entrou sem UF — e sem UF o envio não confere (e a venda também
       // não). Esta varredura rebusca o contato e preenche. Não interrompe a
       // atualização se falhar: é correção de dado, não parte da importação.
-      syncUI('Preenchendo UF faltante…',98);
+      syncUI('Preenchendo UF faltante…',97);
       try{ await chamarFuncao('bling-uf',{}); }catch(e){ console.warn('bling-uf:', e); }
+      // Comissão zerada: mesmo padrão da UF acima. O Bling manda
+      // taxaComissao = 0 em pedido importado logo depois da venda — e
+      // continua com 0 depois. A tarifa real está no Mercado Livre
+      // (sale_fee), que a tem desde o momento da venda. Só preenche o que
+      // está zerado; comissão certa do Bling não é tocada. Falhar aqui
+      // não interrompe: é correção de dado, não parte da importação.
+      syncUI('Preenchendo comissão faltante…',99);
+      try{
+        let gc=0;
+        while(true){
+          const r=await chamarFuncao('sync-ml',{modo:'comissao',dias:DIAS,limite:10}); gc++;
+          if(!(r && r.restantes>0) || gc>50) break;
+        }
+      }catch(e){ console.warn('comissão ML:', e); }
       syncUI('Concluído!',100); await carregar(true); setTimeout(()=>{ f('syncbox').style.display='none'; },1500);
     }catch(e){ syncUI('Erro: '+(e.message||e),null); f('syncbar').style.background='var(--danger)'; setTimeout(()=>{ f('syncbox').style.display='none'; f('syncbar').style.background='var(--accent)'; },5000); }
     finally{ b.disabled=false; }
