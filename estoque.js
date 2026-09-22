@@ -55,6 +55,18 @@ const EST = (function(){
     if(typeof montarIrPara==='function') montarIrPara('est',p,tp,(n)=>{ PAGINA=n-1; carregar(); });
   }
 
+  // Box clicável no padrão único do sistema (.kpi.click): número na cor
+  // do box e tarja "filtro ativo · clique para remover" quando .on está
+  // presente. O box acende quando o select de status está no valor dele
+  // — o select é a fonte única, então box e select nunca discordam.
+  function cardFiltro(cls,status,titulo,valor){
+    const ativo = f('status').value===status;
+    return `<div class="kpi click ${cls} ${ativo?'on':''}" onclick="EST.filtrarStatus('${status}')">`+
+           `<div class="lbl">${titulo}</div>`+
+           `<div class="val">${valor}</div>`+
+           `<div class="flag">filtro ativo · clique para remover</div></div>`;
+  }
+
   function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
     const dt = k.importado_em ? new Date(k.importado_em).toLocaleString('pt-BR') : '—';
     const vencida = !!k.importacao_vencida && k.total>0;
@@ -64,8 +76,8 @@ const EST = (function(){
       : `<div class="kpi"><div class="lbl">Última importação</div><div class="val" style="font-size:13px">${dt}</div></div>`;
     box.innerHTML=
       `<div class="kpi"><div class="lbl">SKUs na análise</div><div class="val">${Number(k.total||0).toLocaleString('pt-BR')}</div></div>`+
-      `<div class="kpi kpi-click" onclick="EST.filtrarStatus('comprar')"><div class="lbl">A comprar / fabricar</div><div class="val">${Number(k.a_comprar||0).toLocaleString('pt-BR')}</div></div>`+
-      `<div class="kpi kpi-click" onclick="EST.filtrarStatus('sem_venda')"><div class="lbl">Sem venda (120d)</div><div class="val">${Number(k.sem_venda||0).toLocaleString('pt-BR')}</div></div>`+
+      cardFiltro('es-comprar','comprar','A comprar / fabricar',Number(k.a_comprar||0).toLocaleString('pt-BR'))+
+      cardFiltro('es-semvenda','sem_venda','Sem venda (120d)',Number(k.sem_venda||0).toLocaleString('pt-BR'))+
       cardImport;
     // faixa de aviso quando a importação está vencida (>3 dias) ou nunca houve
     const aviso=f('aviso'); if(aviso){
@@ -77,7 +89,8 @@ const EST = (function(){
       }else{ aviso.style.display='none'; aviso.innerHTML=''; }
     }
   }
-  function filtrarStatus(s){ f('status').value=s; carregar(true); }
+  // Segundo clique no mesmo box desliga o filtro (volta a "Todos").
+  function filtrarStatus(s){ f('status').value = (f('status').value===s) ? '' : s; carregar(true); }
 
   function renderTabela(){ const tb=f('tbody'); if(!LINHAS.length){ tb.innerHTML='<tr><td colspan="12" class="empty">Nenhum dado. Importe o relatório de estoque do Bling.</td></tr>'; return; }
     tb.innerHTML=LINHAS.map(l=>{

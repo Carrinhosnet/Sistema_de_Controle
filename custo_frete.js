@@ -53,13 +53,27 @@ const FRT = (function(){
     if(typeof montarIrPara==='function') montarIrPara('frt',p,tp,(n)=>{ PAGINA=n-1; carregar(); });
   }
 
-  function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
-    box.innerHTML=
-      `<div class="kpi"><div class="lbl">Produtos</div><div class="val">${Number(k.total||0).toLocaleString('pt-BR')}</div></div>`+
-      `<div class="kpi kpi-click" onclick="FRT.filtrarStatus('incompletos')"><div class="lbl">Frete incompleto</div><div class="val">${Number(k.incompletos||0).toLocaleString('pt-BR')}</div></div>`+
-      `<div class="kpi kpi-click" onclick="FRT.filtrarStatus('pendentes')"><div class="lbl">Pendências de conferência</div><div class="val">${Number(k.pendentes||0).toLocaleString('pt-BR')}</div></div>`;
+  // Box clicável no padrão único do sistema (.kpi.click): número na cor
+  // do box e tarja "filtro ativo · clique para remover" quando .on está
+  // presente. O box acende quando o select de status está no valor dele
+  // — o select é a fonte única, então box e select nunca discordam.
+  function cardFiltro(cls,status,titulo,valor){
+    const ativo = f('status').value===status;
+    return `<div class="kpi click ${cls} ${ativo?'on':''}" onclick="FRT.filtrarStatus('${status}')">`+
+           `<div class="lbl">${titulo}</div>`+
+           `<div class="val">${valor}</div>`+
+           `<div class="flag">filtro ativo · clique para remover</div></div>`;
   }
-  function filtrarStatus(s){ f('status').value=s; carregar(true); }
+
+  function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
+    const n0=(x)=>Number(x||0).toLocaleString('pt-BR');
+    box.innerHTML=
+      `<div class="kpi"><div class="lbl">Produtos</div><div class="val">${n0(k.total)}</div></div>`+
+      cardFiltro('fr-incomp','incompletos','Frete incompleto',n0(k.incompletos))+
+      cardFiltro('fr-pend','pendentes','Pendências de conferência',n0(k.pendentes));
+  }
+  // Segundo clique no mesmo box desliga o filtro (volta a "Todos os status").
+  function filtrarStatus(s){ f('status').value = (f('status').value===s) ? '' : s; carregar(true); }
 
   function celCanal(l,canalCod){ const d=l.canais[canalCod]||{};
     const podeEditar=temPermissao('frete.editar');

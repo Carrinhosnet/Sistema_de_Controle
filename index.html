@@ -1833,8 +1833,16 @@
   .frt-table td.frt-vazio{color:var(--muted)}
   .frt-table td.frt-pend{background:rgba(245,158,11,.06)}
   .frt-table td.frt-fora b{color:var(--danger)}
-  .kpi.kpi-click{cursor:pointer}
-  .kpi.kpi-click:hover{border-color:var(--accent)}
+  /* Boxes clicáveis de Custo de Frete, Valores e Estoque. Usavam um
+     padrão antigo próprio (.kpi-click), sem cor, sem tarja de filtro
+     ativo e sem desligar no segundo clique. Desde 22/09 usam o mesmo
+     .kpi.click das demais telas; aqui ficam só as cores (--kpc). */
+  .kpi.fr-incomp  {--kpc:#eab308}   /* amarelo, como k-caminho — falta cadastrar */
+  .kpi.fr-pend    {--kpc:#ef4444}   /* vermelho, como c-conf — falta conferir */
+  .kpi.vl-incomp  {--kpc:#eab308}   /* amarelo — falta cadastrar */
+  .kpi.vl-pend    {--kpc:#ef4444}   /* vermelho — falta conferir */
+  .kpi.es-comprar {--kpc:#f97316}   /* laranja, como k-atraso — ação necessária */
+  .kpi.es-semvenda{--kpc:#94a3b8}   /* cinza, como cn-indireta — parado */
   .frt-table td.frt-conf{text-align:center}
   .frt-table input.frt-chk{width:16px;height:16px;cursor:pointer;accent-color:var(--ok)}
   .est-aviso{margin:0 0 12px;padding:10px 14px;border:1px solid var(--danger);border-radius:8px;background:rgba(239,68,68,.08);color:var(--danger);font-size:13px;font-weight:500}

@@ -51,15 +51,28 @@ const VAL = (function(){
     f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
   }
 
+  // Box clicável no padrão único do sistema (.kpi.click): número na cor
+  // do box e tarja "filtro ativo · clique para remover" quando .on está
+  // presente. O box acende quando o select de status está no valor dele
+  // — o select é a fonte única, então box e select nunca discordam.
+  function cardFiltro(cls,status,titulo,valor){
+    const ativo = f('status').value===status;
+    return `<div class="kpi click ${cls} ${ativo?'on':''}" onclick="VAL.filtrarStatus('${status}')">`+
+           `<div class="lbl">${titulo}</div>`+
+           `<div class="val">${valor}</div>`+
+           `<div class="flag">filtro ativo · clique para remover</div></div>`;
+  }
+
   function renderKpis(k){ const box=f('kpis'); if(!k){box.innerHTML='';return;}
     const n=(x)=>Number(x||0).toLocaleString('pt-BR');
     box.innerHTML=
       `<div class="kpi"><div class="lbl">Produtos</div><div class="val">${n(k.total)}</div></div>`+
-      `<div class="kpi kpi-click" onclick="VAL.filtrarStatus('sem_valores')"><div class="lbl">Valores incompletos</div><div class="val">${n(k.sem_valores)}</div></div>`+
-      `<div class="kpi kpi-click" onclick="VAL.filtrarStatus('pendentes')"><div class="lbl">Pendências de conferência</div><div class="val">${n(k.fora)}</div></div>`+
+      cardFiltro('vl-incomp','sem_valores','Valores incompletos',n(k.sem_valores))+
+      cardFiltro('vl-pend','pendentes','Pendências de conferência',n(k.fora))+
       `<div class="kpi"><div class="lbl">Conformidade</div><div class="val">${Number(k.pct_conforme||0).toLocaleString('pt-BR')}%</div></div>`;
   }
-  function filtrarStatus(s){ f('status').value=s; carregar(true); }
+  // Segundo clique no mesmo box desliga o filtro (volta a "Todos os status").
+  function filtrarStatus(s){ f('status').value = (f('status').value===s) ? '' : s; carregar(true); }
 
   function moeda(v){ return (v==null) ? '<span style="color:var(--muted)">—</span>' : brl(Number(v)); }
 
