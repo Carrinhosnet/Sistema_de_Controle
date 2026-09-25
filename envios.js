@@ -2,15 +2,46 @@
 // CARRINHOS_NET — TELA: Controle de Envios
 // Depende da base do index.html: $, rpc, USER, temPermissao,
 // brl, dataBr, mesLabel, registrarTela.
+//
+// MUDANÇA DE 24/09/2026 — UM BOX POR STATUS
+//   Os boxes de status eram 5, fixos no código. Agora vêm de
+//   cn_kpis_envios_status (arquivo 115): um box por status cadastrado,
+//   na ordem do cadastro. Status novo ganha box sozinho; mudar a ordem
+//   no cadastro reordena os boxes. Aqui fica só a APARÊNCIA de cada um
+//   (título, dica, cor) — status sem entrada em STATUS_INFO usa o
+//   próprio nome e a cor neutra.
+//   O select "Todos os status" da barra existia mas não fazia nada.
+//   Agora ele e os boxes são o mesmo filtro: um muda o outro.
 // =====================================================================
 const EN = (function(){
   let LINHAS=[], PAGINA=0, TOTAL=0, EDIT_ID=null; const POR=100;
   let OPC={ transportadora:[], pagamento_frete:[], tempo_entrega:[], status_envio:[] };
   const f=(id)=>$('en-'+id);
 
-  // Estados ligados pelos cartões de contagem. Não têm select na barra:
-  // o cartão é o próprio controle, e o "Limpar filtros" zera os dois.
+  // Estados ligados pelos cartões de contagem. O status também tem o
+  // select da barra, sempre espelhado em FSTATUS; a conferência só tem
+  // o cartão. O "Limpar filtros" zera os dois.
   let FSTATUS=null, FCONF=null;
+
+  // Aparência dos boxes de status. A ORDEM não fica aqui: vem do cadastro.
+  // Cores = as da linha na tabela (getStatusClass), para o box e a linha
+  // falarem a mesma língua. Status fora desta lista: nome dele, cor neutra.
+  const STATUS_INFO={
+    'Aguardando Conferência':           {titulo:'Aguardando conferência', hint:'Status inicial de todo envio gerado', cls:'k-agconf'},
+    'Aguardando Pagamento do Frete':    {titulo:'Aguardando pagamento do frete', hint:'Status Aguardando Pagamento do Frete', cls:'k-agpgto'},
+    'Aguardando Cotação do Frete':      {titulo:'Aguardando cotação do frete', hint:'Status Aguardando Cotação do Frete', cls:'k-agcot'},
+    'Em Produção':                      {titulo:'Aguardando produção', hint:'Status Em Produção', cls:'k-prod'},
+    'Aguardando Emissão da Nota Fiscal':{titulo:'Aguardando nota fiscal', hint:'Status Aguardando Emissão da Nota Fiscal', cls:'k-agnf'},
+    'Aguardando Transportadora':        {titulo:'Aguardando transportadora', hint:'Status Aguardando Transportadora', cls:'k-agtransp'},
+    'À Caminho':                        {titulo:'A caminho', hint:'Status À Caminho', cls:'k-caminho'},
+    'A caminho':                        {titulo:'A caminho (grafia antiga)', hint:'Status A caminho', cls:'k-caminho'},
+    'Atrasado':                         {titulo:'Atrasados', hint:'Entrega prometida já venceu', cls:'k-atraso'},
+    'Entregue':                         {titulo:'Entregues', hint:'Status Entregue', cls:'k-entregue'},
+    'Em processo de devolução':         {titulo:'Em devolução', hint:'Status Em processo de devolução', cls:'k-devol'},
+    'Devolução Concluída':              {titulo:'Devolução concluída', hint:'Status Devolução Concluída', cls:'k-devconcl'},
+    'Devolvido':                        {titulo:'Devolvido', hint:'Status Devolvido', cls:'k-devconcl'},
+    'Cancelado':                        {titulo:'Cancelados', hint:'Status Cancelado', cls:'k-cancel'}
+  };
 
   function difSelecionadas(){
     return [...document.querySelectorAll('.en-dif:checked')].map(c=>c.value);
@@ -67,8 +98,9 @@ const EN = (function(){
   async function carregar(reset){ if(reset)PAGINA=0; f('tbody').innerHTML='<tr><td colspan="19" class="loading">Carregando envios…</td></tr>';
     try{ await rpc('cn_promover_envios_atrasados',{p_usuario_id:USER.id}); }catch(e){}   // À Caminho vencido -> Atrasado (não bloqueia a listagem)
     const fl=filtros();
-    try{ const [linhas,total,kpis]=await Promise.all([ rpc('cn_listar_envios',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}), rpc('cn_contar_envios',fl), rpc('cn_kpis_envios',filtrosKpi())]);
-      LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0]); renderTabela(); renderPag(); msgAtualizado('en-msg','envios');
+    const fk=filtrosKpi();
+    try{ const [linhas,total,kpis,porStatus]=await Promise.all([ rpc('cn_listar_envios',{...fl,p_ordem:f('ordem').value||'recentes',p_limite:POR,p_offset:PAGINA*POR}), rpc('cn_contar_envios',fl), rpc('cn_kpis_envios',fk), rpc('cn_kpis_envios_status',fk)]);
+      LINHAS=linhas||[]; TOTAL=Number(total)||0; renderKpis(kpis&&kpis[0], porStatus||[]); renderTabela(); renderPag(); msgAtualizado('en-msg','envios');
     }catch(e){ f('tbody').innerHTML='<tr><td colspan="19" class="empty">Erro: '+(e.message||e)+'</td></tr>'; } }
 
   function renderPag(){ const tp=Math.max(1,Math.ceil(TOTAL/POR)),p=PAGINA+1,i=TOTAL===0?0:PAGINA*POR+1,fm=Math.min((PAGINA+1)*POR,TOTAL); f('contagem').textContent=TOTAL===0?'0 registros':`${i}–${fm} de ${TOTAL}`; f('paginfo').textContent=`Página ${p} de ${tp}`; f('prev').disabled=PAGINA<=0; f('next').disabled=p>=tp;
@@ -84,14 +116,15 @@ const EN = (function(){
   }
   // cartão de status: clicável, com a mesma cor que a linha tem na tabela
   function cardStatus(titulo,valor,cor,arg,hint,ativo){
-    return `<div class="kpi click ${cor} ${ativo?'on':''}" onclick="EN.filtrarStatus('${arg}')">`+
+    const a=String(arg).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return `<div class="kpi click ${cor} ${ativo?'on':''}" onclick="EN.filtrarStatus('${a}')">`+
            `<div class="lbl">${titulo}</div>`+
            (hint?`<div class="hint">${hint}</div>`:'')+
            `<div class="val">${valor}</div>`+
            `<div class="flag">filtro ativo · clique para remover</div></div>`;
   }
 
-  function renderKpis(k){
+  function renderKpis(k, porStatus){
     const box=f('kpis'), box2=f('kpis2');
     if(!k){ box.innerHTML=''; if(box2) box2.innerHTML=''; return; }
 
@@ -111,19 +144,29 @@ const EN = (function(){
 
     if(!box2) return;
     // Linha 2: contagens por situação. Cada uma filtra a tabela.
+    // Primeiro a conferência (não é status); depois um box por status,
+    // na ordem que o banco devolve — a do cadastro.
     box2.innerHTML =
       cardStatus('Envios sem conferência', n0(k.faltam), 'k-conf', 'pendentes',
                  'Ainda não conferidos', FCONF===false) +
-      cardStatus('Aguardando produção', n0(k.qtd_producao), 'k-prod', 'Em Produção',
-                 'Status Em Produção', FSTATUS==='Em Produção') +
-      cardStatus('A caminho', n0(k.qtd_a_caminho), 'k-caminho', 'À Caminho',
-                 'Status À Caminho', FSTATUS==='À Caminho') +
-      cardStatus('Atrasados', n0(k.qtd_atrasados), 'k-atraso', 'Atrasado',
-                 'Entrega prometida já venceu', FSTATUS==='Atrasado') +
-      cardStatus('Entregues', n0(k.qtd_entregues), 'k-entregue', 'Entregue',
-                 'Status Entregue', FSTATUS==='Entregue') +
-      cardStatus('Em devolução', n0(k.qtd_devolucao), 'k-devol', 'Em processo de devolução',
-                 'Status Em processo de devolução', FSTATUS==='Em processo de devolução');
+      (porStatus||[]).map(s=>{
+        const info=STATUS_INFO[s.status]||{titulo:s.status, hint:'Status '+s.status, cls:'k-outro'};
+        // status em envios mas fora do cadastro: avisa na dica
+        const hint = s.cadastrado ? info.hint : 'Não está no cadastro de status';
+        return cardStatus(info.titulo, n0(s.qtd), info.cls, s.status, hint, FSTATUS===s.status);
+      }).join('');
+  }
+
+  // O select espelha FSTATUS. Se o status não estiver na lista (ex.:
+  // existe em envios mas não no cadastro), entra como opção na hora,
+  // senão o select mostraria "Todos" com um filtro ligado.
+  function sincronizarSelectStatus(){
+    const sel=f('status'); if(!sel) return;
+    const v=FSTATUS||'';
+    if(v && ![...sel.options].some(o=>o.value===v)){
+      const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
+    }
+    sel.value=v;
   }
 
   // Um cartão liga e desliga o próprio filtro. Clicar de novo remove.
@@ -133,6 +176,7 @@ const EN = (function(){
       FCONF = (FCONF===false) ? null : false;
     }else{
       FSTATUS = (FSTATUS===valor) ? null : valor;
+      sincronizarSelectStatus();
     }
     carregar(true);
   }
@@ -143,7 +187,7 @@ const EN = (function(){
     f('ordem').value='recentes';
     document.querySelectorAll('.en-dif').forEach(c=>{ c.checked=false; });
     rotuloDif();
-    FSTATUS=null; FCONF=null;
+    FSTATUS=null; FCONF=null; sincronizarSelectStatus();
     carregar(true);
   }
 
@@ -250,6 +294,8 @@ const EN = (function(){
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(()=>carregar(true),400); });
     // filtros aplicam sozinhos, como na tela de Vendas
     ['mes','canal','transp','pgto','uf','ordem'].forEach(id=>f(id).addEventListener('change',()=>carregar(true)));
+    // select de status = mesmo filtro dos boxes de status
+    f('status').addEventListener('change',()=>{ FSTATUS=f('status').value||null; carregar(true); });
     f('limpar').addEventListener('click',limparFiltros);
     // seletor de diferença: abre/fecha e recarrega ao marcar
     const dbox=f('difbox'), dbtn=f('difbtn');

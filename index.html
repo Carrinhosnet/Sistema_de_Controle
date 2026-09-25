@@ -272,6 +272,17 @@
   .kpi.k-entregue{--kpc:#22c55e}
   .kpi.k-devol   {--kpc:#ef4444}
   .kpi.k-conf    {--kpc:#3b82f6}
+  /* Desde 24/09 (arquivo 115) há um box para CADA status cadastrado.
+     Cores seguem a da linha na tabela; onde a linha é escura demais para
+     ler o número (vermelho-escuro), o box usa um tom mais claro. */
+  .kpi.k-agconf   {--kpc:#94a3b8}   /* cinza — status inicial, sem cor na linha */
+  .kpi.k-agpgto   {--kpc:#06b6d4}   /* ciano, como st-ag-pgto */
+  .kpi.k-agcot    {--kpc:#a855f7}   /* roxo, como st-ag-cot */
+  .kpi.k-agnf     {--kpc:#fb923c}   /* laranja claro — st-ag-nf, afastado do k-atraso */
+  .kpi.k-agtransp {--kpc:#60a5fa}   /* azul claro — st-ag-transp, afastado do k-conf */
+  .kpi.k-devconcl {--kpc:#e11d48}   /* vermelho-rosado — st-devolvido */
+  .kpi.k-cancel   {--kpc:#b91c1c}   /* vermelho-escuro — st-cancelado */
+  .kpi.k-outro    {--kpc:#64748b}   /* status sem cor definida */
   /* ====== MÉTRICAS FINANCEIRAS ====== */
   .met-mes{margin-bottom:26px}
   .met-mes-tit{margin:0 0 4px;font-size:17px;font-weight:600}
