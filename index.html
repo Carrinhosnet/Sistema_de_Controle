@@ -2287,8 +2287,12 @@ async function entrar(){
   $('btn-entrar').disabled=true; $('btn-entrar').textContent='Entrando...';
   try{
     const r=await rpc('cn_login',{p_login:login,p_senha:senha});
-    if(!r||r.length===0) throw new Error('Usuário ou senha inválidos.');
-    USER=r[0]; sessionStorage.setItem('cn_user',JSON.stringify(USER));
+    const u=r&&r[0];
+    // Sem token = não entrou. Desde o arquivo 119 o cn_login devolve uma
+    // linha com o motivo em "aviso" (senha errada, bloqueio por
+    // tentativas). A versão anterior devolvia lista vazia: cai no texto padrão.
+    if(!u || !u.token) throw new Error((u && u.aviso) || 'Usuário ou senha inválidos.');
+    USER=u; sessionStorage.setItem('cn_user',JSON.stringify(USER));
     iniciarSessao();
     await abrirApp();
   }catch(e){ $('login-erro').textContent=e.message||'Falha ao entrar.'; }
