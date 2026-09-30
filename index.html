@@ -2064,7 +2064,7 @@ async function chamarFuncao(fn, body){
 }
 
 // ================== SESSAO POR INATIVIDADE ==================
-// A sessao cai depois de 30 minutos SEM ATIVIDADE. Qualquer sinal de uso
+// A sessao cai depois de 60 minutos SEM ATIVIDADE. Qualquer sinal de uso
 // reinicia a contagem, entao quem esta trabalhando nunca e derrubado no
 // meio de uma tarefa; so cai quem largou a tela parada.
 //
@@ -2076,7 +2076,7 @@ async function chamarFuncao(fn, body){
 // ATENCAO: isto e um controle de USO, nao de seguranca. O prazo vive no
 // sessionStorage do navegador, entao quem abrir o console consegue mexer
 // nele. Barrar de verdade exigiria a sessao ser validada no servidor.
-const SESSAO_MINUTOS = 30;
+const SESSAO_MINUTOS = 60;
 const SESSAO_KEY = 'cn_sessao_expira';
 // A cada sinal de uso o prazo poderia ser reescrito, mas rolagem dispara
 // dezenas de vezes por segundo. Regravamos no maximo uma vez por minuto:
