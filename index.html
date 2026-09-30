@@ -2026,6 +2026,16 @@ const $ = (id)=>document.getElementById(id);
 const rpcURL = (fn)=>`${SUPABASE_URL}/rest/v1/rpc/${fn}`;
 const FUNC_URL = (fn)=>`${SUPABASE_URL}/functions/v1/${fn}`;
 
+// Cabeçalhos de toda chamada ao banco. Desde o arquivo 117 o login gera
+// um token guardado no servidor, e ele vai em "x-sessao" em TODA chamada:
+// é por ele que o banco sabe quem está chamando (arquivo 118), em vez de
+// confiar no p_usuario_id que a tela manda.
+function cabecalhosBanco(){
+  const h={ "apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json" };
+  if(USER && USER.token) h["x-sessao"]=USER.token;
+  return h;
+}
+
 async function rpc(fn, args){
   // porta de entrada de tudo que fala com o banco: se a sessao venceu,
   // derruba aqui em vez de deixar a tela seguir com dados de um usuario
@@ -2033,8 +2043,14 @@ async function rpc(fn, args){
   // como atividade e estica o prazo.
   if(USER && !verificarSessao()) throw new Error('Sessão expirada.');
   renovarSessao();
-  const resp = await fetch(rpcURL(fn), { method:"POST", headers:{ "apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json" }, body:JSON.stringify(args||{}) });
+  const resp = await fetch(rpcURL(fn), { method:"POST", headers:cabecalhosBanco(), body:JSON.stringify(args||{}) });
   const txt = await resp.text(); let data; try{ data=JSON.parse(txt); }catch{ data=txt; }
+  // PT401 = a trava do arquivo 118 recusou o token (venceu após 12
+  // horas, usuário desativado ou sessão apagada). Volta para o login com
+  // o aviso. Só esse código: "Sem permissão para esta ação" também chega
+  // como HTTP 401, mas é outro código (42501) e só mostra a mensagem,
+  // como sempre mostrou.
+  if(resp.status===401 && USER && data && data.code==='PT401'){ sair(MSG_SESSAO_SERVIDOR); throw new Error(MSG_SESSAO_SERVIDOR); }
   if(!resp.ok) throw new Error(data?.message||data?.hint||txt||("HTTP "+resp.status));
   return data;
 }
@@ -2102,6 +2118,11 @@ function verificarSessao(){
   return true;
 }
 const MSG_SESSAO = 'Sua sessão expirou após '+SESSAO_MINUTOS+' minutos sem atividade. Entre novamente para continuar.';
+// A sessão do servidor dura 12 horas a partir do login, com ou sem uso.
+const MSG_SESSAO_SERVIDOR = 'Sua sessão foi encerrada pelo servidor. Entre novamente para continuar.';
+// Aba aberta antes da atualização de 30/09: tem usuário guardado, mas
+// não tem token, e o banco recusaria todas as chamadas.
+const MSG_ATUALIZADO = 'O sistema foi atualizado. Entre novamente para continuar.';
 
 // sinais de uso. passive:true porque nenhum deles altera o evento; capture
 // para contar mesmo quando a tela interrompe a propagacao do clique.
@@ -2265,7 +2286,7 @@ async function entrar(){
   if(!login||!senha){ $('login-erro').textContent='Preencha usuário e senha.'; return; }
   $('btn-entrar').disabled=true; $('btn-entrar').textContent='Entrando...';
   try{
-    const r=await rpc('autenticar',{p_login:login,p_senha:senha});
+    const r=await rpc('cn_login',{p_login:login,p_senha:senha});
     if(!r||r.length===0) throw new Error('Usuário ou senha inválidos.');
     USER=r[0]; sessionStorage.setItem('cn_user',JSON.stringify(USER));
     iniciarSessao();
@@ -2280,6 +2301,8 @@ async function carregarPermissoes(){
 }
 async function abrirApp(){
   $('login').style.display='none'; $('app').classList.add('on');
+  // marca no banco que o token chegou; não trava a abertura se falhar
+  rpc('cn_sessao_ping').catch(function(){});
   $('who').textContent = USER.nome + (USER.perfil_nome? ' · '+USER.perfil_nome : '');
   await carregarPermissoes();
   $('nav-vendas').style.display = temPermissao('vendas.ver') ? '' : 'none';
@@ -2337,6 +2360,12 @@ function mostrarTela(t){
 }
 function sair(aviso){
   clearTimeout(_sessaoTimer);
+  // Apaga o token no servidor. Vai direto pelo fetch, e não pelo rpc(),
+  // porque o rpc() chama sair() quando a sessão vence e daria volta
+  // infinita. keepalive: completa mesmo se a aba estiver fechando.
+  if(USER && USER.token){
+    fetch(rpcURL('cn_logout'), { method:"POST", headers:cabecalhosBanco(), body:"{}", keepalive:true }).catch(function(){});
+  }
   sessionStorage.removeItem('cn_user'); sessionStorage.removeItem(SESSAO_KEY);
   USER=null; PERMISSOES=new Set();
   Object.keys(CARREGADO).forEach(k=>CARREGADO[k]=false);
@@ -2616,7 +2645,15 @@ new MutationObserver(function(){ clearTimeout(_instTimer); _instTimer=setTimeout
     $('login-erro').textContent=MSG_SESSAO;
     return;
   }
-  try{ USER=JSON.parse(s); renovarSessao(true); abrirApp(); }catch{}
+  try{
+    const u=JSON.parse(s);
+    if(!u || !u.token){
+      sessionStorage.removeItem('cn_user'); sessionStorage.removeItem(SESSAO_KEY);
+      $('login-erro').textContent=MSG_ATUALIZADO;
+      return;
+    }
+    USER=u; renovarSessao(true); abrirApp();
+  }catch{}
 })();
 </script>
 </body>
