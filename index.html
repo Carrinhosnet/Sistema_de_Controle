@@ -129,6 +129,9 @@
   .toolbar button.act{padding:9px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;white-space:nowrap}
   .toolbar button.act:hover{border-color:var(--accent)}
   .toolbar button.prim{background:var(--accent-forte);color:#fff;border-color:var(--accent-forte)}
+  .toolbar button.act:disabled{opacity:.5;cursor:default}
+  .toolbar input[type=date]{padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);color-scheme:dark}
+  .toolbar .rot{font-size:12px;color:var(--muted)}
 
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
   .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
@@ -565,6 +568,7 @@
 
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -609,6 +613,7 @@
         <div class="navtit navtit-toggle" data-grp="grp-financeiro">Controle Financeiro<span class="caret">▾</span></div>
         <button data-tela="metricas" id="nav-metricas"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M6.8 20.5v-6.8M12 20.5V7.5M17.2 20.5v-4.2"/></svg><span class="nav-lbl">Controle de Métricas Financeiras</span></button>
         <button data-tela="boletos" id="nav-boletos"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="1.6"/><path d="M7 9v6M10 9v6M13.2 9v6M17 9v6"/></svg><span class="nav-lbl">Controle de Boletos</span><span class="badge-dot" id="badge-boletos" style="display:none"></span></button>
+        <button data-tela="arquivos" id="nav-arquivos"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 6.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/><path d="M8.5 13h7M8.5 16.5h4.5"/></svg><span class="nav-lbl">Arquivos Contábeis</span></button>
       </div>
       <div class="navgroup" id="grp-produtos">
         <div class="navtit navtit-toggle" data-grp="grp-produtos">Controle de Produtos<span class="caret">▾</span></div>
@@ -859,6 +864,31 @@
         <span id="met-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
       <div id="met-corpo"></div>
+    </section>
+
+    <!-- =================== TELA ARQUIVOS CONTÁBEIS =================== -->
+    <section class="tela" id="scr-arquivos">
+      <div class="toolbar">
+        <select id="ac-mes" title="Mês das notas"></select>
+        <span class="rot">de</span><input type="date" id="ac-de" title="Primeiro dia">
+        <span class="rot">até</span><input type="date" id="ac-ate" title="Último dia">
+        <button class="act prim" id="ac-consultar">Consultar notas</button>
+        <button class="act prim" id="ac-gerar" disabled title="Baixa XML e PDF de todas as notas e entrega um .zip com o resumo">Gerar pacote (.zip)</button>
+        <span id="ac-msg" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div id="ac-progbox" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span id="ac-progmsg" style="font-size:13px">Baixando…</span><span id="ac-progpct" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div style="height:6px;background:var(--surface2);border-radius:4px;overflow:hidden"><div id="ac-progbar" style="height:100%;width:0%;background:var(--accent);transition:width .3s"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Não feche nem recarregue a página até o download começar.</div>
+      </div>
+      <div class="kpis" id="ac-kpis"></div>
+      <div id="ac-avisos" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.5"></div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th>Nº</th><th>Emissão</th><th>Tipo</th><th>Situação</th><th>Destinatário</th><th>UF</th><th>CFOP</th><th class="num">Valor</th><th>Pedido da loja</th><th>Arquivos</th>
+      </tr></thead><tbody id="ac-tbody"></tbody></table></div>
+      <div class="foot"><span id="ac-contagem">—</span><span></span></div></div>
     </section>
 
     <!-- =================== TELA BOLETOS =================== -->
@@ -2313,6 +2343,7 @@ async function abrirApp(){
   $('nav-reclamacoes').style.display = temPermissao('reclamacoes.ver') ? '' : 'none';
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
+  $('nav-arquivos').style.display = temPermissao('arquivos_contabeis.gerar') ? '' : 'none';
   // métricas saem de vendas e envios: quem vê vendas vê as métricas
   $('nav-metricas').style.display = temPermissao('vendas.ver') ? '' : 'none';
   $('nav-mediacoes').style.display = temPermissao('mediacoes.ver') ? '' : 'none';
@@ -2388,6 +2419,7 @@ function sair(aviso){
 <script src="reclamacoes.js"></script>
 <script src="envios.js"></script>
 <script src="boletos.js"></script>
+<script src="arquivos.js"></script>
 <script src="usuarios.js"></script>
 <script src="produtos.js"></script>
 <script src="opcoes.js"></script>
