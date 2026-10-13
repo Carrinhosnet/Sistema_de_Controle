@@ -132,6 +132,37 @@
   .toolbar button.act:disabled{opacity:.5;cursor:default}
   .toolbar input[type=date]{padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);color-scheme:dark}
   .toolbar .rot{font-size:12px;color:var(--muted)}
+  /* ====== EXPEDIÇÃO — LISTA DO DIA (tela) ====== */
+  #scr-expedicao .toolbar select{min-width:300px}
+  .ex-titulo{font-size:13px;color:var(--muted);margin:-6px 0 12px}
+  .ex-titulo b{color:var(--text)}
+  .kpi.ex-k-atraso .val{color:var(--danger)}
+  .kpi.ex-k-nf .val{color:var(--warn)}
+  .kpi.ex-k-conf .val{color:#a855f7}
+  #ex-corpo .ex-bloco{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
+  #ex-corpo .ex-bt{padding:10px 14px;font-weight:600;border-left:3px solid var(--accent);background:var(--surface2)}
+  #ex-corpo .ex-bt-sku{font-family:ui-monospace,Consolas,monospace;color:var(--accent);margin-right:6px}
+  #ex-corpo .ex-bt-q{float:right;font-weight:500;color:var(--muted);font-size:13px}
+  #ex-corpo .ex-bloco-atraso .ex-bt{border-left-color:var(--danger);color:var(--danger)}
+  #ex-corpo .ex-bloco-conf .ex-bt{border-left-color:#a855f7}
+  #ex-corpo table{font-size:13px}
+  #ex-corpo td.pr-desc{white-space:normal}
+  #ex-corpo tr.ex-novo td{border-top:1px solid var(--border)}
+  #ex-corpo td{vertical-align:top}
+  #ex-corpo .ex-n{color:var(--muted)}
+  #ex-corpo .ex-qtd{font-weight:700}
+  #ex-corpo .ex-sku{font-family:ui-monospace,Consolas,monospace}
+  #ex-corpo .ex-fim{font-size:14px;color:var(--text)}
+  #ex-corpo .ex-envio{color:var(--muted)}
+  #ex-corpo .ex-comp,#ex-corpo .ex-mudo{font-size:11px;color:var(--muted);margin-top:2px}
+  #ex-corpo .ex-fora{font-size:11px;color:var(--warn)}
+  #ex-corpo .ex-atraso{color:var(--danger);font-weight:600}
+  #ex-corpo .ex-sit{font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;border:1px solid var(--border);white-space:nowrap}
+  #ex-corpo .ex-s-nf{color:var(--warn);border-color:var(--warn)}
+  #ex-corpo .ex-s-ok{color:var(--ok);border-color:var(--ok)}
+  #ex-corpo .ex-s-propria{color:#60a5fa;border-color:#60a5fa}
+  #ex-corpo .ex-s-outra{color:var(--muted)}
+  .ex-vazio{color:var(--muted);padding:30px;text-align:center}
 
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
   .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
@@ -609,6 +640,10 @@
         <button data-tela="cancelamentos" id="nav-cancelamentos"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></svg><span class="nav-lbl">Controle de Cancelamentos</span><span class="badge-dot" id="badge-cancelamentos" style="display:none"></span></button>
         <button data-tela="reclamacoes" id="nav-reclamacoes"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5a2 2 0 0 1-2 2H7.5l-4 3.5V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/><path d="M12 7.2v3.6"/><path d="M12 13.4h.01"/></svg><span class="nav-lbl">Controle de Reclamações</span><span class="badge-dot" id="badge-reclamacoes" style="display:none"></span></button>
       </div>
+      <div class="navgroup" id="grp-expedicao">
+        <div class="navtit navtit-toggle" data-grp="grp-expedicao">Expedição<span class="caret">▾</span></div>
+        <button data-tela="expedicao" id="nav-expedicao"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1z"/><path d="M16 6h2.2a1.3 1.3 0 0 1 1.3 1.3v12.4a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V7.3A1.3 1.3 0 0 1 5.8 6H8"/><path d="M8.5 12l1.6 1.6 3-3M8.5 17h7"/></svg><span class="nav-lbl">Lista do dia</span></button>
+      </div>
       <div class="navgroup" id="grp-financeiro">
         <div class="navtit navtit-toggle" data-grp="grp-financeiro">Controle Financeiro<span class="caret">▾</span></div>
         <button data-tela="metricas" id="nav-metricas"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 20.5h17"/><path d="M6.8 20.5v-6.8M12 20.5V7.5M17.2 20.5v-4.2"/></svg><span class="nav-lbl">Controle de Métricas Financeiras</span></button>
@@ -864,6 +899,20 @@
         <span id="met-msg" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
       </div>
       <div id="met-corpo"></div>
+    </section>
+
+    <!-- =================== TELA EXPEDIÇÃO — LISTA DO DIA =================== -->
+    <section class="tela" id="scr-expedicao">
+      <div class="toolbar">
+        <button class="act prim" id="ex-gerar" title="Consulta Mercado Livre e Bling e guarda a lista no histórico">Gerar lista do dia</button>
+        <select id="ex-hist" title="Reabrir uma lista já gerada"><option value="">Listas já geradas…</option></select>
+        <button class="act prim" id="ex-imprimir" disabled title="Abre a impressão: imprima ou escolha Salvar como PDF">Imprimir / PDF</button>
+        <span id="ex-msg" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div class="ex-titulo" id="ex-titulo"></div>
+      <div class="kpis" id="ex-kpis"></div>
+      <div id="ex-avisos" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.5"></div>
+      <div id="ex-corpo"></div>
     </section>
 
     <!-- =================== TELA ARQUIVOS CONTÁBEIS =================== -->
@@ -2344,6 +2393,7 @@ async function abrirApp(){
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-arquivos').style.display = temPermissao('arquivos_contabeis.gerar') ? '' : 'none';
+  $('nav-expedicao').style.display = temPermissao('expedicao.ver') ? '' : 'none';
   // métricas saem de vendas e envios: quem vê vendas vê as métricas
   $('nav-metricas').style.display = temPermissao('vendas.ver') ? '' : 'none';
   $('nav-mediacoes').style.display = temPermissao('mediacoes.ver') ? '' : 'none';
@@ -2359,7 +2409,7 @@ async function abrirApp(){
   $('nav-estoque').style.display = temPermissao('estoque.ver') ? '' : 'none';
   $('nav-valores').style.display = temPermissao('valores.ver') ? '' : 'none';
   // esconde a categoria inteira se nenhuma tela dela estiver visível
-  ['grp-comercial','grp-financeiro','grp-produtos','grp-cadastros'].forEach(function(gid){
+  ['grp-comercial','grp-expedicao','grp-financeiro','grp-produtos','grp-cadastros'].forEach(function(gid){
     const g=$(gid); if(!g) return;
     const vis=[...g.querySelectorAll('button')].some(b=>b.style.display!=='none');
     g.style.display = vis ? '' : 'none';
@@ -2420,6 +2470,7 @@ function sair(aviso){
 <script src="envios.js"></script>
 <script src="boletos.js"></script>
 <script src="arquivos.js"></script>
+<script src="expedicao.js"></script>
 <script src="usuarios.js"></script>
 <script src="produtos.js"></script>
 <script src="opcoes.js"></script>
