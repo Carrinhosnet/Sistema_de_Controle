@@ -163,6 +163,10 @@
   #ex-corpo .ex-s-propria{color:#60a5fa;border-color:#60a5fa}
   #ex-corpo .ex-s-outra{color:var(--muted)}
   .ex-vazio{color:var(--muted);padding:30px;text-align:center}
+  .ex-simples{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);margin-bottom:14px}
+  .ex-simples-tit{padding:10px 14px;font-weight:600;background:var(--surface2);border-radius:var(--radius) var(--radius) 0 0}
+  .ex-simples-tit span{font-weight:400;color:var(--muted);font-size:12px}
+  .ex-simples-texto{padding:12px 16px;white-space:pre-wrap;font-size:13.5px;line-height:1.5;max-height:420px;overflow:auto}
 
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
   .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
@@ -906,12 +910,18 @@
       <div class="toolbar">
         <button class="act prim" id="ex-gerar" title="Consulta Mercado Livre e Bling e guarda a lista no histórico">Gerar lista do dia</button>
         <select id="ex-hist" title="Reabrir uma lista já gerada"><option value="">Listas já geradas…</option></select>
-        <button class="act prim" id="ex-imprimir" disabled title="Abre a impressão: imprima ou escolha Salvar como PDF">Imprimir / PDF</button>
+        <button class="act prim" id="ex-copiar" disabled title="Copia a lista simplificada, pronta para colar no WhatsApp">Copiar para WhatsApp</button>
+        <button class="act" id="ex-imprimir-simples" disabled title="Imprime a lista simplificada (A4 em pé): imprima ou escolha Salvar como PDF">Imprimir simplificada</button>
+        <button class="act" id="ex-imprimir" disabled title="Imprime a lista completa (A4 deitado): imprima ou escolha Salvar como PDF">Imprimir completa</button>
         <span id="ex-msg" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="ex-titulo" id="ex-titulo"></div>
       <div class="kpis" id="ex-kpis"></div>
       <div id="ex-avisos" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.5"></div>
+      <div id="ex-simples" class="ex-simples" style="display:none">
+        <div class="ex-simples-tit">Lista simplificada <span>· é o texto que vai para o WhatsApp</span></div>
+        <div id="ex-simples-texto" class="ex-simples-texto"></div>
+      </div>
       <div id="ex-corpo"></div>
     </section>
 

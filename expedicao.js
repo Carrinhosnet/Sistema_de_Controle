@@ -21,6 +21,19 @@
 //   5. Resumo: pacotes e unidades por produto.
 //   A numeração (Nº) corre a lista inteira, para riscar no papel.
 //   Kits e Combos: o SKU vendido e, abaixo e menor, o que vai dentro.
+//
+// LISTA SIMPLIFICADA (texto para o WhatsApp) — 13/10/2026
+//   Mesmo conteúdo, no formato que a expedição já usa:
+//     VENDAS <DIA> (dd/mm) · horário da agência do ML
+//     Enviar via Transportadora (ME1 / Venda Direta / Shopify)
+//        Envios Atrasados / Envios para Hoje → PACOTE 01: SKU - N unidades
+//     Enviar na Agência do Mercado Livre às HH:MM
+//        Envios Atrasados / Envios para Hoje
+//     ITENS PARA PRODUÇÃO → só os de Origem "Fabricação Própria" no
+//        cadastro, somados por SKU, separados por transportadora e agência
+//   Fracionado aparece pelo SKU do produto base + medida ("CE8MM - 0,5
+//   metro"). "Copiar para WhatsApp" copia com *negrito* do WhatsApp;
+//   "Imprimir simplificada" sai numa folha A4 em pé.
 // =====================================================================
 const EXP = (function(){
   const f=(id)=>$('ex-'+id);
@@ -176,6 +189,100 @@ const EXP = (function(){
   }
 
   // ---------------------------------------------------------------
+  // lista simplificada (texto do WhatsApp)
+  // ---------------------------------------------------------------
+  const DIA_EXTENSO=['DOMINGO','SEGUNDA-FEIRA','TERÇA-FEIRA','QUARTA-FEIRA','QUINTA-FEIRA','SEXTA-FEIRA','SÁBADO'];
+  const num=(v)=>Number(v).toLocaleString('pt-BR',{maximumFractionDigits:3});
+  const semAcento=(t)=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  // via: listas antigas (antes da v2) não têm o campo; deduz pelo canal/tipo
+  const viaDe=(e)=> e.via || ((e.tipo_envio==='ME1' || e.canal!=='Mercado Livre') ? 'transportadora' : 'agencia');
+  function unidadeTxt(u,v){
+    const n=semAcento(u), plural=Number(v)>=2;
+    if(/^(m|mt|mts|metro|metros)$/.test(n)) return plural?'metros':'metro';
+    if(/^(cm|centimetro|centimetros)$/.test(n)) return plural?'centímetros':'centímetro';
+    if(/^(kg|quilo|quilos)$/.test(n)) return 'kg';
+    if(!n || /^(un|und|unid|unidade|unidades|pc|pca|peca|pecas|pç)$/.test(n)) return plural?'unidades':'unidade';
+    return String(u).toLowerCase();
+  }
+  // "CM65PP - 3 unidades" · fracionado: "CE8MM - 0,5 metro"
+  function itemTxt(i){
+    if(i.base_sku) return `${i.base_sku} - ${num(i.medida)} ${unidadeTxt(i.unidade,i.medida)}`;
+    return `${i.sku||'(sem SKU)'} - ${num(i.qtd)} ${Number(i.qtd)>=2?'unidades':'unidade'}`;
+  }
+  const ehFabricacao=(i)=> semAcento(i.origem)==='fabricacao propria';
+
+  function horarioAgencia(envios){
+    const ag=envios.filter(e=>viaDe(e)==='agencia' && e.despachar_ate);
+    const hoje=ag.filter(e=>!e.atrasado);
+    const horas=(hoje.length?hoje:ag).map(e=>horaDe(e.despachar_ate)).filter(Boolean).sort();
+    return horas[0]||'--:--';
+  }
+
+  function textoSimplificado(lista, negrito){
+    const B=(t)=> negrito? `*${t}*` : t;
+    const envios=lista.envios||[];
+    const hora=horarioAgencia(envios);
+    const L=[];
+    const [y,m,d]=String(lista.dia).split('-').map(Number);
+    L.push(B(`VENDAS ${DIA_EXTENSO[new Date(y,m-1,d).getDay()]} (${ddmm(lista.dia)}):`));
+    L.push('');
+    L.push(B(`HORÁRIO PARA ENVIO MERCADO LIVRE: ${hora}`));
+
+    const secao=(titulo, via)=>{
+      const doGrupo=envios.filter(e=>viaDe(e)===via);
+      const ordemSku=(a,b)=>itemTxt((a.itens||[])[0]||{}).localeCompare(itemTxt((b.itens||[])[0]||{}),'pt-BR',{numeric:true});
+      const atrasados=doGrupo.filter(e=>e.atrasado).sort((a,b)=>String(a.dia_despacho).localeCompare(String(b.dia_despacho))||ordemSku(a,b));
+      const hoje=doGrupo.filter(e=>!e.atrasado).sort(ordemSku);
+      let n=0;
+      const pacote=(e,atr)=>`PACOTE ${String(++n).padStart(2,'0')}: ${(e.itens||[]).map(itemTxt).join(' + ')}`+
+        (atr? ` (era para ${ddmm(e.dia_despacho)})` : '');
+      L.push(''); L.push(B(titulo)); L.push('');
+      L.push(B('Envios Atrasados:'));
+      if(atrasados.length) atrasados.forEach(e=>L.push(pacote(e,true))); else L.push('-');
+      L.push(''); L.push(B('Envios para Hoje:'));
+      if(hoje.length) hoje.forEach(e=>L.push(pacote(e,false))); else L.push('-');
+    };
+    secao('Enviar via Transportadora (ME1 / VENDA DIRETA / VENDA SHOPIFY):','transportadora');
+    L.push('');
+    secao(`Enviar na Agência do Mercado Livre às ${hora}:`,'agencia');
+
+    // produção: só Fabricação Própria, somado por SKU (base, no fracionado)
+    const producao=(via)=>{
+      const soma=new Map();
+      for(const e of envios.filter(x=>viaDe(x)===via)) for(const i of (e.itens||[])){
+        if(!ehFabricacao(i)) continue;
+        const chave=i.base_sku||i.sku;
+        const r=soma.get(chave)||Object.assign({},i,{qtd:0,medida:0});
+        r.qtd+=Number(i.qtd||0); r.medida+=Number(i.medida||0);
+        soma.set(chave,r);
+      }
+      const linhas=[...soma.values()].sort((a,b)=>itemTxt(a).localeCompare(itemTxt(b),'pt-BR',{numeric:true})).map(i=>`- ${itemTxt(i)};`);
+      return linhas.length? linhas : ['-'];
+    };
+    L.push(''); L.push(''); L.push(B('ITENS PARA PRODUÇÃO:'));
+    L.push(''); L.push(B('Enviar via Transportadora:')); L.push(...producao('transportadora'));
+    L.push(''); L.push(B(`Enviar na Agência do Mercado Livre às ${hora}:`)); L.push(...producao('agencia'));
+    if(!(lista.versao>=2)) { L.push(''); L.push('(Lista gerada antes da versão com origem dos produtos: itens para produção não disponíveis.)'); }
+    const conf=(lista.conferir||[]).length;
+    if(conf){ L.push(''); L.push(B(`CONFERIR: ${conf} ${conf===1?'pedido':'pedidos'} — ver a lista completa no sistema.`)); }
+    return L.join('\n');
+  }
+
+  async function copiarWhatsApp(){
+    if(!LISTA) return;
+    const t=textoSimplificado(LISTA,true);
+    try{ await navigator.clipboard.writeText(t); }
+    catch(e){
+      const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }finally{ ta.remove(); }
+    }
+    msg('Texto copiado. É só colar no WhatsApp.');
+  }
+
+  // texto com *negrito* do WhatsApp → HTML com <b>
+  const textoHtml=(t)=>escH(t).replace(/\*([^*\n]+)\*/g,'<b>$1</b>');
+
+  // ---------------------------------------------------------------
   // tela
   // ---------------------------------------------------------------
   function msg(t,erro){ f('msg').textContent=t||''; f('msg').style.color=erro?'var(--danger)':'var(--muted)'; }
@@ -184,7 +291,8 @@ const EXP = (function(){
     if(!LISTA){
       f('kpis').innerHTML=''; f('avisos').style.display='none';
       f('corpo').innerHTML=`<p class="ex-vazio">Clique em <b>Gerar lista do dia</b>, ou escolha uma lista já gerada.</p>`;
-      f('imprimir').disabled=true; f('titulo').textContent=''; return;
+      f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true;
+      f('simples').style.display='none'; f('titulo').textContent=''; return;
     }
     f('titulo').innerHTML=`Lista do dia <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.gerada_por?' por '+escH(LISTA.gerada_por):''}`;
     f('kpis').innerHTML=caixas(LISTA).map(([l,v,h,c])=>`<div class="kpi ${c}"><div class="lbl">${l}</div><div class="hint">${escH(h)}</div><div class="val">${v}</div></div>`).join('');
@@ -192,7 +300,9 @@ const EXP = (function(){
     f('avisos').innerHTML=av.map(a=>`<div>• ${escH(a)}</div>`).join('');
     f('avisos').style.display=av.length?'':'none';
     f('corpo').innerHTML=corpoLista(LISTA);
-    f('imprimir').disabled=false;
+    f('simples-texto').innerHTML=textoHtml(textoSimplificado(LISTA,true));
+    f('simples').style.display='';
+    f('imprimir').disabled=false; f('copiar').disabled=false; f('imprimir-simples').disabled=false;
   }
 
   async function carregarHistorico(selecionar){
@@ -274,7 +384,23 @@ const EXP = (function(){
     window.print();
   }
 
+  const CSS_SIMPLES=`
+    @media print{
+      @page{size:A4 portrait;margin:14mm}
+      #print-area .ex-s{font-size:11pt;line-height:1.45;white-space:pre-wrap;color:#1a1d23}
+      #print-area .ex-s b{font-weight:700}
+      #print-area .ex-s-rod{margin-top:10px;font-size:7pt;color:#5b6472;border-top:1px solid #d7dbe0;padding-top:4px}
+    }`;
+  function imprimirSimples(){
+    if(!LISTA) return;
+    $('print-area').innerHTML=`<style>${CSS_SIMPLES}</style><div class="ex-s">${textoHtml(textoSimplificado(LISTA,true))}</div>
+      <div class="ex-s-rod">Carrinhos_Net — Lista do dia ${escH(brData(LISTA.dia))} · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA_ID?' · lista nº '+LISTA_ID:''}</div>`;
+    window.print();
+  }
+
   function bind(){
+    f('copiar').addEventListener('click',copiarWhatsApp);
+    f('imprimir-simples').addEventListener('click',imprimirSimples);
     f('gerar').addEventListener('click',gerar);
     f('hist').addEventListener('change',abrirDoHistorico);
     f('imprimir').addEventListener('click',imprimir);
