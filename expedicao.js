@@ -24,11 +24,12 @@
 //
 // LISTA SIMPLIFICADA (texto para o WhatsApp) — 13/10/2026
 //   Mesmo conteúdo, no formato que a expedição já usa:
-//     VENDAS <DIA> (dd/mm) · horário da agência do ML
-//     Enviar via Transportadora (ME1 / Venda Direta / Shopify)
+//     VENDAS <DIA> (dd/mm)
+//     ENVIAR VIA TRANSPORTADORA (ME1, Venda Direta, Shopify)
 //        Envios Atrasados / Envios para Hoje → PACOTE 01: SKU - N unidades
-//     Enviar na Agência do Mercado Livre às HH:MM
+//     ENVIAR VIA AGÊNCIA DO MERCADO LIVRE ATÉ ÀS HH:MM
 //        Envios Atrasados / Envios para Hoje
+//     ---- separador ----
 //     ITENS PARA PRODUÇÃO → só os de Origem "Fabricação Própria" no
 //        cadastro, somados por SKU, separados por transportadora e agência
 //   Fracionado aparece pelo SKU do produto base + medida ("CE8MM - 0,5
@@ -218,15 +219,19 @@ const EXP = (function(){
     return horas[0]||'--:--';
   }
 
+  // Formato aprovado pelo Vinicius em 13/10/2026 (linha em branco depois
+  // de cada título, títulos de seção em MAIÚSCULAS, separador antes da
+  // produção). Mexer aqui muda o texto do WhatsApp E a impressão.
+  const SEPARADOR='---------------------------------------------';
   function textoSimplificado(lista, negrito){
     const B=(t)=> negrito? `*${t}*` : t;
     const envios=lista.envios||[];
     const hora=horarioAgencia(envios);
+    const T_TRANSP='ENVIAR VIA TRANSPORTADORA:';
+    const T_AGENCIA=`ENVIAR VIA AGÊNCIA DO MERCADO LIVRE ATÉ ÀS ${hora}:`;
     const L=[];
     const [y,m,d]=String(lista.dia).split('-').map(Number);
     L.push(B(`VENDAS ${DIA_EXTENSO[new Date(y,m-1,d).getDay()]} (${ddmm(lista.dia)}):`));
-    L.push('');
-    L.push(B(`HORÁRIO PARA ENVIO MERCADO LIVRE: ${hora}`));
 
     const secao=(titulo, via)=>{
       const doGrupo=envios.filter(e=>viaDe(e)===via);
@@ -236,15 +241,14 @@ const EXP = (function(){
       let n=0;
       const pacote=(e,atr)=>`PACOTE ${String(++n).padStart(2,'0')}: ${(e.itens||[]).map(itemTxt).join(' + ')}`+
         (atr? ` (era para ${ddmm(e.dia_despacho)})` : '');
-      L.push(''); L.push(B(titulo)); L.push('');
-      L.push(B('Envios Atrasados:'));
+      L.push(''); L.push(B(titulo));
+      L.push(''); L.push(B('Envios Atrasados:')); L.push('');
       if(atrasados.length) atrasados.forEach(e=>L.push(pacote(e,true))); else L.push('-');
-      L.push(''); L.push(B('Envios para Hoje:'));
+      L.push(''); L.push(B('Envios para Hoje:')); L.push('');
       if(hoje.length) hoje.forEach(e=>L.push(pacote(e,false))); else L.push('-');
     };
-    secao('Enviar via Transportadora (ME1 / VENDA DIRETA / VENDA SHOPIFY):','transportadora');
-    L.push('');
-    secao(`Enviar na Agência do Mercado Livre às ${hora}:`,'agencia');
+    secao(T_TRANSP,'transportadora');
+    secao(T_AGENCIA,'agencia');
 
     // produção: só Fabricação Própria, somado por SKU (base, no fracionado)
     const producao=(via)=>{
@@ -259,9 +263,10 @@ const EXP = (function(){
       const linhas=[...soma.values()].sort((a,b)=>itemTxt(a).localeCompare(itemTxt(b),'pt-BR',{numeric:true})).map(i=>`- ${itemTxt(i)};`);
       return linhas.length? linhas : ['-'];
     };
-    L.push(''); L.push(''); L.push(B('ITENS PARA PRODUÇÃO:'));
-    L.push(''); L.push(B('Enviar via Transportadora:')); L.push(...producao('transportadora'));
-    L.push(''); L.push(B(`Enviar na Agência do Mercado Livre às ${hora}:`)); L.push(...producao('agencia'));
+    L.push(''); L.push(SEPARADOR); L.push('');
+    L.push(B('ITENS PARA PRODUÇÃO:'));
+    L.push(''); L.push(B(T_TRANSP)); L.push(...producao('transportadora'));
+    L.push(''); L.push(B(T_AGENCIA)); L.push(...producao('agencia'));
     if(!(lista.versao>=2)) { L.push(''); L.push('(Lista gerada antes da versão com origem dos produtos: itens para produção não disponíveis.)'); }
     const conf=(lista.conferir||[]).length;
     if(conf){ L.push(''); L.push(B(`CONFERIR: ${conf} ${conf===1?'pedido':'pedidos'} — ver a lista completa no sistema.`)); }
