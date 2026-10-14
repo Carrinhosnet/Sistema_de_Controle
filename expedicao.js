@@ -943,7 +943,7 @@ const EXP = (function(){
   });
   // usados também pela tela Emissão de Etiquetas (etiquetas.js): o texto
   // de cada pacote e a numeração saem IGUAIS aos da Listagem de Envios
-  return { init, abrirPendente, verificarPendentes,
+  return { init, abrirPendente, verificarPendentes, abrirLista,
            util:{ desmontar, itemTxt, numerar, viaDe, conteudoPacote } };
 })();
 
