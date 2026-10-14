@@ -1009,7 +1009,7 @@
           <button class="act" id="et-f-limpar" title="Remove o filtro de período">Limpar filtros</button>
           <span id="et-msg" style="font-size:12px;color:var(--muted)"></span>
         </div>
-        <div class="ex-resumo">As listas são geradas na tela <b>Lista do dia</b>. Abra uma lista para escolher os envios do Mercado Livre (ME2) e emitir as etiquetas com o produto escrito embaixo — 3 por folha A4.</div>
+        <div class="ex-resumo">As listas são geradas na tela <b>Lista do dia</b>. Abra uma lista para escolher os envios do Mercado Livre (ME2) e emitir as etiquetas em <b>A4</b> (igual ao painel do ML) ou <b>térmica 10x15</b> (com o produto escrito nos dados adicionais da NF).</div>
         <div class="tablewrap"><div class="scroll"><table><thead><tr>
           <th style="width:9%">Gerada às</th><th style="width:16%">Tipo</th><th style="width:15%">Origem</th>
           <th>Envios ME2</th><th style="width:28%">Etiquetas emitidas</th>
@@ -1031,7 +1031,11 @@
         <div id="et-corpo"></div>
         <div class="et-barra">
           <span id="et-sel-txt">Nenhum envio selecionado</span>
-          <button class="act prim" id="et-emitir" disabled style="margin-left:auto" title="Baixa as etiquetas selecionadas do Mercado Livre e monta o PDF A4 (3 por folha)">Emitir etiquetas selecionadas</button>
+          <select id="et-formato" style="margin-left:auto;min-width:220px" title="Formato da impressão">
+            <option value="a4">A4 — igual ao painel do ML</option>
+            <option value="termica">Térmica 10x15 — produto na NF</option>
+          </select>
+          <button class="act prim" id="et-emitir" disabled title="Baixa as etiquetas selecionadas do Mercado Livre e monta o PDF no formato escolhido">Emitir etiquetas selecionadas</button>
         </div>
       </div>
     </section>

@@ -18,8 +18,12 @@
 //   hora em que foi gerada). A caixa só libera quando o ML já libera a
 //   etiqueta (liberada ou já impressa).
 //   "Emitir etiquetas selecionadas" → Edge Function expedicao-etiquetas:
-//   baixa a etiqueta ORIGINAL de cada envio e monta um PDF A4 com 3 por
-//   folha, com "SKU - quantidade" embaixo de cada uma, na ordem da tela.
+//   baixa a etiqueta ORIGINAL de cada envio (com a NF simplificada) e
+//   monta o PDF no formato escolhido, na ordem da tela:
+//     A4      → igual à folha do painel do ML (identificação + etiqueta + NF)
+//     Térmica → etiqueta 10x15 + NF 10x15 com o produto ("SKU - quantidade",
+//               mesmo texto da Lista do dia) nos DADOS ADICIONAIS
+//   O formato escolhido fica lembrado neste computador.
 //   Cada emissão fica registrada (quem, quando) e aparece na coluna
 //   "Emitida".
 //   Atenção: emitir uma etiqueta ainda não impressa faz o ML marcar como
@@ -206,7 +210,8 @@ const ETQ = (function(){
 
   function atualizarBarra(){
     const n=SEL.size;
-    f('sel-txt').innerHTML= n ? `<b>${n}</b> ${n===1?'envio selecionado':'envios selecionados'} · ${Math.ceil(n/3)} ${Math.ceil(n/3)===1?'folha':'folhas'} A4` : 'Nenhum envio selecionado';
+    const term=f('formato') && f('formato').value==='termica';
+    f('sel-txt').innerHTML= n ? `<b>${n}</b> ${n===1?'envio selecionado':'envios selecionados'} · ${term? (2*n)+' etiquetas 10x15 (etiqueta + NF)' : n+' '+(n===1?'folha':'folhas')+' A4'}` : 'Nenhum envio selecionado';
     f('emitir').disabled= !n || OCUPADO;
   }
 
@@ -255,18 +260,20 @@ const ETQ = (function(){
     const emis=LISTA.emissoes||{};
     const repetidas=escolhidos.filter(x=>emis[String(x.e.envio)]).length;
     const novas=escolhidos.filter(x=>SIT[String(x.e.envio)] && SIT[String(x.e.envio)].rotulo==='ETIQUETA LIBERADA').length;
-    let aviso=`Emitir ${escolhidos.length} ${escolhidos.length===1?'etiqueta':'etiquetas'}?`;
+    let aviso=`Emitir ${escolhidos.length} ${escolhidos.length===1?'etiqueta':'etiquetas'} em ${f('formato').value==='termica'?'TÉRMICA 10x15':'A4'}?`;
     if(novas) aviso+=`\n\n${novas} ainda não ${novas===1?'foi impressa':'foram impressas'}: no Mercado Livre ${novas===1?'passa':'passam'} a constar como impressa${novas===1?'':'s'} (igual a baixar pelo painel).`;
     if(repetidas) aviso+=`\n\n${repetidas} já ${repetidas===1?'foi emitida':'foram emitidas'} antes por esta tela e ${repetidas===1?'sairá':'sairão'} de novo.`;
     if(!confirm(aviso)) return;
-    const envios=escolhidos.map(x=>({envio:String(x.e.envio), linhas:u.desmontar(x.e.itens).map(u.itemTxt)}));
+    const envios=escolhidos.map(x=>({envio:String(x.e.envio), pedido:String(x.e.pedido||''), linhas:u.desmontar(x.e.itens).map(u.itemTxt)}));
+    const formato=f('formato').value==='termica'?'termica':'a4';
     OCUPADO=true; atualizarBarra(); f('emitir').textContent='Emitindo…';
     msg(`Baixando ${envios.length} ${envios.length===1?'etiqueta':'etiquetas'} do Mercado Livre e montando o PDF…`);
     try{
-      const r=await chamar({acao:'etiquetas', lista_id:LISTA_ID, envios, original:f('original').checked});
+      const r=await chamar({acao:'etiquetas', lista_id:LISTA_ID, envios, formato, original:f('original').checked});
       const agora=new Date(Date.now()-3*3600e3).toISOString();
       const carimbo=`${agora.slice(8,10)}-${agora.slice(5,7)}-${agora.slice(0,4)} ${agora.slice(11,13)}h${agora.slice(14,16)}`;
-      baixarArquivo(r.pdf, `Etiquetas ML ${carimbo}.pdf`);
+      baixarArquivo(r.pdf, `Etiquetas ML ${formato==='termica'?'termica':'A4'} ${carimbo}.pdf`);
+      try{ localStorage.setItem('cn_et_formato',formato); }catch(e){}
       if(r.original) setTimeout(()=>baixarArquivo(r.original, `Etiquetas ML original ${carimbo}.pdf`), 800);
       const info=r.info||[], falhas=info.filter(i=>!i.ok), oks=info.filter(i=>i.ok);
       for(const i of oks){ SEL.delete(String(i.envio)); if(SIT[i.envio]) SIT[i.envio]=Object.assign({},SIT[i.envio],{rotulo:'ETIQUETA IMPRESSA'}); }
@@ -328,6 +335,8 @@ const ETQ = (function(){
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('situacao').addEventListener('click',()=>{ if(LISTA && !OCUPADO) carregarSituacao(); });
     f('emitir').addEventListener('click',emitir);
+    try{ const fm=localStorage.getItem('cn_et_formato'); if(fm==='termica'||fm==='a4') f('formato').value=fm; }catch(e){}
+    f('formato').addEventListener('change',atualizarBarra);
     f('corpo').addEventListener('change',(ev)=>{
       const t=ev.target;
       if(t.classList.contains('et-um')){
