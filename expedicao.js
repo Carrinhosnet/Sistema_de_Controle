@@ -1,12 +1,13 @@
 // =====================================================================
-// CARRINHOS_NET — TELA: Lista do dia (grupo Expedição)
+// CARRINHOS_NET — TELA: Listagem de Envios (grupo Expedição)
+// (até 14/10/2026 se chamava "Lista do dia")
 // Depende da base do index.html: $, USER, rpc, SUPABASE_KEY, FUNC_URL,
 // verificarSessao, renovarSessao, temPermissao, registrarTela.
 // Imprime pelo #print-area do index (mesmo mecanismo da Análise de
 // Estoque): o navegador abre a janela de impressão e "Salvar como PDF".
 //
 // O QUE FAZ
-//   "Gerar lista do dia" chama a Edge Function expedicao-lista, que junta
+//   "Gerar listagem" chama a Edge Function expedicao-lista, que junta
 //   os envios que precisam sair hoje (e os atrasados) do Mercado Livre e
 //   dos outros canais (Bling), grava a lista no histórico e devolve.
 //   Qualquer lista do histórico pode ser reaberta e reimpressa: ela
@@ -446,7 +447,7 @@ const EXP = (function(){
       f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true;
       f('simples').style.display='none'; f('titulo').textContent=''; f('nova').style.display='none'; return;
     }
-    f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Lista do dia <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')}`;
+    f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Listagem de envios <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')}`;
     const nova=LISTA.automatica && !LISTA.vista_em;
     f('nova').style.display= nova ? '' : 'none';
     f('nova').innerHTML= nova ? `<b>${LISTA.tipo==='atualizacao'?'Atualização automática nova':'Lista automática nova'}.</b> Copie para o WhatsApp ou imprima: o aviso some quando alguém fizer isso.` : '';
@@ -465,85 +466,126 @@ const EXP = (function(){
   const DIAS_LONGOS=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
 
   // ---------------------------------------------------------------
-  // PAINEL: todas as listas geradas (tela inicial)
-  //   Agrupadas por dia, mais recente primeiro. Dentro do dia, as NÃO
-  //   LIDAS vêm no topo — "não lida" = está contando no aviso da página
-  //   (automática, de hoje, ninguém copiou nem imprimiu). A regra vem do
-  //   banco (cn_expedicao_listas.nao_lida), a mesma da bolinha do menu.
+  // PAINEL: as listagens geradas (tela inicial) — 14/10/2026
+  //   Paginado NO BANCO (30 por página): a tela só busca a página que
+  //   mostra. Filtros: leitura, origem (automática/manual), busca por
+  //   pedido/envio/SKU, atalhos Hoje/Ontem/7 dias e período.
+  //   Agrupadas por dia, mais recente primeiro; dentro do dia as NÃO
+  //   LIDAS vêm no topo. Não lida = automática que ninguém copiou nem
+  //   imprimiu, DE QUALQUER DIA: conta no aviso da página até ser lida.
+  //   Manual = lida na hora em que foi gerada.
   // ---------------------------------------------------------------
+  const POR_PAGINA=30;
+  let PAG=1, TOTAL=0;
   function resumoLinha(l){
     const t=l.totais||{};
     if(l.tipo==='atualizacao'){
-      return `${t.novas??0} ${Number(t.novas)===1?'venda nova':'vendas novas'} · ${t.canceladas??0} ${Number(t.canceladas)===1?'cancelada':'canceladas'}`;
+      return `<span class="ex-atu">Atualização:</span> ${t.novas??0} ${Number(t.novas)===1?'venda nova':'vendas novas'} · ${t.canceladas??0} ${Number(t.canceladas)===1?'cancelada':'canceladas'}`;
     }
     const partes=[`${t.envios??'?'} envios`, `${t.unidades??'?'} un.`];
     if(t.atrasados) partes.push(`${t.atrasados} ${t.atrasados===1?'atrasado':'atrasados'}`);
     if(t.aguardando_nf) partes.push(`${t.aguardando_nf} aguardando NF`);
     if(t.conferir) partes.push(`${t.conferir} a conferir`);
-    return partes.join(' · ');
+    return escH(partes.join(' · '));
+  }
+  // "às 10:42" no mesmo dia da listagem; "em 15/10 às 10:42" se foi em outro dia
+  function quandoLeu(iso, dia){
+    const sp=new Date(new Date(iso).getTime()-3*3600e3).toISOString();
+    return sp.slice(0,10)===dia ? `às ${escH(horaDe(sp))}` : `em ${escH(ddmm(sp.slice(0,10)))} às ${escH(horaDe(sp))}`;
   }
   function renderPainel(){
     const tb=f('painel-tbody'); if(!tb) return;
-    const naoLidas=HIST.filter(l=>l.nao_lida).length;
-    f('resumo').innerHTML= naoLidas
-      ? `<span class="ex-tag ex-tag-nl">${naoLidas} NÃO ${naoLidas===1?'LIDA':'LIDAS'}</span>&nbsp; ${naoLidas===1?'Esta lista está':'Estas listas estão'} contando no aviso da página até alguém copiar para o WhatsApp ou imprimir.`
-      : 'Todas as listas automáticas de hoje já foram lidas.';
-    // filtro de LEITURA (o de período já veio aplicado do banco)
-    //   não lidas = automáticas que ninguém copiou nem imprimiu (de
-    //               qualquer dia; as de hoje são as que contam no aviso)
-    //   lidas     = alguém copiou/imprimiu, e as geradas à mão
-    const leitura=f('f-leitura').value;
-    const VIS=HIST.filter(l=> leitura==='nao' ? (l.automatica && !l.vista_em)
-                          : leitura==='sim' ? !!l.vista_em : true);
-    const temFiltro= !!(leitura || f('f-de').value || f('f-ate').value);
-    if(!VIS.length){
+    const temFiltro= !!(f('f-leitura').value || f('f-origem').value || f('f-busca').value.trim() || f('f-de').value || f('f-ate').value);
+    marcarAtalho();
+    if(!HIST.length){
       tb.innerHTML= temFiltro
-        ? `<tr><td colspan="5" class="ex-vazio">Nenhuma lista com esses filtros.</td></tr>`
-        : `<tr><td colspan="5" class="ex-vazio">Nenhuma lista gerada ainda. Clique em <b>Gerar lista do dia</b>.</td></tr>`;
-      f('painel-cont').textContent= temFiltro ? `0 de ${HIST.length} listas` : '—'; return;
+        ? `<tr><td colspan="4" class="ex-vazio">Nenhuma listagem com esses filtros.</td></tr>`
+        : `<tr><td colspan="4" class="ex-vazio">Nenhuma listagem gerada ainda. Clique em <b>Gerar listagem</b>.</td></tr>`;
+      f('painel-cont').textContent= '0 listagens'; atualizarPaginacao(); return;
     }
-    // agrupa por dia; dentro do dia: não lidas primeiro, depois mais recente
-    const dias=[...new Set(VIS.map(l=>l.dia))];
-    let h='';
-    for(const dia of dias){
-      const doDia=VIS.filter(l=>l.dia===dia).sort((a,b)=>(b.nao_lida-a.nao_lida)||String(b.gerada_em).localeCompare(String(a.gerada_em)));
-      const [y,m,d]=dia.split('-').map(Number);
-      const rot= dia===hojeSP() ? 'Hoje' : DIAS_LONGOS[new Date(y,m-1,d).getDay()];
-      h+=`<tr class="ex-dia"><td colspan="5">${escH(rot)} · ${escH(brData(dia))}</td></tr>`;
-      for(const l of doDia){
-        const tipo= l.tipo==='atualizacao'
-          ? `<span class="ex-tag ex-tag-atu">Atualização</span>`
-          : `<span class="ex-tag ex-tag-pri">Lista do dia</span>`;
-        const origem= l.automatica ? 'Automática' : escH(l.gerada_por||'—');
-        const leitura= l.nao_lida
-          ? `<span class="ex-tag ex-tag-nl">NÃO LIDA</span> <span class="ex-lida">· contando no aviso</span>`
-          : (l.vista_em && l.automatica
-              ? `<span class="ex-lida">Lida às ${escH(horaSP(l.vista_em))}${l.vista_por_nome?' por '+escH(l.vista_por_nome):''}</span>`
-              : `<span class="ex-lida">${l.automatica?'Não lida (fora do aviso: dia anterior)':'—'}</span>`);
-        h+=`<tr class="ex-linha${l.nao_lida?' ex-naolida':''}" data-id="${l.id}">
-              <td><b>${escH(horaSP(l.gerada_em))}</b></td><td>${tipo}</td><td>${origem}</td>
-              <td>${escH(resumoLinha(l))}</td><td>${leitura}</td></tr>`;
+    let h='', diaAnt=null;
+    for(const l of HIST){
+      if(l.dia!==diaAnt){
+        const [y,m,d]=l.dia.split('-').map(Number);
+        const rot= l.dia===hojeSP() ? 'Hoje' : DIAS_LONGOS[new Date(y,m-1,d).getDay()];
+        h+=`<tr class="ex-dia"><td colspan="4">${escH(rot.charAt(0).toUpperCase()+rot.slice(1))} · ${escH(brData(l.dia))}</td></tr>`;
+        diaAnt=l.dia;
       }
+      const origem= l.automatica
+        ? `<span class="ex-tag ex-tag-auto">Automática</span>`
+        : `<span class="ex-tag ex-tag-manual">${escH(l.gerada_por||'Manual')}</span>`;
+      const leitura= l.nao_lida
+        ? `<span class="ex-tag ex-tag-nl">NÃO LIDA</span> <span class="ex-lida">· contando no aviso</span>`
+        : (l.automatica
+            ? `<span class="ex-lida">Lida ${l.vista_em?quandoLeu(l.vista_em,l.dia):''}${l.vista_por_nome?' por '+escH(l.vista_por_nome):''}</span>`
+            : `<span class="ex-lida">Gerada e lida ${quandoLeu(l.gerada_em,l.dia)}${l.gerada_por?' por '+escH(l.gerada_por):''}</span>`);
+      const achado= l.achado ? `<div class="ex-achado">encontrado: ${escH(l.achado)}</div>` : '';
+      h+=`<tr class="ex-linha${l.nao_lida?' ex-naolida':''}" data-id="${l.id}">
+            <td><b>${escH(horaSP(l.gerada_em))}</b></td><td>${origem}</td>
+            <td>${resumoLinha(l)}${achado}</td><td>${leitura}</td></tr>`;
     }
     tb.innerHTML=h;
-    f('painel-cont').textContent=(VIS.length<HIST.length? `${VIS.length} de ${HIST.length} listas` : `${VIS.length} ${VIS.length===1?'lista':'listas'}`)
-      +` · ${dias.length} ${dias.length===1?'dia':'dias'}`;
+    const ini=(PAG-1)*POR_PAGINA+1, fim=ini+HIST.length-1;
+    f('painel-cont').textContent= TOTAL>HIST.length ? `${ini}–${fim} de ${TOTAL} listagens` : `${TOTAL} ${TOTAL===1?'listagem':'listagens'}`;
+    atualizarPaginacao();
+  }
+  function atualizarPaginacao(){
+    const paginas=Math.max(1,Math.ceil(TOTAL/POR_PAGINA));
+    f('paginfo').textContent=`Página ${PAG} de ${paginas}`;
+    f('prev').disabled= PAG<=1; f('next').disabled= PAG>=paginas;
+  }
+  async function resumoNaoLidas(){
+    try{
+      const n=Number(await rpc('cn_expedicao_pendencias',{p_usuario_id:USER.id}))||0;
+      f('resumo').innerHTML= n
+        ? `<span class="ex-tag ex-tag-nl">${n} NÃO ${n===1?'LIDA':'LIDAS'}</span>&nbsp; ${n===1?'Esta listagem automática está':'Estas listagens automáticas estão'} contando no aviso da página até alguém copiar para o WhatsApp ou imprimir.`
+        : 'Todas as listagens automáticas já foram lidas.';
+    }catch(e){ f('resumo').textContent=''; }
+  }
+  // aviso quando a rotina automática de hoje não rodou ou deu erro
+  async function statusRotina(){
+    const el=f('rotina'); if(!el) return;
+    try{
+      const s=await rpc('cn_expedicao_status_rotina',{p_usuario_id:USER.id})||{};
+      let t='';
+      if(s.erro) t=`<b>A rotina automática deu erro hoje${s.erro_em?' às '+escH(horaSP(s.erro_em)):''}.</b> ${escH(String(s.erro).slice(0,300))}<br>Se precisar, gere a listagem manualmente em <b>Gerar listagem</b>.`;
+      else if(s.esperada && !s.gerada_em) t=`<b>A listagem automática das 07:30 de hoje não foi gerada.</b> Gere manualmente em <b>Gerar listagem</b> e avise o responsável pelo sistema.`;
+      el.innerHTML=t; el.style.display= t ? '' : 'none';
+    }catch(e){ el.style.display='none'; }
+  }
+  // atalhos de período
+  const diaMenos=(n)=>new Date(Date.now()-3*3600e3-n*86400e3).toISOString().slice(0,10);
+  function aplicarAtalho(a){
+    if(a==='hoje'){ f('f-de').value=hojeSP(); f('f-ate').value=hojeSP(); }
+    else if(a==='ontem'){ f('f-de').value=diaMenos(1); f('f-ate').value=diaMenos(1); }
+    else if(a==='7'){ f('f-de').value=diaMenos(6); f('f-ate').value=hojeSP(); }
+  }
+  function marcarAtalho(){
+    const de=f('f-de').value, ate=f('f-ate').value;
+    document.querySelectorAll('#ex-painel .ex-atalhos button').forEach(b=>{
+      const a=b.dataset.atalho;
+      const on=(a==='hoje'&&de===hojeSP()&&ate===hojeSP())||(a==='ontem'&&de===diaMenos(1)&&ate===diaMenos(1))||(a==='7'&&de===diaMenos(6)&&ate===hojeSP());
+      b.classList.toggle('on',on);
+    });
   }
   async function carregarPainel(){
     try{
       const de=f('f-de').value||null, ate=f('f-ate').value||null;
       if(de && ate && de>ate){ msg('A data inicial é depois da final.',true); return; }
-      // com período escolhido, traz até 500 listas daquele intervalo
-      try{
-        HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:(de||ate)?500:90,p_de:de,p_ate:ate}))||[];
-      }catch(e1){
-        // banco sem o arquivo 125 (filtro de datas): carrega do jeito antigo e avisa
-        HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:90}))||[];
-        if(de||ate) msg('O filtro de datas precisa do arquivo 125 no banco. Mostrando as últimas 90 listas.',true);
-      }
+      const r=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id, p_pagina:PAG, p_por_pagina:POR_PAGINA,
+        p_de:de, p_ate:ate, p_leitura:f('f-leitura').value||null, p_origem:f('f-origem').value||null,
+        p_busca:f('f-busca').value.trim()||null}))||[];
+      HIST=r; TOTAL= r.length ? Number(r[0].total)||r.length : 0;
+      // página além do fim (ex.: depois de um filtro): volta para a última
+      if(!r.length && PAG>1){ PAG=1; return carregarPainel(); }
       renderPainel();
-    }catch(e){ msg('Não consegui carregar as listas: '+e.message,true); }
+      resumoNaoLidas(); statusRotina();
+    }catch(e){
+      HIST=[]; TOTAL=0; renderPainel();
+      msg(/cn_expedicao_listas|function/i.test(e.message) ? 'Falta rodar o arquivo 127 no banco (SQL Editor).' : 'Não consegui carregar as listagens: '+e.message, true);
+    }
   }
+  const recarregarDoInicio=async()=>{ PAG=1; msg(''); await carregarPainel(); };
 
   function mostrarPainel(){
     f('detalhe').style.display='none'; f('painel').style.display='';
@@ -617,7 +659,7 @@ const EXP = (function(){
     $('print-area').innerHTML=`<style>${CSS_PRINT}</style><div class="ex-p">
       <div class="pr-topo">
         <img src="logo-print.png" class="pr-logo" onerror="this.onerror=null;this.src='logo.png';this.className='pr-logo pr-logo-inv'">
-        <div><p class="pr-tit">${LISTA.tipo==='atualizacao'?'Atualização da ':''}Lista do dia — ${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</p>
+        <div><p class="pr-tit">${LISTA.tipo==='atualizacao'?'Atualização da ':''}Listagem de envios — ${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</p>
              <div class="pr-sub">${LISTA.tipo==='atualizacao'?'Vendas novas e canceladas desde a lista principal':'Envios a despachar hoje e atrasados · Mercado Livre e Bling'}</div></div>
         <div class="pr-quando">Gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.gerada_por?'<br>por '+escH(LISTA.gerada_por):''}${LISTA_ID?'<br>Lista nº '+LISTA_ID:''}</div>
       </div>
@@ -640,7 +682,7 @@ const EXP = (function(){
   function imprimirSimples(){
     if(!LISTA) return;
     $('print-area').innerHTML=`<style>${CSS_SIMPLES}</style><div class="ex-s">${textoHtml(textoSimplificado(LISTA,true))}</div>
-      <div class="ex-s-rod">Carrinhos_Net — ${LISTA.tipo==='atualizacao'?'Atualização da ':''}Lista do dia ${escH(brData(LISTA.dia))} · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA_ID?' · lista nº '+LISTA_ID:''}</div>`;
+      <div class="ex-s-rod">Carrinhos_Net — ${LISTA.tipo==='atualizacao'?'Atualização da ':''}Listagem de envios ${escH(brData(LISTA.dia))} · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA_ID?' · listagem nº '+LISTA_ID:''}</div>`;
     window.print();
     marcarVista();
   }
@@ -659,7 +701,7 @@ const EXP = (function(){
     try{
       const n=Number(await rpc('cn_expedicao_pendencias',{p_usuario_id:USER.id}))||0;
       t.style.display= n>0 ? '' : 'none';
-      if(n>0) $('ex-toast-txt').textContent= n===1 ? 'Lista do dia automática nova' : `${n} listas do dia automáticas novas`;
+      if(n>0) $('ex-toast-txt').textContent= n===1 ? 'Listagem de envios automática não lida' : `${n} listagens de envios automáticas não lidas`;
     }catch(e){ t.style.display='none'; }
   }
   setInterval(()=>verificarPendentes(false), 30000);
@@ -667,6 +709,9 @@ const EXP = (function(){
   async function abrirPendente(){
     if(typeof mostrarTela==='function') mostrarTela('expedicao');
     mostrarPainel();
+    // mostra direto as não lidas (de qualquer dia)
+    f('f-leitura').value='nao'; f('f-origem').value=''; f('f-busca').value=''; f('f-de').value=''; f('f-ate').value='';
+    PAG=1;
     await carregarPainel();
   }
 
@@ -677,11 +722,16 @@ const EXP = (function(){
     f('imprimir').addEventListener('click',imprimir);
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
-    f('f-leitura').addEventListener('change',renderPainel);
-    ['f-de','f-ate'].forEach(k=>f(k).addEventListener('change',async()=>{ msg(''); await carregarPainel(); }));
+    ['f-leitura','f-origem','f-de','f-ate'].forEach(k=>f(k).addEventListener('change',recarregarDoInicio));
+    f('f-busca').addEventListener('keydown',(ev)=>{ if(ev.key==='Enter') recarregarDoInicio(); });
+    f('f-busca').addEventListener('search',recarregarDoInicio);   // "x" do campo limpa a busca
+    document.querySelectorAll('#ex-painel .ex-atalhos button').forEach(b=>b.addEventListener('click',async()=>{ aplicarAtalho(b.dataset.atalho); await recarregarDoInicio(); }));
     f('f-limpar').addEventListener('click',async()=>{
-      f('f-leitura').value=''; f('f-de').value=''; f('f-ate').value=''; msg(''); await carregarPainel();
+      f('f-leitura').value=''; f('f-origem').value=''; f('f-busca').value=''; f('f-de').value=''; f('f-ate').value='';
+      await recarregarDoInicio();
     });
+    f('prev').addEventListener('click',async()=>{ if(PAG>1){ PAG--; await carregarPainel(); window.scrollTo(0,0); } });
+    f('next').addEventListener('click',async()=>{ PAG++; await carregarPainel(); window.scrollTo(0,0); });
     f('painel-tbody').addEventListener('click',(ev)=>{
       const tr=ev.target.closest('tr.ex-linha'); if(tr) abrirLista(tr.dataset.id);
     });
@@ -697,7 +747,7 @@ const EXP = (function(){
     const b=$('ex-toast-abrir'); if(b) b.addEventListener('click',abrirPendente);
   });
   // usados também pela tela Emissão de Etiquetas (etiquetas.js): o texto
-  // de cada pacote e a numeração saem IGUAIS aos da Lista do dia
+  // de cada pacote e a numeração saem IGUAIS aos da Listagem de Envios
   return { init, abrirPendente, verificarPendentes,
            util:{ desmontar, itemTxt, numerar, viaDe, conteudoPacote } };
 })();

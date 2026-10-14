@@ -5,9 +5,9 @@
 // Depende da base do index.html: $, USER, rpc, SUPABASE_KEY, FUNC_URL,
 // verificarSessao, renovarSessao, temPermissao, registrarTela — e do
 // expedicao.js (EXP.util), para o texto dos pacotes e a numeração
-// saírem IGUAIS aos da Lista do dia.
+// saírem IGUAIS aos da Listagem de Envios.
 //
-// PAINEL: as listas geradas na Lista do dia, com quantos envios do
+// PAINEL: as listagens geradas na Listagem de Envios, com quantos envios do
 //   Mercado Livre (ME2) cada uma tem e quantos já tiveram etiqueta
 //   emitida (arquivo 126: cn_etiquetas_listas).
 //
@@ -22,7 +22,7 @@
 //   monta o PDF no formato escolhido, na ordem da tela:
 //     A4      → igual à folha do painel do ML (identificação + etiqueta + NF)
 //     Térmica → etiqueta 10x15 + NF 10x15 com o produto ("SKU - quantidade",
-//               mesmo texto da Lista do dia) nos DADOS ADICIONAIS
+//               mesmo texto da Listagem de Envios) nos DADOS ADICIONAIS
 //   O formato escolhido fica lembrado neste computador.
 //   Cada emissão fica registrada (quem, quando) e aparece na coluna
 //   "Emitida".
@@ -93,7 +93,7 @@ const ETQ = (function(){
     const tb=f('painel-tbody'); if(!tb) return;
     if(!HIST.length){
       const filtro=!!(f('f-de').value||f('f-ate').value);
-      tb.innerHTML=`<tr><td colspan="5" class="ex-vazio">${filtro?'Nenhuma lista nesse período.':'Nenhuma lista gerada ainda. As listas são geradas na tela <b>Lista do dia</b>.'}</td></tr>`;
+      tb.innerHTML=`<tr><td colspan="5" class="ex-vazio">${filtro?'Nenhuma lista nesse período.':'Nenhuma listagem gerada ainda. As listagens são geradas na tela <b>Listagem de Envios</b>.'}</td></tr>`;
       f('painel-cont').textContent= filtro? '0 listas' : '—'; return;
     }
     const dias=[...new Set(HIST.map(l=>l.dia))];
@@ -103,7 +103,7 @@ const ETQ = (function(){
       const rot= dia===hojeSP() ? 'Hoje' : DIAS_LONGOS[new Date(y,m-1,d).getDay()];
       h+=`<tr class="ex-dia"><td colspan="5">${escH(rot)} · ${escH(brData(dia))}</td></tr>`;
       for(const l of HIST.filter(x=>x.dia===dia)){
-        const tipo= l.tipo==='atualizacao' ? `<span class="ex-tag ex-tag-atu">Atualização</span>` : `<span class="ex-tag ex-tag-pri">Lista do dia</span>`;
+        const tipo= l.tipo==='atualizacao' ? `<span class="ex-tag ex-tag-atu">Atualização</span>` : `<span class="ex-tag ex-tag-pri">Listagem</span>`;
         const origem= l.automatica ? 'Automática' : escH(l.gerada_por||'—');
         const total=Number(l.envios_me2)||0, emit=Number(l.emitidas)||0;
         const env= `<b>${total}</b> ${total===1?'envio':'envios'}${l.tem_proximos?'':' <span class="ex-lida">· sem "próximos dias" (lista anterior a esta tela)</span>'}`;
@@ -143,7 +143,7 @@ const ETQ = (function(){
   // DETALHE
   // ---------------------------------------------------------------
   function montarBlocos(){
-    const u=U(); if(!u) throw new Error('A tela Lista do dia (expedicao.js) não carregou — recarregue a página.');
+    const u=U(); if(!u) throw new Error('A tela Listagem de Envios (expedicao.js) não carregou — recarregue a página.');
     const ehAtu = LISTA.tipo==='atualizacao';
     const fonte = ehAtu ? (LISTA.novas||LISTA.envios||[]) : (LISTA.envios||[]);
     // na atualização a numeração continua a da lista principal (igual ao texto do WhatsApp)
@@ -172,7 +172,7 @@ const ETQ = (function(){
   function render(){
     if(!LISTA){ f('corpo').innerHTML=''; return; }
     const u=U();
-    f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Lista do dia <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')} · só Mercado Livre ME2 (ME1 tem etiqueta própria)`;
+    f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Listagem de envios <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')} · só Mercado Livre ME2 (ME1 tem etiqueta própria)`;
     const av=[];
     if(LISTA.tipo==='atualizacao') av.push('Esta é uma ATUALIZAÇÃO: traz só as vendas novas desde a lista principal. Os demais envios estão na lista principal do dia.');
     f('avisos').innerHTML=av.map(a=>`<div>• ${escH(a)}</div>`).join(''); f('avisos').style.display=av.length?'':'none';
@@ -185,7 +185,7 @@ const ETQ = (function(){
             <input type="checkbox" class="et-todos" data-bloco="${b.id}" ${disp.length?'':'disabled'} ${todosMarcados?'checked':''} title="Marca todos os envios deste bloco com etiqueta disponível">
             ${escH(b.titulo)} <span class="et-q">${b.linhas.length} ${b.linhas.length===1?'envio':'envios'}${SIT_CARREGADA?` · ${disp.length} com etiqueta disponível`:''}</span></div>`;
       if(b.semProximos){
-        h+=`<div class="ex-vazio">Esta lista foi gerada antes da tela de etiquetas e não guardou os envios dos próximos dias. Gere uma lista nova na Lista do dia para vê-los.</div></div>`; continue;
+        h+=`<div class="ex-vazio">Esta lista foi gerada antes da tela de etiquetas e não guardou os envios dos próximos dias. Gere uma listagem nova na Listagem de Envios para vê-los.</div></div>`; continue;
       }
       if(!b.linhas.length){ h+=`<div class="ex-vazio">Nenhum envio.</div></div>`; continue; }
       h+=`<table class="et-tab"><thead><tr><th class="et-cb" style="width:40px"></th><th style="width:76px">Pacote</th><th>Produtos (o que sai escrito na etiqueta)</th>

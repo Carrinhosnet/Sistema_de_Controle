@@ -134,6 +134,9 @@
   .toolbar .rot{font-size:12px;color:var(--muted)}
   /* ====== EXPEDIÇÃO — LISTA DO DIA (tela) ====== */
   #scr-expedicao .toolbar select{min-width:150px}
+  #scr-expedicao .toolbar input[type=search]{padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);color-scheme:dark;outline:none}
+  #scr-expedicao .toolbar input[type=search]:focus{border-color:var(--accent)}
+  #scr-expedicao .foot button.act:disabled{opacity:.4;cursor:default}
   .ex-titulo{font-size:13px;color:var(--muted);margin:-6px 0 12px}
   .ex-titulo b{color:var(--text)}
   .kpi.ex-k-atraso .val{color:var(--danger)}
@@ -199,6 +202,15 @@
   .ex-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid var(--border);white-space:nowrap}
   .ex-tag-nl{color:#fff;background:var(--danger);border-color:var(--danger)}
   .ex-tag-atu{color:#60a5fa;border-color:#60a5fa}
+  .ex-tag-auto{color:#fff;background:var(--accent-forte);border-color:var(--accent-forte)}
+  .ex-tag-manual{color:#fff;background:#7c3aed;border-color:#7c3aed}
+  .ex-atu{color:#60a5fa;font-weight:600}
+  .ex-achado{font-size:11.5px;color:var(--warn)}
+  .ex-atalhos{display:inline-flex;gap:4px}
+  .ex-atalhos button.act{padding:9px 10px}
+  .ex-atalhos button.act.on{border-color:var(--accent);color:var(--accent)}
+  .ex-rotina{background:rgba(200,30,30,.12);border:1px solid var(--danger);border-left:4px solid var(--danger);border-radius:10px;padding:10px 16px;margin:-4px 0 12px;font-size:13px;line-height:1.5}
+  .ex-rotina b{color:var(--danger)}
   .ex-tag-pri{color:var(--accent);border-color:var(--accent)}
   .ex-lida{color:var(--muted);font-size:12px}
   .ex-nova{background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px}
@@ -680,6 +692,11 @@
       <button class="toggle-btn" id="btn-collapse" title="Esconder menu">‹</button>
     </div>
     <nav id="nav">
+      <div class="navgroup" id="grp-expedicao">
+        <div class="navtit navtit-toggle" data-grp="grp-expedicao">Expedição<span class="caret">▾</span></div>
+        <button data-tela="expedicao" id="nav-expedicao"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1z"/><path d="M16 6h2.2a1.3 1.3 0 0 1 1.3 1.3v12.4a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V7.3A1.3 1.3 0 0 1 5.8 6H8"/><path d="M8.5 12l1.6 1.6 3-3M8.5 17h7"/></svg><span class="nav-lbl">Listagem de Envios</span><span class="badge-dot" id="badge-expedicao" style="display:none"></span></button>
+        <button data-tela="etiquetas" id="nav-etiquetas"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.6V5a1.5 1.5 0 0 1 1.5-1.5h7.6a1.5 1.5 0 0 1 1.06.44l6.9 6.9a1.5 1.5 0 0 1 0 2.12l-7.6 7.6a1.5 1.5 0 0 1-2.12 0l-6.9-6.9a1.5 1.5 0 0 1-.44-1.06z"/><circle cx="8.2" cy="8.2" r="1.6"/></svg><span class="nav-lbl">Emissão de Etiquetas</span></button>
+      </div>
       <div class="navgroup" id="grp-comercial">
         <div class="navtit navtit-toggle" data-grp="grp-comercial">Controle Comercial<span class="caret">▾</span></div>
         <button data-tela="vendas" id="nav-vendas"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 3.5h6.6L21 14.4l-6.6 6.6L3.5 10.1z"/><circle cx="7.6" cy="7.6" r="1.4"/></svg><span class="nav-lbl">Controle de Vendas</span><span class="badge-dot" id="badge-vendas" style="display:none"></span></button>
@@ -688,11 +705,6 @@
         <button data-tela="devolucoes" id="nav-devolucoes"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.9-6.4"/><path d="M3.2 4.2v5h5"/></svg><span class="nav-lbl">Controle de Devoluções</span><span class="badge-dot" id="badge-devolucoes" style="display:none"></span></button>
         <button data-tela="cancelamentos" id="nav-cancelamentos"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></svg><span class="nav-lbl">Controle de Cancelamentos</span><span class="badge-dot" id="badge-cancelamentos" style="display:none"></span></button>
         <button data-tela="reclamacoes" id="nav-reclamacoes"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5a2 2 0 0 1-2 2H7.5l-4 3.5V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/><path d="M12 7.2v3.6"/><path d="M12 13.4h.01"/></svg><span class="nav-lbl">Controle de Reclamações</span><span class="badge-dot" id="badge-reclamacoes" style="display:none"></span></button>
-      </div>
-      <div class="navgroup" id="grp-expedicao">
-        <div class="navtit navtit-toggle" data-grp="grp-expedicao">Expedição<span class="caret">▾</span></div>
-        <button data-tela="expedicao" id="nav-expedicao"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1z"/><path d="M16 6h2.2a1.3 1.3 0 0 1 1.3 1.3v12.4a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V7.3A1.3 1.3 0 0 1 5.8 6H8"/><path d="M8.5 12l1.6 1.6 3-3M8.5 17h7"/></svg><span class="nav-lbl">Lista do dia</span><span class="badge-dot" id="badge-expedicao" style="display:none"></span></button>
-        <button data-tela="etiquetas" id="nav-etiquetas"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.6V5a1.5 1.5 0 0 1 1.5-1.5h7.6a1.5 1.5 0 0 1 1.06.44l6.9 6.9a1.5 1.5 0 0 1 0 2.12l-7.6 7.6a1.5 1.5 0 0 1-2.12 0l-6.9-6.9a1.5 1.5 0 0 1-.44-1.06z"/><circle cx="8.2" cy="8.2" r="1.6"/></svg><span class="nav-lbl">Emissão de Etiquetas</span></button>
       </div>
       <div class="navgroup" id="grp-financeiro">
         <div class="navtit navtit-toggle" data-grp="grp-financeiro">Controle Financeiro<span class="caret">▾</span></div>
@@ -951,30 +963,44 @@
       <div id="met-corpo"></div>
     </section>
 
-    <!-- =================== TELA EXPEDIÇÃO — LISTA DO DIA =================== -->
-    <div id="ex-toast" class="ex-toast" style="display:none"><span>📦 <b id="ex-toast-txt">Lista do dia automática nova</b></span><button id="ex-toast-abrir">Abrir</button></div>
+    <!-- =================== TELA EXPEDIÇÃO — LISTAGEM DE ENVIOS =================== -->
+    <div id="ex-toast" class="ex-toast" style="display:none"><span>📦 <b id="ex-toast-txt">Listagem de envios automática nova</b></span><button id="ex-toast-abrir">Abrir</button></div>
     <section class="tela" id="scr-expedicao">
       <!-- PAINEL: todas as listas geradas (tela inicial) -->
       <div id="ex-painel">
         <div class="toolbar">
-          <button class="act prim" id="ex-gerar" title="Consulta Mercado Livre e Bling e guarda a lista no histórico">Gerar lista do dia</button>
-          <button class="act" id="ex-recarregar" title="Busca de novo as listas geradas">↻ Atualizar</button>
+          <button class="act prim" id="ex-gerar" title="Consulta Mercado Livre e Bling e guarda a listagem no painel">Gerar listagem</button>
+          <button class="act prim" id="ex-recarregar" title="Busca de novo as listagens geradas">↻ Atualizar</button>
           <select id="ex-f-leitura" title="Filtrar pela leitura">
             <option value="">Leitura: todas</option>
             <option value="nao">Não lidas</option>
             <option value="sim">Lidas</option>
           </select>
-          <span class="rot">de</span><input type="date" id="ex-f-de" title="Listas a partir deste dia">
-          <span class="rot">até</span><input type="date" id="ex-f-ate" title="Listas até este dia">
-          <button class="act" id="ex-f-limpar" title="Remove os filtros de leitura e de período">Limpar filtros</button>
+          <select id="ex-f-origem" title="Filtrar pela origem">
+            <option value="">Origem: todas</option>
+            <option value="auto">Automáticas</option>
+            <option value="manual">Manuais</option>
+          </select>
+          <input type="search" id="ex-f-busca" placeholder="Buscar pedido, envio ou SKU" title="Mostra só as listagens que têm esse pedido, envio ou SKU (Enter para buscar)" style="min-width:250px">
+          <span class="ex-atalhos">
+            <button class="act" data-atalho="hoje" title="Só as listagens de hoje">Hoje</button>
+            <button class="act" data-atalho="ontem" title="Só as listagens de ontem">Ontem</button>
+            <button class="act" data-atalho="7" title="Listagens dos últimos 7 dias">7 dias</button>
+          </span>
+          <span class="rot">de</span><input type="date" id="ex-f-de" title="Listagens a partir deste dia">
+          <span class="rot">até</span><input type="date" id="ex-f-ate" title="Listagens até este dia">
+          <button class="act prim" id="ex-f-limpar" title="Remove todos os filtros: leitura, origem, busca e período">Limpar filtros</button>
           <span id="ex-msg" style="font-size:12px;color:var(--muted)"></span>
         </div>
+        <div id="ex-rotina" class="ex-rotina" style="display:none"></div>
         <div id="ex-resumo" class="ex-resumo"></div>
         <div class="tablewrap"><div class="scroll"><table><thead><tr>
-          <th style="width:9%">Gerada às</th><th style="width:16%">Tipo</th><th style="width:15%">Origem</th>
-          <th>Resumo</th><th style="width:24%">Leitura</th>
+          <th style="width:9%">Gerada às</th><th style="width:20%">Origem</th>
+          <th>Resumo</th><th style="width:28%">Leitura</th>
         </tr></thead><tbody id="ex-painel-tbody"></tbody></table></div>
-        <div class="foot"><span id="ex-painel-cont">—</span><span>Clique numa lista para abrir</span></div></div>
+        <div class="foot"><span id="ex-painel-cont">—</span><span style="display:flex;align-items:center;gap:10px">
+          <button class="act" id="ex-prev" style="padding:4px 10px">‹ Anterior</button><span id="ex-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="ex-next" style="padding:4px 10px">Próxima ›</button>
+        </span></div></div>
       </div>
 
       <!-- DETALHE: uma lista aberta -->
@@ -1000,7 +1026,7 @@
 
     <!-- =================== TELA EXPEDIÇÃO — EMISSÃO DE ETIQUETAS =================== -->
     <section class="tela" id="scr-etiquetas">
-      <!-- PAINEL: as listas geradas (as mesmas da Lista do dia) -->
+      <!-- PAINEL: as listagens geradas (as mesmas da Listagem de Envios) -->
       <div id="et-painel">
         <div class="toolbar">
           <button class="act" id="et-recarregar" title="Busca de novo as listas">↻ Atualizar</button>
@@ -1009,7 +1035,7 @@
           <button class="act" id="et-f-limpar" title="Remove o filtro de período">Limpar filtros</button>
           <span id="et-msg" style="font-size:12px;color:var(--muted)"></span>
         </div>
-        <div class="ex-resumo">As listas são geradas na tela <b>Lista do dia</b>. Abra uma lista para escolher os envios do Mercado Livre (ME2) e emitir as etiquetas em <b>A4</b> (igual ao painel do ML) ou <b>térmica 10x15</b> (com o produto escrito nos dados adicionais da NF).</div>
+        <div class="ex-resumo">As listagens são geradas na tela <b>Listagem de Envios</b>. Abra uma lista para escolher os envios do Mercado Livre (ME2) e emitir as etiquetas em <b>A4</b> (igual ao painel do ML) ou <b>térmica 10x15</b> (com o produto escrito nos dados adicionais da NF).</div>
         <div class="tablewrap"><div class="scroll"><table><thead><tr>
           <th style="width:9%">Gerada às</th><th style="width:16%">Tipo</th><th style="width:15%">Origem</th>
           <th>Envios ME2</th><th style="width:28%">Etiquetas emitidas</th>
