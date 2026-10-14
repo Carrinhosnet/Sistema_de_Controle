@@ -43,8 +43,9 @@
 //     ITENS PARA PRODUÇÃO → só os de Origem "Fabricação Própria" no
 //        cadastro, somados por SKU, separados por transportadora e agência
 //   Fracionado aparece pelo SKU do produto base + medida ("CE8MM - 0,5
-//   metro"). Kit/Combo aparece DESMONTADO: componente + quantidade total
-//   ("R08M-KIT4" × 3 → "R08M - 12 unidades"). "Copiar para WhatsApp" copia com *negrito* do WhatsApp;
+//   metro"). Combo aparece DESMONTADO: produto + quantidade total
+//   ("R08M-KIT4" × 3 → "R08M - 12 unidades"). Kit continua pelo SKU do
+//   kit ("KIT-PD90-PD70 - 1 unidade"). "Copiar para WhatsApp" copia com *negrito* do WhatsApp;
 //   "Imprimir simplificada" sai numa folha A4 em pé.
 // =====================================================================
 const EXP = (function(){
@@ -244,9 +245,10 @@ const EXP = (function(){
   }
   const ehFabricacao=(i)=> semAcento(i.origem)==='fabricacao propria';
 
-  // Kit/Combo DESMONTADO (14/10/2026): no lugar do SKU do kit entra cada
-  // componente com a quantidade total (componente × quantidade comprada —
+  // COMBO DESMONTADO (14/10/2026): no lugar do SKU do combo entra o
+  // produto com a quantidade total (componente × quantidade comprada —
   // a função já manda multiplicado). R08M-KIT4 × 3 → R08M - 12 unidades.
+  // KIT (produtos diferentes) continua como estava: SKU DO KIT - quantidade.
   // O mesmo SKU repetido dentro do pacote é somado (kit + avulso = 1 linha).
   // Origem do componente: a do cadastro dele; em lista antiga, a do kit.
   function desmontar(itens){
@@ -260,7 +262,8 @@ const EXP = (function(){
       porChave.set(chave,novo); out.push(novo);
     };
     for(const i of (itens||[])){
-      if(i.componentes && i.componentes.length && !i.base_sku){
+      // só COMBO é desmontado; KIT continua pelo SKU do kit (decisão 14/10)
+      if(semAcento(i.tipo)==='combo' && i.componentes && i.componentes.length && !i.base_sku){
         for(const c of i.componentes) add({sku:c.sku, descricao:c.descricao, qtd:c.qtd,
           origem:(c.origem!==undefined && c.origem!==null)? c.origem : i.origem});
       } else add(i);
