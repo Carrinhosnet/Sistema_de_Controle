@@ -12,12 +12,15 @@
   :root{
     --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a;
     --text:#e6e8ec; --muted:#9aa1ad;
-    /* verde da marca. Sao tres tons porque o mesmo verde nao serve para tudo:
-       --accent  e TEXTO/borda sobre o fundo escuro (precisa ser claro o bastante)
-       --forte   e FUNDO de botao com texto branco (precisa ser escuro)
-       --soft    e preenchimento discreto (menu ativo, selo ADM) */
-    --accent:#26a269; --accent-soft:#102a1d;
-    --accent-forte:#0d5c37; --accent-forte-h:#0a4529;
+    /* verde da marca — VERDE-MENTA desde 14/10/2026 (mesmo do menu lateral).
+       --accent      TEXTO/borda/destaque sobre o fundo escuro
+       --forte       FUNDO dos botoes principais (com texto ESCURO: --accent-txt)
+       --forte-h     botao com o mouse em cima (um pouco mais claro)
+       --soft        preenchimento discreto (linha nao lida, selo ADM)
+       Antes era #26a269 / #0d5c37 / #0a4529 / #102a1d. A IMPRESSAO continua
+       no verde escuro (#0d5c37): menta em papel branco fica ilegivel. */
+    --accent:#34e3a0; --accent-soft:#0f2a22;
+    --accent-forte:#34e3a0; --accent-forte-h:#5cebb5; --accent-txt:#06281c;
     --ok:#22c55e; --danger:#ef4444; --warn:#f59e0b;
     --radius:10px; --font:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   }
@@ -56,8 +59,8 @@
                border:1px solid rgba(255,255,255,.16);border-radius:8px;color:var(--text)}
   .field input::placeholder{color:rgba(230,232,236,.45)}
   .field input:focus{outline:none;border-color:var(--accent);
-                     box-shadow:0 0 0 3px rgba(38,162,105,.30);background:rgba(255,255,255,.10)}
-  .btn{width:100%;padding:12px;background:var(--accent-forte);color:#fff;border:none;
+                     box-shadow:0 0 0 3px rgba(52,227,160,.30);background:rgba(255,255,255,.10)}
+  .btn{width:100%;padding:12px;background:var(--accent-forte);color:var(--accent-txt);border:none;
        border-radius:8px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
   .btn:hover{background:var(--accent-forte-h);transform:translateY(-1px)}
   .btn:active{transform:translateY(0)}
@@ -128,7 +131,8 @@
   .toolbar select{padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text)}
   .toolbar button.act{padding:9px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;white-space:nowrap}
   .toolbar button.act:hover{border-color:var(--accent)}
-  .toolbar button.prim{background:var(--accent-forte);color:#fff;border-color:var(--accent-forte)}
+  .toolbar button.prim{background:var(--accent-forte);color:var(--accent-txt);border-color:var(--accent-forte);font-weight:600}
+  .toolbar button.prim:hover:not(:disabled){background:var(--accent-forte-h);border-color:var(--accent-forte-h)}
   .toolbar button.act:disabled{opacity:.5;cursor:default}
   .toolbar input[type=date]{padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);color-scheme:dark}
   .toolbar .rot{font-size:12px;color:var(--muted)}
@@ -216,7 +220,7 @@
             background:var(--surface);border:1px solid var(--accent);border-left:4px solid var(--accent);border-radius:10px;
             padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:13px}
   .ex-toast b{color:var(--accent)}
-  .ex-toast button{padding:7px 12px;background:var(--accent-forte);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+  .ex-toast button{padding:7px 12px;background:var(--accent-forte);color:var(--accent-txt);border:none;border-radius:8px;cursor:pointer;font-weight:600}
   .ex-simples{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);margin-bottom:14px}
   .ex-simples-tit{padding:10px 14px;font-weight:600;background:var(--surface2);border-radius:var(--radius) var(--radius) 0 0}
   .ex-simples-tit span{font-weight:400;color:var(--muted);font-size:12px}
@@ -307,7 +311,7 @@
   .ini-tela svg{width:26px;height:26px;flex:none;fill:none;stroke:var(--cor);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
   .ini-tela span.t{font-size:13px;line-height:1.25}
   .ini-tela .ini-gbad{min-width:20px;height:20px;font-size:11px;top:10px;right:10px}
-  .ini-gerar{margin-left:10px;padding:6px 12px;border-radius:10px;background:var(--accent-forte);border:1px solid var(--accent-forte);color:#fff;cursor:pointer;font:inherit;font-size:12.5px}
+  .ini-gerar{margin-left:10px;padding:6px 12px;border-radius:10px;background:var(--accent-forte);border:1px solid var(--accent-forte);color:var(--accent-txt);cursor:pointer;font:inherit;font-size:12.5px;font-weight:600}
   /* Listagem de Envios: boxes-filtro (14/10/2026) */
   .kpis.ex-boxes{grid-template-columns:repeat(6,minmax(0,1fr))}
   @media (max-width:1100px){ .kpis.ex-boxes{grid-template-columns:repeat(3,minmax(0,1fr))} }
@@ -372,7 +376,7 @@
   .calc-sec{margin-top:18px;padding-top:14px;border-top:1px dashed var(--border)}
   .drawer .foot{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:10px}
   .drawer .foot button{flex:1;padding:10px;border-radius:8px;font-weight:600;cursor:pointer;border:none}
-  .btn-save{background:var(--accent-forte);color:#fff}
+  .btn-save{background:var(--accent-forte);color:var(--accent-txt)}
   .btn-cancel{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
   .drawer-erro{color:var(--danger);font-size:12px;padding:0 20px;min-height:16px}
 
@@ -384,7 +388,7 @@
   .res{width:100%;border-collapse:collapse;font-size:13px}
   .res th{text-align:left;color:var(--muted);font-weight:500;padding:8px;border-bottom:1px solid var(--border)}
   .res td{padding:8px;border-bottom:1px solid var(--border)}
-  .res button{padding:5px 10px;border-radius:6px;background:var(--accent-forte);color:#fff;border:none;cursor:pointer;font-size:12px}
+  .res button{padding:5px 10px;border-radius:6px;background:var(--accent-forte);color:var(--accent-txt);border:none;cursor:pointer;font-size:12px}
   .res input{padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px}
 
   /* menu lateral retrátil */
@@ -410,8 +414,8 @@
   .toggle-btn{background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:7px;cursor:pointer;flex-shrink:0;line-height:1}
   .toggle-btn:hover{color:var(--text);border-color:var(--accent)}
   #app.nav-hidden .sidebar{display:none}
-  .floating-toggle{position:fixed;top:12px;left:12px;z-index:70;display:none;background:var(--accent-forte);border:1px solid var(--accent-forte);color:#fff;width:38px;height:38px;border-radius:8px;cursor:pointer;font-size:16px}
-  .floating-toggle:hover{filter:brightness(1.1)}
+  .floating-toggle{position:fixed;top:12px;left:12px;z-index:70;display:none;background:var(--accent-forte);border:1px solid var(--accent-forte);color:var(--accent-txt);width:38px;height:38px;border-radius:8px;cursor:pointer;font-size:16px}
+  .floating-toggle:hover{background:var(--accent-forte-h)}
   #app.nav-hidden .floating-toggle{display:block}
 
   /* cadastros */
@@ -765,7 +769,7 @@
      de proposito: sobrescreve as regras antigas do menu sem precisar
      apaga-las. */
   :root{ --menu-bg:#0b1210; --menu-painel:#101a17; --menu-borda:rgba(52,227,160,.12);
-         --menu-verde:#34e3a0; --menu-verde-txt:#06281c; --menu-ico:#3ddc97; --menu-txt:#dfe5e2; --menu-tit:#6f7a76 }
+         --menu-verde:var(--accent); --menu-verde-txt:var(--accent-txt); --menu-ico:#3ddc97; --menu-txt:#dfe5e2; --menu-tit:#6f7a76 }
   #app.on{background:
      radial-gradient(900px 500px at -10% 110%, rgba(52,227,160,.07), transparent 60%),
      var(--bg)}
