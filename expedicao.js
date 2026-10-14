@@ -469,7 +469,7 @@ const EXP = (function(){
   // PAINEL: as listagens geradas (tela inicial) — 14/10/2026
   //   Paginado NO BANCO (30 por página): a tela só busca a página que
   //   mostra. Filtros: leitura, origem (automática/manual), busca por
-  //   pedido/envio/SKU, atalhos Hoje/Ontem/7 dias e período.
+  //   pedido/envio/SKU, período rápido (Hoje/Ontem/7/30 dias) e período.
   //   Agrupadas por dia, mais recente primeiro; dentro do dia as NÃO
   //   LIDAS vêm no topo. Não lida = automática que ninguém copiou nem
   //   imprimiu, DE QUALQUER DIA: conta no aviso da página até ser lida.
@@ -480,7 +480,7 @@ const EXP = (function(){
   function resumoLinha(l){
     const t=l.totais||{};
     if(l.tipo==='atualizacao'){
-      return `<span class="ex-atu">Atualização:</span> ${t.novas??0} ${Number(t.novas)===1?'venda nova':'vendas novas'} · ${t.canceladas??0} ${Number(t.canceladas)===1?'cancelada':'canceladas'}`;
+      return `Atualização: ${t.novas??0} ${Number(t.novas)===1?'venda nova':'vendas novas'} · ${t.canceladas??0} ${Number(t.canceladas)===1?'cancelada':'canceladas'}`;
     }
     const partes=[`${t.envios??'?'} envios`, `${t.unidades??'?'} un.`];
     if(t.atrasados) partes.push(`${t.atrasados} ${t.atrasados===1?'atrasado':'atrasados'}`);
@@ -515,7 +515,7 @@ const EXP = (function(){
         ? `<span class="ex-tag ex-tag-auto">Automática</span>`
         : `<span class="ex-tag ex-tag-manual">${escH(l.gerada_por||'Manual')}</span>`;
       const leitura= l.nao_lida
-        ? `<span class="ex-tag ex-tag-nl">NÃO LIDA</span> <span class="ex-lida">· contando no aviso</span>`
+        ? `<span class="ex-tag ex-tag-nl">NÃO LIDA</span>`
         : (l.automatica
             ? `<span class="ex-lida">Lida ${l.vista_em?quandoLeu(l.vista_em,l.dia):''}${l.vista_por_nome?' por '+escH(l.vista_por_nome):''}</span>`
             : `<span class="ex-lida">Gerada e lida ${quandoLeu(l.gerada_em,l.dia)}${l.gerada_por?' por '+escH(l.gerada_por):''}</span>`);
@@ -553,20 +553,20 @@ const EXP = (function(){
       el.innerHTML=t; el.style.display= t ? '' : 'none';
     }catch(e){ el.style.display='none'; }
   }
-  // atalhos de período
+  // período rápido (Hoje / Ontem / 7 dias / 30 dias): preenche as datas
   const diaMenos=(n)=>new Date(Date.now()-3*3600e3-n*86400e3).toISOString().slice(0,10);
-  function aplicarAtalho(a){
-    if(a==='hoje'){ f('f-de').value=hojeSP(); f('f-ate').value=hojeSP(); }
-    else if(a==='ontem'){ f('f-de').value=diaMenos(1); f('f-ate').value=diaMenos(1); }
-    else if(a==='7'){ f('f-de').value=diaMenos(6); f('f-ate').value=hojeSP(); }
+  const PERIODOS={ hoje:()=>[hojeSP(),hojeSP()], ontem:()=>[diaMenos(1),diaMenos(1)],
+                   '7':()=>[diaMenos(6),hojeSP()], '30':()=>[diaMenos(29),hojeSP()] };
+  function aplicarPeriodo(v){
+    if(PERIODOS[v]){ const [de,ate]=PERIODOS[v](); f('f-de').value=de; f('f-ate').value=ate; }
+    else if(v===''){ f('f-de').value=''; f('f-ate').value=''; }
   }
+  // datas digitadas à mão: mostra o período que bate, ou "personalizado"
   function marcarAtalho(){
     const de=f('f-de').value, ate=f('f-ate').value;
-    document.querySelectorAll('#ex-painel .ex-atalhos button').forEach(b=>{
-      const a=b.dataset.atalho;
-      const on=(a==='hoje'&&de===hojeSP()&&ate===hojeSP())||(a==='ontem'&&de===diaMenos(1)&&ate===diaMenos(1))||(a==='7'&&de===diaMenos(6)&&ate===hojeSP());
-      b.classList.toggle('on',on);
-    });
+    let v= (!de && !ate) ? '' : 'custom';
+    for(const k of Object.keys(PERIODOS)){ const [a,b]=PERIODOS[k](); if(de===a && ate===b){ v=k; break; } }
+    f('f-periodo').value=v;
   }
   async function carregarPainel(){
     try{
@@ -723,9 +723,9 @@ const EXP = (function(){
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
     ['f-leitura','f-origem','f-de','f-ate'].forEach(k=>f(k).addEventListener('change',recarregarDoInicio));
+    f('f-periodo').addEventListener('change',async()=>{ aplicarPeriodo(f('f-periodo').value); await recarregarDoInicio(); });
     f('f-busca').addEventListener('keydown',(ev)=>{ if(ev.key==='Enter') recarregarDoInicio(); });
     f('f-busca').addEventListener('search',recarregarDoInicio);   // "x" do campo limpa a busca
-    document.querySelectorAll('#ex-painel .ex-atalhos button').forEach(b=>b.addEventListener('click',async()=>{ aplicarAtalho(b.dataset.atalho); await recarregarDoInicio(); }));
     f('f-limpar').addEventListener('click',async()=>{
       f('f-leitura').value=''; f('f-origem').value=''; f('f-busca').value=''; f('f-de').value=''; f('f-ate').value='';
       await recarregarDoInicio();

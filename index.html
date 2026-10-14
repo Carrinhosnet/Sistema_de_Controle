@@ -200,15 +200,11 @@
   #ex-painel-tbody tr.ex-naolida td{background:var(--accent-soft)}
   #ex-painel-tbody tr.ex-naolida td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
   .ex-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid var(--border);white-space:nowrap}
-  .ex-tag-nl{color:#fff;background:var(--danger);border-color:var(--danger)}
+  .ex-tag-nl{color:var(--danger);border-color:var(--danger)}
   .ex-tag-atu{color:#60a5fa;border-color:#60a5fa}
-  .ex-tag-auto{color:#fff;background:var(--accent-forte);border-color:var(--accent-forte)}
-  .ex-tag-manual{color:#fff;background:#7c3aed;border-color:#7c3aed}
-  .ex-atu{color:#60a5fa;font-weight:600}
+  .ex-tag-auto{color:var(--accent);border-color:var(--accent)}
+  .ex-tag-manual{color:#a78bfa;border-color:#a78bfa}
   .ex-achado{font-size:11.5px;color:var(--warn)}
-  .ex-atalhos{display:inline-flex;gap:4px}
-  .ex-atalhos button.act{padding:9px 10px}
-  .ex-atalhos button.act.on{border-color:var(--accent);color:var(--accent)}
   .ex-rotina{background:rgba(200,30,30,.12);border:1px solid var(--danger);border-left:4px solid var(--danger);border-radius:10px;padding:10px 16px;margin:-4px 0 12px;font-size:13px;line-height:1.5}
   .ex-rotina b{color:var(--danger)}
   .ex-tag-pri{color:var(--accent);border-color:var(--accent)}
@@ -971,6 +967,7 @@
         <div class="toolbar">
           <button class="act prim" id="ex-gerar" title="Consulta Mercado Livre e Bling e guarda a listagem no painel">Gerar listagem</button>
           <button class="act prim" id="ex-recarregar" title="Busca de novo as listagens geradas">↻ Atualizar</button>
+          <input type="search" id="ex-f-busca" placeholder="Buscar pedido, envio ou SKU" title="Mostra só as listagens que têm esse pedido, envio ou SKU (Enter para buscar)" style="min-width:250px">
           <select id="ex-f-leitura" title="Filtrar pela leitura">
             <option value="">Leitura: todas</option>
             <option value="nao">Não lidas</option>
@@ -981,12 +978,14 @@
             <option value="auto">Automáticas</option>
             <option value="manual">Manuais</option>
           </select>
-          <input type="search" id="ex-f-busca" placeholder="Buscar pedido, envio ou SKU" title="Mostra só as listagens que têm esse pedido, envio ou SKU (Enter para buscar)" style="min-width:250px">
-          <span class="ex-atalhos">
-            <button class="act" data-atalho="hoje" title="Só as listagens de hoje">Hoje</button>
-            <button class="act" data-atalho="ontem" title="Só as listagens de ontem">Ontem</button>
-            <button class="act" data-atalho="7" title="Listagens dos últimos 7 dias">7 dias</button>
-          </span>
+          <select id="ex-f-periodo" title="Período rápido (preenche as datas de / até)">
+            <option value="">Período: todos</option>
+            <option value="hoje">Hoje</option>
+            <option value="ontem">Ontem</option>
+            <option value="7">Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="custom" hidden>Período: personalizado</option>
+          </select>
           <span class="rot">de</span><input type="date" id="ex-f-de" title="Listagens a partir deste dia">
           <span class="rot">até</span><input type="date" id="ex-f-ate" title="Listagens até este dia">
           <button class="act prim" id="ex-f-limpar" title="Remove todos os filtros: leitura, origem, busca e período">Limpar filtros</button>
