@@ -44,8 +44,9 @@
 //        cadastro, somados por SKU, separados por transportadora e agência
 //   Fracionado aparece pelo SKU do produto base + medida ("CE8MM - 0,5
 //   metro"). Combo aparece DESMONTADO: produto + quantidade total
-//   ("R08M-KIT4" × 3 → "R08M - 12 unidades"). Kit continua pelo SKU do
-//   kit ("KIT-PD90-PD70 - 1 unidade"). "Copiar para WhatsApp" copia com *negrito* do WhatsApp;
+//   ("R08M-KIT4" × 3 → "R08M - 12 unidades"). Kit fica pelo SKU do kit,
+//   com a composição: "P20D-1ABA60 (Kit com 1 unidade do P20D + 1
+//   unidade do 1ABA60) - 1 unidade do kit". "Copiar para WhatsApp" copia com *negrito* do WhatsApp;
 //   "Imprimir simplificada" sai numa folha A4 em pé.
 // =====================================================================
 const EXP = (function(){
@@ -239,8 +240,14 @@ const EXP = (function(){
     return String(u).toLowerCase();
   }
   // "CM65PP - 3 unidades" · fracionado: "CE8MM - 0,5 metro"
+  // KIT (14/10/2026): mostra a composição, para quem monta não errar:
+  //   "P20D-1ABA60 (Kit com 1 unidade do P20D + 1 unidade do 1ABA60) - 1 unidade do kit"
+  //   _porKit = quanto vai de cada componente em UM kit (vem do desmontar)
+  const un=(q)=>`${num(q)} ${Number(q)>=2?'unidades':'unidade'}`;
   function itemTxt(i){
     if(i.base_sku) return `${i.base_sku} - ${num(i.medida)} ${unidadeTxt(i.unidade,i.medida)}`;
+    if(i._porKit && i._porKit.length)
+      return `${i.sku||'(sem SKU)'} (Kit com ${i._porKit.map(c=>`${un(c.q)} do ${c.sku}`).join(' + ')}) - ${un(i.qtd)} do kit`;
     return `${i.sku||'(sem SKU)'} - ${num(i.qtd)} ${Number(i.qtd)>=2?'unidades':'unidade'}`;
   }
   const ehFabricacao=(i)=> semAcento(i.origem)==='fabricacao propria';
@@ -266,6 +273,11 @@ const EXP = (function(){
       if(semAcento(i.tipo)==='combo' && i.componentes && i.componentes.length && !i.base_sku){
         for(const c of i.componentes) add({sku:c.sku, descricao:c.descricao, qtd:c.qtd,
           origem:(c.origem!==undefined && c.origem!==null)? c.origem : i.origem});
+      } else if(i.componentes && i.componentes.length && !i.base_sku){
+        // KIT: fica pelo SKU do kit, com a composição de UM kit
+        // (os componentes vêm multiplicados pela quantidade comprada)
+        const q=Number(i.qtd)||1;
+        add(Object.assign({},i,{_porKit:i.componentes.map(c=>({sku:c.sku, q:Number(c.qtd||0)/q}))}));
       } else add(i);
     }
     return out;
@@ -431,7 +443,7 @@ const EXP = (function(){
     if(!LISTA){
       f('kpis').innerHTML=''; f('avisos').style.display='none';
       f('corpo').innerHTML='';
-      f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true;
+      f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true; f('etiquetas').disabled=true;
       f('simples').style.display='none'; f('titulo').textContent=''; f('nova').style.display='none'; return;
     }
     f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Lista do dia <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')}`;
@@ -446,6 +458,7 @@ const EXP = (function(){
     f('simples-texto').innerHTML=textoHtml(textoSimplificado(LISTA,true));
     f('simples').style.display='';
     f('imprimir').disabled=false; f('copiar').disabled=false; f('imprimir-simples').disabled=false;
+    f('etiquetas').disabled=!temPermissao('expedicao.gerar');
   }
 
   const hojeSP=()=>new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
@@ -628,6 +641,69 @@ const EXP = (function(){
   }
 
   // ---------------------------------------------------------------
+  // ETIQUETAS DO ML COM A DESCRIÇÃO (TESTE — 14/10/2026)
+  //   Função expedicao-etiquetas: baixa a etiqueta original de cada envio
+  //   da agência e devolve um PDF A4 com 3 etiquetas por folha, cada uma
+  //   com as linhas "SKU - quantidade" embaixo (mesmo texto da lista:
+  //   combo desmontado, fracionado pelo SKU base). Ordem = a dos PACOTES.
+  //   Também baixa o PDF original do ML, para conferir o formato.
+  //   No teste usa só etiquetas JÁ IMPRESSAS (baixar uma não impressa faz
+  //   o ML marcar como impressa); se não houver, pergunta antes.
+  // ---------------------------------------------------------------
+  function baixarArquivo(base64, nome){
+    const bin=atob(base64), u8=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([u8],{type:'application/pdf'}));
+    const a=document.createElement('a'); a.href=url; a.download=nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }
+  async function etiquetas(){
+    if(!LISTA || OCUPADO) return;
+    const fonte=LISTA.tipo==='atualizacao' ? (LISTA.novas||LISTA.envios||[]) : (LISTA.envios||[]);
+    const num=numerar(fonte,'agencia');
+    const ordem=[...num.atrasados,...num.hoje].filter(x=>x.e.envio);
+    const sit=(x)=>String(x.e.situacao||'').toUpperCase();
+    let escolhidos=ordem.filter(x=>sit(x).startsWith('ETIQUETA IMPRESSA'));
+    if(!escolhidos.length){
+      const liberadas=ordem.filter(x=>sit(x).startsWith('ETIQUETA LIBERADA'));
+      if(!liberadas.length){ msg('Nesta lista não há envio da agência com etiqueta liberada ou impressa.',true); return; }
+      if(!confirm(`Nenhuma etiqueta desta lista consta como impressa.\n\nBaixar as ${liberadas.length} etiquetas LIBERADAS? No Mercado Livre elas passam a constar como impressas (igual a baixar pelo painel).`)) return;
+      escolhidos=liberadas;
+    }
+    const envios=escolhidos.map(x=>({envio:String(x.e.envio), linhas:desmontar(x.e.itens).map(itemTxt)}));
+    OCUPADO=true; const b=f('etiquetas'); b.disabled=true;
+    msg(`Baixando ${envios.length} ${envios.length===1?'etiqueta':'etiquetas'} do Mercado Livre…`);
+    try{
+      const r=await chamarEtiquetas({acao:'etiquetas', envios});
+      const falhas=(r.info||[]).filter(i=>!i.ok);
+      const tam=[...new Set((r.info||[]).filter(i=>i.ok).flatMap(i=>i.tamanhos||[]))];
+      const pags=[...new Set((r.info||[]).filter(i=>i.ok).map(i=>i.paginas))];
+      const dia=(LISTA.dia||'').split('-').reverse().join('-');
+      baixarArquivo(r.pdf, `Etiquetas com descricao ${dia}.pdf`);
+      setTimeout(()=>baixarArquivo(r.original, `Etiquetas ML original ${dia}.pdf`), 800);
+      msg(`${envios.length-falhas.length} de ${envios.length} etiquetas baixadas · páginas por envio: ${pags.join('/')||'-'} · tamanho (pt): ${tam.join(', ')||'-'}`
+        + (falhas.length? ` · FALHARAM: ${falhas.map(i=>i.envio+' ('+i.erro+')').join('; ')}` : ''), !!falhas.length);
+    }catch(e){ msg('Etiquetas: '+e.message,true); }
+    finally{ OCUPADO=false; b.disabled=false; }
+  }
+  async function chamarEtiquetas(corpo){
+    if(USER && !verificarSessao()) throw new Error('Sessão expirada.');
+    renovarSessao();
+    let resp;
+    try{
+      resp=await fetch(FUNC_URL('expedicao-etiquetas'),{method:'POST',
+        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
+                 'Content-Type':'application/json','x-sessao':(USER&&USER.token)||''},
+        body:JSON.stringify(corpo)});
+    }catch(e){ throw new Error('Sem conexão com o servidor (a função expedicao-etiquetas foi publicada?).'); }
+    const txt=await resp.text(); let data; try{ data=JSON.parse(txt); }catch{ data=null; }
+    if(resp.ok && data && data.ok) return data;
+    const det=(data&&data.info||[]).filter(i=>!i.ok).map(i=>i.envio+': '+i.erro).join('; ');
+    throw new Error(((data&&data.erro)||('HTTP '+resp.status+(txt?': '+txt.slice(0,150):'')))+(det?' — '+det:''));
+  }
+
+  // ---------------------------------------------------------------
   // AVISO: lista automática nova (em qualquer tela do sistema)
   //   Confere a cada 2 minutos. O aviso flutuante e a bolinha do menu
   //   ficam até alguém copiar para o WhatsApp ou imprimir a lista.
@@ -657,6 +733,7 @@ const EXP = (function(){
     f('imprimir-simples').addEventListener('click',imprimirSimples);
     f('gerar').addEventListener('click',gerar);
     f('imprimir').addEventListener('click',imprimir);
+    f('etiquetas').addEventListener('click',etiquetas);
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
     f('f-leitura').addEventListener('change',renderPainel);
