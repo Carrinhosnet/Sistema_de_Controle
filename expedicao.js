@@ -40,6 +40,8 @@ const EXP = (function(){
   const f=(id)=>$('ex-'+id);
   const FUNCAO='expedicao-lista';
   let LISTA=null;        // conteúdo da lista aberta
+  let LISTA_BASE=null;   // na ATUALIZAÇÃO: a lista principal do dia (para a numeração dos pacotes)
+  let HIST=[];           // histórico carregado (para abrir a lista nova sozinho)
   let LISTA_ID=null;
   let OCUPADO=false;
 
@@ -176,7 +178,26 @@ const EXP = (function(){
     return h;
   }
 
+  function corpoAtualizacao(lista){
+    const cont={n:0}; let h='';
+    const novas=lista.novas||lista.envios||[], canc=lista.canceladas||[];
+    h+=`<div class="ex-bloco"><div class="ex-bt">VENDAS NOVAS — ${novas.length} ${novas.length===1?'envio':'envios'} desde a lista das ${escH(horaDe(new Date(new Date(lista.base_gerada_em||lista.gerada_em).getTime()-3*3600e3).toISOString()))}</div>`+
+       (novas.length? `<table class="ex-tab">${cabecalhoTabela(true)}<tbody>${linhasEnvios(novas,cont,true)}</tbody></table>` : `<p class="ex-vazio">Nenhuma venda nova para hoje.</p>`)+`</div>`;
+    h+=`<div class="ex-bloco ex-bloco-atraso"><div class="ex-bt">CANCELADAS — NÃO ENVIAR — ${canc.length}</div>`+
+       (canc.length? `<table class="ex-tab">${cabecalhoTabela(true)}<tbody>${linhasEnvios(canc,{n:0},true)}</tbody></table>` : `<p class="ex-vazio">Nenhum cancelamento.</p>`)+`</div>`;
+    return h;
+  }
+
   function caixas(lista){
+    if(lista.tipo==='atualizacao'){
+      const t=lista.totais||{};
+      return [
+        ['Vendas novas',t.novas??0,'Entraram depois da lista principal',''],
+        ['Unidades novas',t.unidades_novas??0,'Soma das quantidades',''],
+        ['Canceladas',t.canceladas??0,'Estavam na lista: NÃO enviar','ex-k-atraso'],
+        ['Já saíram',t.ja_sairam??0,'Saíram da lista porque foram despachadas',''],
+      ];
+    }
     const t=lista.totais||{};
     const canais=Object.entries(t.por_canal||{}).map(([c,n])=>`${c}: ${n}`).join(' · ');
     return [
@@ -219,57 +240,115 @@ const EXP = (function(){
     return horas[0]||'--:--';
   }
 
+  // ordem e número dos pacotes de uma seção (transportadora ou agência):
+  // atrasados primeiro, depois os de hoje, em ordem de SKU. É a MESMA
+  // numeração do texto da principal — a atualização usa para dizer qual
+  // pacote foi cancelado e para continuar a contagem das vendas novas.
+  function numerar(envios, via){
+    const doGrupo=(envios||[]).filter(e=>viaDe(e)===via);
+    const ordemSku=(a,b)=>itemTxt((a.itens||[])[0]||{}).localeCompare(itemTxt((b.itens||[])[0]||{}),'pt-BR',{numeric:true});
+    const atrasados=doGrupo.filter(e=>e.atrasado).sort((a,b)=>String(a.dia_despacho).localeCompare(String(b.dia_despacho))||ordemSku(a,b));
+    const hoje=doGrupo.filter(e=>!e.atrasado).sort(ordemSku);
+    let n=0;
+    const at=atrasados.map(e=>({e,n:++n})), hj=hoje.map(e=>({e,n:++n}));
+    return { atrasados:at, hoje:hj, ultimo:n, porChave:new Map([...at,...hj].map(x=>[x.e.chave,x.n])) };
+  }
+  const nPacote=(n)=>`PACOTE ${String(n).padStart(2,'0')}`;
+  const conteudoPacote=(e)=>(e.itens||[]).map(itemTxt).join(' + ');
+
+  // produção: só Fabricação Própria, somado por SKU (base, no fracionado)
+  function producao(envios, via){
+    const soma=new Map();
+    for(const e of (envios||[]).filter(x=>viaDe(x)===via)) for(const i of (e.itens||[])){
+      if(!ehFabricacao(i)) continue;
+      const chave=i.base_sku||i.sku;
+      const r=soma.get(chave)||Object.assign({},i,{qtd:0,medida:0});
+      r.qtd+=Number(i.qtd||0); r.medida+=Number(i.medida||0);
+      soma.set(chave,r);
+    }
+    const linhas=[...soma.values()].sort((a,b)=>itemTxt(a).localeCompare(itemTxt(b),'pt-BR',{numeric:true})).map(i=>`- ${itemTxt(i)};`);
+    return linhas.length? linhas : ['-'];
+  }
+  const diaExtenso=(dia)=>{ const [y,m,d]=String(dia).split('-').map(Number); return DIA_EXTENSO[new Date(y,m-1,d).getDay()]; };
+
   // Formato aprovado pelo Vinicius em 13/10/2026 (linha em branco depois
   // de cada título, títulos de seção em MAIÚSCULAS, separador antes da
   // produção). Mexer aqui muda o texto do WhatsApp E a impressão.
   const SEPARADOR='---------------------------------------------';
   function textoSimplificado(lista, negrito){
+    if(lista.tipo==='atualizacao') return textoAtualizacao(lista, negrito);
     const B=(t)=> negrito? `*${t}*` : t;
     const envios=lista.envios||[];
     const hora=horarioAgencia(envios);
     const T_TRANSP='ENVIAR VIA TRANSPORTADORA:';
     const T_AGENCIA=`ENVIAR VIA AGÊNCIA DO MERCADO LIVRE ATÉ ÀS ${hora}:`;
     const L=[];
-    const [y,m,d]=String(lista.dia).split('-').map(Number);
-    L.push(B(`VENDAS ${DIA_EXTENSO[new Date(y,m-1,d).getDay()]} (${ddmm(lista.dia)}):`));
+    L.push(B(`VENDAS ${diaExtenso(lista.dia)} (${ddmm(lista.dia)}):`));
 
     const secao=(titulo, via)=>{
-      const doGrupo=envios.filter(e=>viaDe(e)===via);
-      const ordemSku=(a,b)=>itemTxt((a.itens||[])[0]||{}).localeCompare(itemTxt((b.itens||[])[0]||{}),'pt-BR',{numeric:true});
-      const atrasados=doGrupo.filter(e=>e.atrasado).sort((a,b)=>String(a.dia_despacho).localeCompare(String(b.dia_despacho))||ordemSku(a,b));
-      const hoje=doGrupo.filter(e=>!e.atrasado).sort(ordemSku);
-      let n=0;
-      const pacote=(e,atr)=>`PACOTE ${String(++n).padStart(2,'0')}: ${(e.itens||[]).map(itemTxt).join(' + ')}`+
-        (atr? ` (era para ${ddmm(e.dia_despacho)})` : '');
+      const num=numerar(envios, via);
       L.push(''); L.push(B(titulo));
       L.push(''); L.push(B('Envios Atrasados:')); L.push('');
-      if(atrasados.length) atrasados.forEach(e=>L.push(pacote(e,true))); else L.push('-');
+      if(num.atrasados.length) num.atrasados.forEach(x=>L.push(`${nPacote(x.n)}: ${conteudoPacote(x.e)} (era para ${ddmm(x.e.dia_despacho)})`)); else L.push('-');
       L.push(''); L.push(B('Envios para Hoje:')); L.push('');
-      if(hoje.length) hoje.forEach(e=>L.push(pacote(e,false))); else L.push('-');
+      if(num.hoje.length) num.hoje.forEach(x=>L.push(`${nPacote(x.n)}: ${conteudoPacote(x.e)}`)); else L.push('-');
     };
     secao(T_TRANSP,'transportadora');
     secao(T_AGENCIA,'agencia');
 
-    // produção: só Fabricação Própria, somado por SKU (base, no fracionado)
-    const producao=(via)=>{
-      const soma=new Map();
-      for(const e of envios.filter(x=>viaDe(x)===via)) for(const i of (e.itens||[])){
-        if(!ehFabricacao(i)) continue;
-        const chave=i.base_sku||i.sku;
-        const r=soma.get(chave)||Object.assign({},i,{qtd:0,medida:0});
-        r.qtd+=Number(i.qtd||0); r.medida+=Number(i.medida||0);
-        soma.set(chave,r);
-      }
-      const linhas=[...soma.values()].sort((a,b)=>itemTxt(a).localeCompare(itemTxt(b),'pt-BR',{numeric:true})).map(i=>`- ${itemTxt(i)};`);
-      return linhas.length? linhas : ['-'];
-    };
     L.push(''); L.push(SEPARADOR); L.push('');
     L.push(B('ITENS PARA PRODUÇÃO:'));
-    L.push(''); L.push(B(T_TRANSP)); L.push(...producao('transportadora'));
-    L.push(''); L.push(B(T_AGENCIA)); L.push(...producao('agencia'));
+    L.push(''); L.push(B(T_TRANSP)); L.push(''); L.push(...producao(envios,'transportadora'));
+    L.push(''); L.push(B(T_AGENCIA)); L.push(''); L.push(...producao(envios,'agencia'));
     if(!(lista.versao>=2)) { L.push(''); L.push('(Lista gerada antes da versão com origem dos produtos: itens para produção não disponíveis.)'); }
     const conf=(lista.conferir||[]).length;
     if(conf){ L.push(''); L.push(B(`CONFERIR: ${conf} ${conf===1?'pedido':'pedidos'} — ver a lista completa no sistema.`)); }
+    return L.join('\n');
+  }
+
+  // ATUALIZAÇÃO (gerada depois do corte): só o que mudou desde a principal.
+  //   Vendas novas: continuam a numeração da principal (PACOTE 09, 10…).
+  //   Canceladas: com o MESMO número que tinham na principal, para achar
+  //   o pacote na pilha.
+  function textoAtualizacao(lista, negrito){
+    const B=(t)=> negrito? `*${t}*` : t;
+    const base=LISTA_BASE && LISTA_BASE.id===lista.base_id ? LISTA_BASE : null;
+    const baseEnvios=base? (base.envios||[]) : [];
+    const hora=horarioAgencia(baseEnvios.length? baseEnvios : (lista.novas||[])) !== '--:--'
+      ? horarioAgencia(baseEnvios.length? baseEnvios : (lista.novas||[]))
+      : ((lista.agenda&&lista.agenda.despacho)||'--:--');
+    const T_TRANSP='ENVIAR VIA TRANSPORTADORA:';
+    const T_AGENCIA=`ENVIAR VIA AGÊNCIA DO MERCADO LIVRE ATÉ ÀS ${hora}:`;
+    const novas=lista.novas||lista.envios||[], canc=lista.canceladas||[];
+    const L=[];
+    L.push(B(`ATUALIZAÇÃO VENDAS ${diaExtenso(lista.dia)} (${ddmm(lista.dia)}) - ${horaDe(new Date(new Date(lista.gerada_em).getTime()-3*3600e3).toISOString())}:`));
+
+    L.push(''); L.push(B('VENDAS NOVAS:'));
+    for(const [titulo,via] of [[T_TRANSP,'transportadora'],[T_AGENCIA,'agencia']]){
+      const ultimo=numerar(baseEnvios, via).ultimo;
+      const num=numerar(novas, via);
+      const linhas=[...num.atrasados,...num.hoje].map(x=>`${nPacote(ultimo+x.n)}: ${conteudoPacote(x.e)}`+(x.e.atrasado?` (era para ${ddmm(x.e.dia_despacho)})`:''));
+      L.push(''); L.push(B(titulo)); L.push('');
+      L.push(...(linhas.length? linhas : ['-']));
+    }
+
+    L.push(''); L.push(SEPARADOR); L.push('');
+    L.push(B('VENDAS CANCELADAS (NÃO ENVIAR):'));
+    for(const [titulo,via] of [[T_TRANSP,'transportadora'],[T_AGENCIA,'agencia']]){
+      const nums=numerar(baseEnvios, via).porChave;
+      const linhas=canc.filter(e=>viaDe(e)===via).map(e=>{
+        const n=nums.get(e.chave);
+        return `${n? nPacote(n) : 'PACOTE'}: ${conteudoPacote(e)}`;
+      });
+      L.push(''); L.push(B(titulo)); L.push('');
+      L.push(...(linhas.length? linhas : ['-']));
+    }
+
+    L.push(''); L.push(SEPARADOR); L.push('');
+    L.push(B('ITENS PARA PRODUÇÃO (VENDAS NOVAS):'));
+    L.push(''); L.push(B(T_TRANSP)); L.push(''); L.push(...producao(novas,'transportadora'));
+    L.push(''); L.push(B(T_AGENCIA)); L.push(''); L.push(...producao(novas,'agencia'));
+    if(!base) { L.push(''); L.push('(Não consegui abrir a lista principal do dia: os números dos pacotes podem não bater.)'); }
     return L.join('\n');
   }
 
@@ -282,6 +361,20 @@ const EXP = (function(){
       document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }finally{ ta.remove(); }
     }
     msg('Texto copiado. É só colar no WhatsApp.');
+    marcarVista();
+  }
+
+  // lista automática: o aviso some quando alguém copia ou imprime
+  async function marcarVista(){
+    if(!LISTA || !LISTA_ID || LISTA.vista_em) return;
+    try{
+      await rpc('cn_expedicao_marcar_vista',{p_usuario_id:USER.id,p_id:LISTA_ID});
+      LISTA.vista_em=new Date().toISOString();
+      const h=HIST.find(x=>x.id===LISTA_ID); if(h) h.vista_em=LISTA.vista_em;
+      montarHistorico(LISTA_ID); render();
+      verificarPendentes(true);
+      if(typeof atualizarBadges==='function') atualizarBadges();
+    }catch(e){ /* sem permissão ou sem rede: o aviso continua, sem travar a tela */ }
   }
 
   // texto com *negrito* do WhatsApp → HTML com <b>
@@ -297,36 +390,65 @@ const EXP = (function(){
       f('kpis').innerHTML=''; f('avisos').style.display='none';
       f('corpo').innerHTML=`<p class="ex-vazio">Clique em <b>Gerar lista do dia</b>, ou escolha uma lista já gerada.</p>`;
       f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true;
-      f('simples').style.display='none'; f('titulo').textContent=''; return;
+      f('simples').style.display='none'; f('titulo').textContent=''; f('nova').style.display='none'; return;
     }
-    f('titulo').innerHTML=`Lista do dia <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.gerada_por?' por '+escH(LISTA.gerada_por):''}`;
+    f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Lista do dia <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')}`;
+    const nova=LISTA.automatica && !LISTA.vista_em;
+    f('nova').style.display= nova ? '' : 'none';
+    f('nova').innerHTML= nova ? `<b>${LISTA.tipo==='atualizacao'?'Atualização automática nova':'Lista automática nova'}.</b> Copie para o WhatsApp ou imprima: o aviso some quando alguém fizer isso.` : '';
     f('kpis').innerHTML=caixas(LISTA).map(([l,v,h,c])=>`<div class="kpi ${c}"><div class="lbl">${l}</div><div class="hint">${escH(h)}</div><div class="val">${v}</div></div>`).join('');
     const av=(LISTA.avisos||[]);
     f('avisos').innerHTML=av.map(a=>`<div>• ${escH(a)}</div>`).join('');
     f('avisos').style.display=av.length?'':'none';
-    f('corpo').innerHTML=corpoLista(LISTA);
+    f('corpo').innerHTML= LISTA.tipo==='atualizacao' ? corpoAtualizacao(LISTA) : corpoLista(LISTA);
     f('simples-texto').innerHTML=textoHtml(textoSimplificado(LISTA,true));
     f('simples').style.display='';
     f('imprimir').disabled=false; f('copiar').disabled=false; f('imprimir-simples').disabled=false;
   }
 
+  const hojeSP=()=>new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
+  function rotuloHist(l){
+    const t=l.totais||{};
+    const hora=horaDe(new Date(new Date(l.gerada_em).getTime()-3*3600e3).toISOString());
+    const oque= l.tipo==='atualizacao' ? `Atualização: ${t.novas??0} novas, ${t.canceladas??0} canceladas` : `${t.envios??'?'} envios`;
+    const quem= l.automatica ? 'automática' : (l.gerada_por||'');
+    const nova= l.automatica && !l.vista_em && l.dia===hojeSP() ? '● NOVA — ' : '';
+    return `${nova}${diaSemana(l.dia)} ${brData(l.dia)} ${hora} — ${oque}${quem?' — '+quem:''}`;
+  }
+  function montarHistorico(selecionar){
+    f('hist').innerHTML='<option value="">Listas já geradas…</option>'+HIST.map(l=>`<option value="${l.id}">${escH(rotuloHist(l))}</option>`).join('');
+    if(selecionar) f('hist').value=String(selecionar);
+  }
   async function carregarHistorico(selecionar){
     try{
-      const r=await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:60});
-      f('hist').innerHTML='<option value="">Listas já geradas…</option>'+(r||[]).map(l=>{
-        const t=l.totais||{};
-        return `<option value="${l.id}">${escH(diaSemana(l.dia))} ${escH(brData(l.dia))} ${escH(horaDe(new Date(new Date(l.gerada_em).getTime()-3*3600e3).toISOString()))} — ${t.envios??'?'} envios${l.gerada_por?' — '+escH(l.gerada_por):''}</option>`;
-      }).join('');
-      if(selecionar) f('hist').value=String(selecionar);
+      HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:60}))||[];
+      montarHistorico(selecionar);
     }catch(e){ msg('Não consegui carregar o histórico: '+e.message,true); }
   }
 
-  async function abrirDoHistorico(){
-    const id=f('hist').value; if(!id||OCUPADO) return;
+  async function abrirLista(id){
+    if(!id||OCUPADO) return;
     msg('Abrindo…');
-    try{ LISTA=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(id)}); LISTA_ID=Number(id); msg(''); }
-    catch(e){ msg(e.message,true); }
+    try{
+      LISTA=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(id)}); LISTA_ID=Number(id);
+      LISTA_BASE=null;
+      if(LISTA.tipo==='atualizacao' && LISTA.base_id){
+        try{ LISTA_BASE=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(LISTA.base_id)}); }catch(e){ LISTA_BASE=null; }
+      }
+      f('hist').value=String(id); msg('');
+    }catch(e){ msg(e.message,true); }
     render();
+  }
+  async function abrirDoHistorico(){ await abrirLista(f('hist').value); }
+
+  // ao entrar na tela: a lista automática nova de hoje; senão, a mais
+  // recente de hoje; senão, nada aberto
+  async function abrirMaisRelevante(){
+    const hoje=hojeSP();
+    const nova=HIST.find(l=>l.automatica && !l.vista_em && l.dia===hoje);
+    const deHoje=HIST.find(l=>l.dia===hoje);
+    const alvo=nova||deHoje;
+    if(alvo) await abrirLista(alvo.id);
   }
 
   async function gerar(){
@@ -336,7 +458,7 @@ const EXP = (function(){
     msg('Consultando Mercado Livre e Bling… pode levar até 1 minuto.');
     try{
       const r=await chamar({acao:'gerar'});
-      LISTA=Object.assign({},r.lista,{gerada_por:USER&&USER.nome}); LISTA_ID=r.id;
+      LISTA=Object.assign({},r.lista,{gerada_por:USER&&USER.nome, automatica:false, vista_em:new Date().toISOString()}); LISTA_ID=r.id; LISTA_BASE=null;
       await carregarHistorico(r.id);
       msg((LISTA.avisos||[]).length? 'Lista gerada com avisos — veja abaixo.' : 'Lista gerada e guardada no histórico.', !!(LISTA.avisos||[]).length);
     }catch(e){ msg(e.message,true); }
@@ -377,16 +499,17 @@ const EXP = (function(){
     $('print-area').innerHTML=`<style>${CSS_PRINT}</style><div class="ex-p">
       <div class="pr-topo">
         <img src="logo-print.png" class="pr-logo" onerror="this.onerror=null;this.src='logo.png';this.className='pr-logo pr-logo-inv'">
-        <div><p class="pr-tit">Lista do dia — ${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</p>
-             <div class="pr-sub">Envios a despachar hoje e atrasados · Mercado Livre e Bling</div></div>
+        <div><p class="pr-tit">${LISTA.tipo==='atualizacao'?'Atualização da ':''}Lista do dia — ${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</p>
+             <div class="pr-sub">${LISTA.tipo==='atualizacao'?'Vendas novas e canceladas desde a lista principal':'Envios a despachar hoje e atrasados · Mercado Livre e Bling'}</div></div>
         <div class="pr-quando">Gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.gerada_por?'<br>por '+escH(LISTA.gerada_por):''}${LISTA_ID?'<br>Lista nº '+LISTA_ID:''}</div>
       </div>
       <div class="pr-kpis">${kp.map(([l,v])=>`<div class="pr-kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('')}</div>
       ${(LISTA.avisos||[]).length? `<div class="pr-warn" style="margin-bottom:6px">${(LISTA.avisos||[]).map(a=>'• '+escH(a)).join('<br>')}</div>`:''}
-      ${corpoLista(LISTA)}
+      ${LISTA.tipo==='atualizacao' ? corpoAtualizacao(LISTA) : corpoLista(LISTA)}
       <div class="pr-rodape"><span>Carrinhos_Net — Sistema de Controle</span><span>Envios com despacho depois de hoje: ${(LISTA.totais||{}).proximos_dias??0}</span></div>
     </div>`;
     window.print();
+    marcarVista();
   }
 
   const CSS_SIMPLES=`
@@ -399,8 +522,33 @@ const EXP = (function(){
   function imprimirSimples(){
     if(!LISTA) return;
     $('print-area').innerHTML=`<style>${CSS_SIMPLES}</style><div class="ex-s">${textoHtml(textoSimplificado(LISTA,true))}</div>
-      <div class="ex-s-rod">Carrinhos_Net — Lista do dia ${escH(brData(LISTA.dia))} · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA_ID?' · lista nº '+LISTA_ID:''}</div>`;
+      <div class="ex-s-rod">Carrinhos_Net — ${LISTA.tipo==='atualizacao'?'Atualização da ':''}Lista do dia ${escH(brData(LISTA.dia))} · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA_ID?' · lista nº '+LISTA_ID:''}</div>`;
     window.print();
+    marcarVista();
+  }
+
+  // ---------------------------------------------------------------
+  // AVISO: lista automática nova (em qualquer tela do sistema)
+  //   Confere a cada 2 minutos. O aviso flutuante e a bolinha do menu
+  //   ficam até alguém copiar para o WhatsApp ou imprimir a lista.
+  // ---------------------------------------------------------------
+  let ultimoCheck=0, ultimoUsuario=null;
+  async function verificarPendentes(forcar){
+    const t=$('ex-toast'); if(!t) return;
+    if(!USER || !temPermissao('expedicao.ver')){ t.style.display='none'; return; }
+    if(!forcar && Date.now()-ultimoCheck<120000 && ultimoUsuario===USER.id) return;
+    ultimoCheck=Date.now(); ultimoUsuario=USER.id;
+    try{
+      const n=Number(await rpc('cn_expedicao_pendencias',{p_usuario_id:USER.id}))||0;
+      t.style.display= n>0 ? '' : 'none';
+      if(n>0) $('ex-toast-txt').textContent= n===1 ? 'Lista do dia automática nova' : `${n} listas do dia automáticas novas`;
+    }catch(e){ t.style.display='none'; }
+  }
+  setInterval(()=>verificarPendentes(false), 30000);
+  async function abrirPendente(){
+    if(typeof mostrarTela==='function') mostrarTela('expedicao');
+    await carregarHistorico();
+    await abrirMaisRelevante();
   }
 
   function bind(){
@@ -415,8 +563,13 @@ const EXP = (function(){
     if(!temPermissao('expedicao.gerar')) f('gerar').title='Seu perfil pode ver e reimprimir listas, mas não gerar uma nova.';
     bind(); render();
     await carregarHistorico();
+    await abrirMaisRelevante();
   }
-  return { init };
+  // o aviso flutuante funciona mesmo antes de abrir a tela
+  document.addEventListener('DOMContentLoaded',()=>{
+    const b=$('ex-toast-abrir'); if(b) b.addEventListener('click',abrirPendente);
+  });
+  return { init, abrirPendente, verificarPendentes };
 })();
 
 registrarTela('expedicao', EXP);

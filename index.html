@@ -163,6 +163,13 @@
   #ex-corpo .ex-s-propria{color:#60a5fa;border-color:#60a5fa}
   #ex-corpo .ex-s-outra{color:var(--muted)}
   .ex-vazio{color:var(--muted);padding:30px;text-align:center}
+  .ex-nova{background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px}
+  /* aviso flutuante: lista automática nova (aparece em qualquer tela) */
+  .ex-toast{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;align-items:center;gap:12px;
+            background:var(--surface);border:1px solid var(--accent);border-left:4px solid var(--accent);border-radius:10px;
+            padding:12px 14px;box-shadow:0 8px 24px rgba(0,0,0,.45);font-size:13px}
+  .ex-toast b{color:var(--accent)}
+  .ex-toast button{padding:7px 12px;background:var(--accent-forte);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600}
   .ex-simples{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);margin-bottom:14px}
   .ex-simples-tit{padding:10px 14px;font-weight:600;background:var(--surface2);border-radius:var(--radius) var(--radius) 0 0}
   .ex-simples-tit span{font-weight:400;color:var(--muted);font-size:12px}
@@ -646,7 +653,7 @@
       </div>
       <div class="navgroup" id="grp-expedicao">
         <div class="navtit navtit-toggle" data-grp="grp-expedicao">Expedição<span class="caret">▾</span></div>
-        <button data-tela="expedicao" id="nav-expedicao"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1z"/><path d="M16 6h2.2a1.3 1.3 0 0 1 1.3 1.3v12.4a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V7.3A1.3 1.3 0 0 1 5.8 6H8"/><path d="M8.5 12l1.6 1.6 3-3M8.5 17h7"/></svg><span class="nav-lbl">Lista do dia</span></button>
+        <button data-tela="expedicao" id="nav-expedicao"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1z"/><path d="M16 6h2.2a1.3 1.3 0 0 1 1.3 1.3v12.4a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V7.3A1.3 1.3 0 0 1 5.8 6H8"/><path d="M8.5 12l1.6 1.6 3-3M8.5 17h7"/></svg><span class="nav-lbl">Lista do dia</span><span class="badge-dot" id="badge-expedicao" style="display:none"></span></button>
       </div>
       <div class="navgroup" id="grp-financeiro">
         <div class="navtit navtit-toggle" data-grp="grp-financeiro">Controle Financeiro<span class="caret">▾</span></div>
@@ -906,6 +913,7 @@
     </section>
 
     <!-- =================== TELA EXPEDIÇÃO — LISTA DO DIA =================== -->
+    <div id="ex-toast" class="ex-toast" style="display:none"><span>📦 <b id="ex-toast-txt">Lista do dia automática nova</b></span><button id="ex-toast-abrir">Abrir</button></div>
     <section class="tela" id="scr-expedicao">
       <div class="toolbar">
         <button class="act prim" id="ex-gerar" title="Consulta Mercado Livre e Bling e guarda a lista no histórico">Gerar lista do dia</button>
@@ -916,6 +924,7 @@
         <span id="ex-msg" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="ex-titulo" id="ex-titulo"></div>
+      <div id="ex-nova" class="ex-nova" style="display:none"></div>
       <div class="kpis" id="ex-kpis"></div>
       <div id="ex-avisos" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.5"></div>
       <div id="ex-simples" class="ex-simples" style="display:none">
@@ -2270,6 +2279,7 @@ async function atualizarBadges(){
     setDot('badge-reclamacoes',   temPermissao('reclamacoes.ver'),   'cn_reclamacoes_pendencias'),
     setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias'),
     setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias'),
+    setDot('badge-expedicao',     temPermissao('expedicao.ver'),     'cn_expedicao_pendencias'),
     setDot('badge-produtos',      temPermissao('produtos.ver'),      'cn_produtos_pendencias'),
     setDot('badge-frete',         temPermissao('frete.ver'),         'cn_frete_pendencias'),
     setDot('badge-valores',       temPermissao('valores.ver'),       'cn_valores_pendencias'),
