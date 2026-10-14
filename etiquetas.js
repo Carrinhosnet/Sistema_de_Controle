@@ -281,7 +281,46 @@ const ETQ = (function(){
   }
 
   // ---------------------------------------------------------------
+  // DIAGNÓSTICO (14/10/2026): baixa a etiqueta de 1 envio em PDF e em
+  // ZPL (térmica) e salva os arquivos + um resumo, para conferir o que
+  // a API do ML devolve em cada formato. Usa o 1º envio marcado ou, sem
+  // nenhum marcado, o 1º com etiqueta disponível.
+  // ---------------------------------------------------------------
+  function baixarBinario(base64, nome, tipo){
+    const bin=atob(base64), u8=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+    const url=URL.createObjectURL(new Blob([u8],{type:tipo}));
+    const a=document.createElement('a'); a.href=url; a.download=nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }
+  async function diagnostico(){
+    if(!LISTA || OCUPADO) return;
+    const todos=BLOCOS.flatMap(b=>b.linhas).map(x=>String(x.e.envio));
+    const envio=todos.find(id=>SEL.has(id)) || todos.find(id=>disponivel(id));
+    if(!envio){ msg('Marque um envio com etiqueta disponível para o diagnóstico.',true); return; }
+    if(!confirm(`Diagnóstico com o envio ${envio}.\n\nSe a etiqueta ainda não foi impressa, no Mercado Livre ela passa a constar como impressa.`)) return;
+    OCUPADO=true; msg(`Diagnóstico do envio ${envio}: baixando PDF e ZPL…`);
+    try{
+      const r=await chamar({acao:'diagnostico', envio});
+      const d=r.diagnostico||{};
+      const resumo=JSON.parse(JSON.stringify(d));
+      for(const t of ['pdf','zpl2']){
+        const x=d[t]; if(!x||!x.arquivo) continue;
+        const ext= x.inicio&&x.inicio.startsWith('%PDF') ? 'pdf' : (x.inicio&&x.inicio.startsWith('PK') ? 'zip' : 'txt');
+        baixarBinario(x.arquivo, `diagnostico ${envio} ${t}.${ext}`, ext==='pdf'?'application/pdf':(ext==='zip'?'application/zip':'text/plain'));
+        delete resumo[t].arquivo;
+      }
+      const txt=JSON.stringify(resumo,null,2);
+      setTimeout(()=>baixarBinario(btoa(unescape(encodeURIComponent(txt))), `diagnostico ${envio} resumo.json`, 'application/json'), 900);
+      msg(`Diagnóstico pronto: 3 arquivos baixados (PDF, ZPL e resumo). Mande os três.`);
+    }catch(e){ msg('Diagnóstico: '+e.message,true); }
+    finally{ OCUPADO=false; }
+  }
+
+  // ---------------------------------------------------------------
   function bind(){
+    if(f('diag')) f('diag').addEventListener('click',diagnostico);
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
     ['f-de','f-ate'].forEach(k=>f(k).addEventListener('change',async()=>{ msg(''); await carregarPainel(); }));
     f('f-limpar').addEventListener('click',async()=>{ f('f-de').value=''; f('f-ate').value=''; msg(''); await carregarPainel(); });
