@@ -43,7 +43,8 @@
 //     ITENS PARA PRODUÇÃO → só os de Origem "Fabricação Própria" no
 //        cadastro, somados por SKU, separados por transportadora e agência
 //   Fracionado aparece pelo SKU do produto base + medida ("CE8MM - 0,5
-//   metro"). "Copiar para WhatsApp" copia com *negrito* do WhatsApp;
+//   metro"). Kit/Combo aparece DESMONTADO: componente + quantidade total
+//   ("R08M-KIT4" × 3 → "R08M - 12 unidades"). "Copiar para WhatsApp" copia com *negrito* do WhatsApp;
 //   "Imprimir simplificada" sai numa folha A4 em pé.
 // =====================================================================
 const EXP = (function(){
@@ -243,6 +244,30 @@ const EXP = (function(){
   }
   const ehFabricacao=(i)=> semAcento(i.origem)==='fabricacao propria';
 
+  // Kit/Combo DESMONTADO (14/10/2026): no lugar do SKU do kit entra cada
+  // componente com a quantidade total (componente × quantidade comprada —
+  // a função já manda multiplicado). R08M-KIT4 × 3 → R08M - 12 unidades.
+  // O mesmo SKU repetido dentro do pacote é somado (kit + avulso = 1 linha).
+  // Origem do componente: a do cadastro dele; em lista antiga, a do kit.
+  function desmontar(itens){
+    const out=[], porChave=new Map();
+    const add=(x)=>{
+      const chave=(x.base_sku?'F:'+x.base_sku+'|'+semAcento(x.unidade):'S:'+(x.sku||''));
+      const r=porChave.get(chave);
+      if(r){ r.qtd+=Number(x.qtd||0); r.medida=Number(r.medida||0)+Number(x.medida||0); return; }
+      const novo=Object.assign({},x,{qtd:Number(x.qtd||0)});
+      if(x.base_sku) novo.medida=Number(x.medida||0);
+      porChave.set(chave,novo); out.push(novo);
+    };
+    for(const i of (itens||[])){
+      if(i.componentes && i.componentes.length && !i.base_sku){
+        for(const c of i.componentes) add({sku:c.sku, descricao:c.descricao, qtd:c.qtd,
+          origem:(c.origem!==undefined && c.origem!==null)? c.origem : i.origem});
+      } else add(i);
+    }
+    return out;
+  }
+
   function horarioAgencia(envios){
     const ag=envios.filter(e=>viaDe(e)==='agencia' && e.despachar_ate);
     const hoje=ag.filter(e=>!e.atrasado);
@@ -256,7 +281,7 @@ const EXP = (function(){
   // pacote foi cancelado e para continuar a contagem das vendas novas.
   function numerar(envios, via){
     const doGrupo=(envios||[]).filter(e=>viaDe(e)===via);
-    const ordemSku=(a,b)=>itemTxt((a.itens||[])[0]||{}).localeCompare(itemTxt((b.itens||[])[0]||{}),'pt-BR',{numeric:true});
+    const ordemSku=(a,b)=>itemTxt(desmontar(a.itens)[0]||{}).localeCompare(itemTxt(desmontar(b.itens)[0]||{}),'pt-BR',{numeric:true});
     const atrasados=doGrupo.filter(e=>e.atrasado).sort((a,b)=>String(a.dia_despacho).localeCompare(String(b.dia_despacho))||ordemSku(a,b));
     const hoje=doGrupo.filter(e=>!e.atrasado).sort(ordemSku);
     let n=0;
@@ -264,12 +289,12 @@ const EXP = (function(){
     return { atrasados:at, hoje:hj, ultimo:n, porChave:new Map([...at,...hj].map(x=>[x.e.chave,x.n])) };
   }
   const nPacote=(n)=>`PACOTE ${String(n).padStart(2,'0')}`;
-  const conteudoPacote=(e)=>(e.itens||[]).map(itemTxt).join(' + ');
+  const conteudoPacote=(e)=>desmontar(e.itens).map(itemTxt).join(' + ');
 
   // produção: só Fabricação Própria, somado por SKU (base, no fracionado)
   function producao(envios, via){
     const soma=new Map();
-    for(const e of (envios||[]).filter(x=>viaDe(x)===via)) for(const i of (e.itens||[])){
+    for(const e of (envios||[]).filter(x=>viaDe(x)===via)) for(const i of desmontar(e.itens)){
       if(!ehFabricacao(i)) continue;
       const chave=i.base_sku||i.sku;
       const r=soma.get(chave)||Object.assign({},i,{qtd:0,medida:0});
