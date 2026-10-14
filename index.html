@@ -242,6 +242,23 @@
   .kpi.c-edit{--kpc:#f59e0b}
   .kpi.c-envio{--kpc:#a855f7}
   .kpi.click .flag{display:none;font-size:10px;font-weight:600;color:var(--kpc);margin-top:4px}
+  /* Listagem de Envios: boxes-filtro (14/10/2026) */
+  .kpis.ex-boxes{grid-template-columns:repeat(6,minmax(0,1fr))}
+  @media (max-width:1100px){ .kpis.ex-boxes{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  .kpi.ex-c-hoje{--kpc:#22c55e}
+  .kpi.ex-c-atraso{--kpc:#b91c1c}
+  .kpi.ex-c-prox{--kpc:#2563eb}
+  .kpi.ex-c-prod{--kpc:#eab308}
+  .kpi.ex-c-conf2{--kpc:#a855f7}
+  .kpi.ex-c-todos{--kpc:var(--text)}
+  .kpi.ex-box-off{opacity:.45;cursor:not-allowed}
+  .ex-sel-total{font-size:12.5px;color:var(--muted);margin:-6px 0 14px}
+  .ex-sel-total b{color:var(--text)}
+  .ex-agenda{font-size:12px;color:var(--muted);margin-top:3px}
+  #ex-corpo .ex-bloco-hoje .ex-bt{border-left-color:#22c55e}
+  #ex-corpo .ex-bloco-prox .ex-bt{border-left-color:#2563eb}
+  #ex-corpo .ex-bloco-atraso .ex-bt{border-left-color:#b91c1c}
+  #ex-corpo tr.ex-via td{background:var(--surface2);font-size:11.5px;font-weight:600;color:var(--muted);padding:6px 10px}
   .kpi.click.on .flag{display:block}
   .kpis.linha2{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
 
@@ -1005,18 +1022,20 @@
       <!-- DETALHE: uma lista aberta -->
       <div id="ex-detalhe" style="display:none">
       <div class="toolbar">
-        <button class="act" id="ex-voltar" title="Volta para o painel com todas as listas">← Voltar ao painel</button>
-        <button class="act prim" id="ex-copiar" disabled title="Copia a lista simplificada, pronta para colar no WhatsApp">Copiar para WhatsApp</button>
-        <button class="act" id="ex-imprimir-simples" disabled title="Imprime a lista simplificada (A4 em pé): imprima ou escolha Salvar como PDF">Imprimir simplificada</button>
-        <button class="act" id="ex-imprimir" disabled title="Imprime a lista completa (A4 deitado): imprima ou escolha Salvar como PDF">Imprimir completa</button>
+        <button class="act" id="ex-voltar" title="Volta para o painel com todas as listagens">← Voltar ao painel</button>
+        <button class="act prim" id="ex-copiar" disabled title="Copia a listagem simplificada (segue os filtros dos boxes), pronta para colar no WhatsApp">Copiar listagem</button>
+        <button class="act prim" id="ex-imprimir-simples" disabled title="Imprime a listagem simplificada em MEIA FOLHA (A4 em pé, metade da esquerda; continua na da direita). Segue os filtros.">Imprimir Versão Simplificada</button>
+        <button class="act prim" id="ex-imprimir" disabled title="Imprime a página como está na tela (A4 deitado). Segue os filtros.">Imprimir Versão Completa</button>
+        <button class="act prim" id="ex-imprimir-resumo" disabled title="Imprime só o Resumo de Produtos em meia folha. Segue os filtros.">Imprimir Resumo de Produtos</button>
         <span id="ex-msg2" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="ex-titulo" id="ex-titulo"></div>
       <div id="ex-nova" class="ex-nova" style="display:none"></div>
-      <div class="kpis" id="ex-kpis"></div>
+      <div class="kpis ex-boxes" id="ex-kpis"></div>
+      <div class="ex-sel-total" id="ex-sel-total"></div>
       <div id="ex-avisos" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.5"></div>
       <div id="ex-simples" class="ex-simples" style="display:none">
-        <div class="ex-simples-tit">Lista simplificada <span>· é o texto que vai para o WhatsApp</span></div>
+        <div class="ex-simples-tit" id="ex-simples-tit">Listagem simplificada <span>· é o texto que vai ser copiado</span></div>
         <div id="ex-simples-texto" class="ex-simples-texto"></div>
       </div>
       <div id="ex-corpo"></div>

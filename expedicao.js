@@ -86,34 +86,64 @@ const EXP = (function(){
   }
 
   // ---------------------------------------------------------------
-  // organização da lista (uma fonte só para tela e PDF)
+  // FILTRO DOS BOXES (14/10/2026)
+  //   Boxes clicáveis, que se combinam (menos "Listagem completa"):
+  //     Envios para hoje · Atrasados · Próximos dias → somam entre si
+  //     Itens para produzir → lente: só envios/itens de Fabricação Própria;
+  //                           o texto mostra só ITENS PARA PRODUÇÃO
+  //                           (sozinho = o que sai hoje: hoje + atrasados)
+  //     Conferir            → acrescenta os pedidos a conferir
+  //     Listagem completa   → tudo (é o que abre selecionado)
+  //   O filtro vale para o texto copiado, os painéis, o resumo de
+  //   produtos e as três impressões.
   // ---------------------------------------------------------------
-  function skusDistintos(e){ return [...new Set((e.itens||[]).map(i=>i.sku||'(sem SKU)'))]; }
-  function montar(lista){
-    const envios=(lista.envios||[]).slice();
-    const porDespacho=(a,b)=>String(a.despachar_ate||a.dia_despacho).localeCompare(String(b.despachar_ate||b.dia_despacho));
-    const atrasados=envios.filter(e=>e.atrasado).sort((a,b)=>String(a.dia_despacho).localeCompare(String(b.dia_despacho)) || (skusDistintos(a)[0]||'').localeCompare(skusDistintos(b)[0]||''));
-    const hoje=envios.filter(e=>!e.atrasado);
-    const simples=hoje.filter(e=>skusDistintos(e).length<=1);
-    const mistos=hoje.filter(e=>skusDistintos(e).length>1).sort(porDespacho);
-    const grupos=new Map();
-    for(const e of simples){
-      const sku=skusDistintos(e)[0]||'(sem SKU)';
-      if(!grupos.has(sku)) grupos.set(sku,[]);
-      grupos.get(sku).push(e);
+  const FILTRO=new Set();                     // vazio = Listagem completa
+  const STATUS=['atrasados','hoje','proximos'];
+  function grupos(lista){
+    const ehAtu=lista.tipo==='atualizacao';
+    const base= ehAtu ? (lista.novas||lista.envios||[]) : (lista.envios||[]);
+    return { atrasados: base.filter(e=>e.atrasado), hoje: base.filter(e=>!e.atrasado),
+             proximos: Array.isArray(lista.proximos) ? lista.proximos : [],
+             temProximos: Array.isArray(lista.proximos),
+             conferir: lista.conferir||[], canceladas: ehAtu ? (lista.canceladas||[]) : [], ehAtu };
+  }
+  const itemProduz=(i)=>desmontar([i]).some(ehFabricacao);
+  const temProducao=(e)=>(e.itens||[]).some(itemProduz);
+  function visao(lista){
+    const g=grupos(lista);
+    const completa=!FILTRO.size;
+    const produzir=FILTRO.has('produzir');
+    let mostra= completa ? STATUS.slice() : STATUS.filter(s=>FILTRO.has(s));
+    if(!completa && !mostra.length && produzir) mostra=['atrasados','hoje'];   // produzir sozinho: o que sai hoje
+    const sel={};
+    for(const s of STATUS){
+      let l= mostra.includes(s) ? g[s] : [];
+      // itens para produzir: só os envios com produção, e só os itens de produção
+      if(produzir) l=l.filter(temProducao).map(e=>Object.assign({},e,{itens:(e.itens||[]).filter(itemProduz)}));
+      sel[s]=l;
     }
-    const produtos=[...grupos.entries()].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR',{numeric:true}))
-      .map(([sku,lst])=>({sku, descricao:(lst[0].itens[0]||{}).descricao||'', envios:lst.sort(porDespacho)}));
-    // resumo: pacotes e unidades por produto (todos os envios, inclusive atrasados e mistos)
-    const resumo=new Map();
-    for(const e of envios) for(const sku of skusDistintos(e)){
-      const it=(e.itens||[]).filter(i=>(i.sku||'(sem SKU)')===sku);
-      const r=resumo.get(sku)||{sku,descricao:(it[0]||{}).descricao||'',pacotes:0,unidades:0};
-      r.pacotes++; r.unidades+=it.reduce((s,i)=>s+Number(i.qtd||0),0);
-      resumo.set(sku,r);
+    // produção do texto: na listagem completa, só o que sai hoje
+    const prodStatus= completa ? ['atrasados','hoje'] : mostra;
+    return { g, completa, produzir, conferir: completa || FILTRO.has('conferir'), mostra, sel, prodStatus,
+             canceladas: (completa || mostra.some(s=>s!=='proximos')) && !produzir ? g.canceladas : [] };
+  }
+  const NOME_FILTRO={hoje:'Envios para hoje', atrasados:'Atrasados', proximos:'Próximos dias', produzir:'Itens para produzir', conferir:'Conferir'};
+  const rotuloFiltro=()=> FILTRO.size ? [...FILTRO].map(k=>NOME_FILTRO[k]).join(' + ') : 'Listagem completa';
+
+  // número do pacote (por via), igual ao texto: atualização continua a
+  // numeração da listagem principal do dia
+  function mapaPacotes(lista){
+    const m=new Map();
+    const ehAtu=lista.tipo==='atualizacao';
+    const base= ehAtu && LISTA_BASE && LISTA_BASE.id===lista.base_id ? (LISTA_BASE.envios||[]) : [];
+    const fonte= ehAtu ? (lista.novas||lista.envios||[]) : (lista.envios||[]);
+    for(const via of ['transportadora','agencia']){
+      const ini= ehAtu ? numerar(base,via).ultimo : 0;
+      const nu=numerar(fonte,via);
+      for(const x of [...nu.atrasados,...nu.hoje]) m.set(x.e.chave,{n:ini+x.n,via});
+      if(ehAtu) for(const [ch,n] of numerar(base,via).porChave) if(!m.has(ch)) m.set(ch,{n,via});
     }
-    return { atrasados, produtos, mistos, conferir:lista.conferir||[],
-             resumo:[...resumo.values()].sort((a,b)=>a.sku.localeCompare(b.sku,'pt-BR',{numeric:true})) };
+    return m;
   }
 
   // envio: número inteiro com os 5 últimos em destaque (como na etiqueta)
@@ -123,21 +153,23 @@ const EXP = (function(){
     return `${diaSemana(e.dia_despacho)} ${ddmm(e.dia_despacho)}`;
   }
   const corSituacao=(s)=> /^AGUARDANDO NF/.test(s)?'ex-s-nf' : /^ETIQUETA (LIBERADA|IMPRESSA)/.test(s)?'ex-s-ok' : /^ETIQUETA PRÓPRIA/.test(s)?'ex-s-propria' : 'ex-s-outra';
+  const NOME_VIA={transportadora:'Via transportadora (ME1, Venda Direta, Shopify…)', agencia:'Via agência do Mercado Livre'};
 
-  // linhas de uma tabela de envios; n = contador compartilhado da lista
-  function linhasEnvios(envios, cont, mostrarProduto){
+  // linhas de uma tabela de envios: uma linha por item, dados do envio
+  // agrupados (rowspan). Nº = número do pacote (o mesmo do texto)
+  function linhasEnvios(envios, nPac){
     let h='';
     for(const e of envios){
       const itens=e.itens||[];
+      const np=nPac(e);
       itens.forEach((it,k)=>{
         const primeira=k===0, span=itens.length;
         const comp=(it.componentes&&it.componentes.length)
           ? `<div class="ex-comp">contém: ${it.componentes.map(c=>`${c.qtd}× ${escH(c.sku)}${c.descricao?' '+escH(c.descricao):''}`).join(' · ')}</div>` : '';
         const fora=it.cadastro===false? ' <span class="ex-fora">(fora do cadastro)</span>' : '';
         h+=`<tr class="${primeira?'ex-novo':''}">`+
-          (primeira? `<td class="num ex-n" rowspan="${span}">${++cont.n}</td>` : '')+
-          (mostrarProduto? `<td class="ex-sku">${escH(it.sku||'(sem SKU)')}</td><td class="pr-desc ex-desc">${escH(it.descricao)}${fora}${comp}</td>`
-                         : `<td class="pr-desc ex-desc">${comp||'<span class="ex-mudo">—</span>'}</td>`)+
+          (primeira? `<td class="num ex-n" rowspan="${span}">${np?String(np).padStart(2,'0'):'—'}</td>` : '')+
+          `<td class="ex-sku">${escH(it.sku||'(sem SKU)')}</td><td class="pr-desc ex-desc">${escH(it.descricao)}${fora}${comp}</td>`+
           `<td class="num ex-qtd">${escH(it.qtd)}</td>`+
           (primeira? `<td rowspan="${span}">${escH(e.canal)}${e.tipo_envio&&e.tipo_envio!=='—'?`<div class="ex-mudo">${escH(e.tipo_envio)}</div>`:''}</td>
             <td rowspan="${span}" class="ex-envio">${envioHtml(e)}</td>
@@ -149,79 +181,107 @@ const EXP = (function(){
     }
     return h;
   }
-
-  function cabecalhoTabela(mostrarProduto){
-    return `<thead><tr><th class="num" style="width:4%">Nº</th>`+
-      (mostrarProduto? `<th style="width:9%">SKU</th><th style="width:20%">Descrição</th>` : `<th style="width:29%">Conteúdo</th>`)+
+  function cabecalhoTabela(){
+    return `<thead><tr><th class="num" style="width:5%">Nº</th><th style="width:9%">SKU</th><th style="width:20%">Descrição</th>`+
       `<th class="num" style="width:4%">Qtd</th><th style="width:10%">Canal</th><th style="width:13%">Envio</th>`+
-      `<th style="width:12%">Pedido</th><th style="width:12%">Despachar até</th><th style="width:16%">Situação</th></tr></thead>`;
+      `<th style="width:12%">Pedido</th><th style="width:11%">Despachar até</th><th style="width:16%">Situação</th></tr></thead>`;
+  }
+  const ordemSkuE=(a,b)=>itemTxt(desmontar(a.itens)[0]||{}).localeCompare(itemTxt(desmontar(b.itens)[0]||{}),'pt-BR',{numeric:true});
+
+  // um painel por situação; dentro dele, separado por via, na ordem do pacote
+  function painel(titulo, cls, envios, mapa, vazio){
+    const n=envios.length, un=envios.reduce((s,e)=>s+(e.itens||[]).reduce((t,i)=>t+Number(i.qtd||0),0),0);
+    let h=`<div class="ex-bloco ${cls}"><div class="ex-bt">${escH(titulo)}<span class="ex-bt-q">${n} ${n===1?'envio':'envios'}${n?` · ${num(un)} un.`:''}</span></div>`;
+    if(!n) return h+`<p class="ex-vazio">${escH(vazio||'Nenhum envio.')}</p></div>`;
+    h+=`<table class="ex-tab">${cabecalhoTabela()}<tbody>`;
+    for(const via of ['transportadora','agencia']){
+      let l=envios.filter(e=>viaDe(e)===via);
+      if(!l.length) continue;
+      const temNum=l.some(e=>mapa.has(e.chave));
+      l=l.slice().sort((a,b)=> temNum
+        ? ((mapa.get(a.chave)||{n:999}).n-(mapa.get(b.chave)||{n:999}).n)
+        : (String(a.dia_despacho).localeCompare(String(b.dia_despacho))||ordemSkuE(a,b)));
+      h+=`<tr class="ex-via"><td colspan="9">${escH(NOME_VIA[via])}</td></tr>`;
+      h+=linhasEnvios(l, (e)=>(mapa.get(e.chave)||{}).n);
+    }
+    return h+`</tbody></table></div>`;
+  }
+
+  // resumo de produtos: pacotes e unidades por SKU vendido (segue o filtro)
+  function resumoProdutos(lista){
+    const v=visao(lista);
+    const envios=STATUS.flatMap(s=>v.sel[s]);
+    const resumo=new Map();
+    for(const e of envios){
+      const porSku=new Map();
+      for(const i of (e.itens||[])){ const k=i.sku||'(sem SKU)'; porSku.set(k,(porSku.get(k)||[]).concat(i)); }
+      for(const [sku,it] of porSku){
+        const r=resumo.get(sku)||{sku,descricao:(it[0]||{}).descricao||'',pacotes:0,unidades:0};
+        r.pacotes++; r.unidades+=it.reduce((s,i)=>s+Number(i.qtd||0),0);
+        resumo.set(sku,r);
+      }
+    }
+    return [...resumo.values()].sort((a,b)=>a.sku.localeCompare(b.sku,'pt-BR',{numeric:true}));
   }
 
   function corpoLista(lista){
-    const m=montar(lista); const cont={n:0}; let h='';
-    if(m.atrasados.length){
-      h+=`<div class="ex-bloco ex-bloco-atraso"><div class="ex-bt">ATRASADOS — ${m.atrasados.length} ${m.atrasados.length===1?'envio':'envios'} (despacho vencido)</div>
-          <table class="ex-tab">${cabecalhoTabela(true)}<tbody>${linhasEnvios(m.atrasados,cont,true)}</tbody></table></div>`;
+    const v=visao(lista), mapa=mapaPacotes(lista); let h='';
+    if(v.mostra.includes('atrasados')) h+=painel('ATRASADOS','ex-bloco-atraso',v.sel.atrasados,mapa,'Nenhum envio atrasado.');
+    if(v.mostra.includes('hoje'))      h+=painel(v.g.ehAtu?'PARA ENVIO HOJE — VENDAS NOVAS':'PARA ENVIO HOJE','ex-bloco-hoje',v.sel.hoje,mapa,'Nenhum envio para hoje.');
+    if(v.mostra.includes('proximos'))  h+= v.g.temProximos
+      ? painel('PARA ENVIO NOS PRÓXIMOS DIAS','ex-bloco-prox',v.sel.proximos,mapa,'Nenhum envio para os próximos dias.')
+      : `<div class="ex-bloco ex-bloco-prox"><div class="ex-bt">PARA ENVIO NOS PRÓXIMOS DIAS</div><p class="ex-vazio">Esta listagem foi gerada antes de guardar os envios dos próximos dias.</p></div>`;
+    if(v.canceladas.length) h+=painel('CANCELADAS — NÃO ENVIAR','ex-bloco-atraso',v.canceladas,mapa);
+    if(v.conferir){
+      const c=v.g.conferir;
+      h+=`<div class="ex-bloco ex-bloco-conf"><div class="ex-bt">PARA CONFERIR<span class="ex-bt-q">${c.length} ${c.length===1?'pedido':'pedidos'}</span></div>`+
+        (c.length ? `<table class="ex-tab"><thead><tr><th style="width:12%">Canal</th><th style="width:20%">Pedido</th><th style="width:16%">Envio</th><th>O que conferir</th></tr></thead><tbody>`+
+          c.map(x=>`<tr><td>${escH(x.canal)}</td><td>${escH(x.pedido)}</td><td>${x.envio?envioHtml({envio:String(x.envio)}):'—'}</td><td class="pr-desc">${escH(x.motivo)}</td></tr>`).join('')+
+          `</tbody></table>` : `<p class="ex-vazio">Nada para conferir.</p>`)+`</div>`;
     }
-    for(const g of m.produtos){
-      const un=g.envios.reduce((s,e)=>s+e.itens.reduce((t,i)=>t+Number(i.qtd||0),0),0);
-      const it0=g.envios[0].itens[0]||{};
-      const comp=(it0.componentes&&it0.componentes.length)? ` <span class="ex-mudo">· ${escH(it0.tipo||'Kit')}</span>` : '';
-      const fora=it0.cadastro===false? ` <span class="ex-fora">(fora do cadastro: descrição do canal)</span>` : '';
-      h+=`<div class="ex-bloco"><div class="ex-bt"><span class="ex-bt-sku">${escH(g.sku)}</span> ${escH(g.descricao)}${comp}${fora}
-            <span class="ex-bt-q">${g.envios.length} ${g.envios.length===1?'pacote':'pacotes'} · ${un} un.</span></div>
-          <table class="ex-tab">${cabecalhoTabela(false)}<tbody>${linhasEnvios(g.envios,cont,false)}</tbody></table></div>`;
-    }
-    if(m.mistos.length){
-      h+=`<div class="ex-bloco"><div class="ex-bt">PEDIDOS MISTOS — ${m.mistos.length} ${m.mistos.length===1?'envio':'envios'} com mais de um produto</div>
-          <table class="ex-tab">${cabecalhoTabela(true)}<tbody>${linhasEnvios(m.mistos,cont,true)}</tbody></table></div>`;
-    }
-    if(!cont.n) h+=`<p class="ex-vazio">Nenhum envio para hoje.</p>`;
-    if(m.conferir.length){
-      h+=`<div class="ex-bloco ex-bloco-conf"><div class="ex-bt">CONFERIR — ${m.conferir.length} (não entram na contagem)</div>
-          <table class="ex-tab"><thead><tr><th style="width:12%">Canal</th><th style="width:20%">Pedido</th><th style="width:16%">Envio</th><th>O que conferir</th></tr></thead><tbody>`+
-          m.conferir.map(c=>`<tr><td>${escH(c.canal)}</td><td>${escH(c.pedido)}</td><td>${c.envio?envioHtml({envio:String(c.envio)}):'—'}</td><td class="pr-desc">${escH(c.motivo)}</td></tr>`).join('')+
-          `</tbody></table></div>`;
-    }
-    if(m.resumo.length){
-      h+=`<div class="ex-bloco ex-resumo"><div class="ex-bt">RESUMO PARA A EMBALAGEM — pacotes por produto</div>
+    const rs=resumoProdutos(lista);
+    if(rs.length){
+      h+=`<div class="ex-bloco ex-resumo"><div class="ex-bt">RESUMO DE PRODUTOS<span class="ex-bt-q">${rs.length} ${rs.length===1?'produto':'produtos'}</span></div>
           <table class="ex-tab"><thead><tr><th style="width:15%">SKU</th><th>Descrição</th><th class="num" style="width:10%">Pacotes</th><th class="num" style="width:10%">Unidades</th></tr></thead><tbody>`+
-          m.resumo.map(r=>`<tr><td class="ex-sku">${escH(r.sku)}</td><td class="pr-desc">${escH(r.descricao)}</td><td class="num">${r.pacotes}</td><td class="num">${r.unidades}</td></tr>`).join('')+
+          rs.map(r=>`<tr><td class="ex-sku">${escH(r.sku)}</td><td class="pr-desc">${escH(r.descricao)}</td><td class="num">${r.pacotes}</td><td class="num">${num(r.unidades)}</td></tr>`).join('')+
           `</tbody></table></div>`;
     }
     return h;
   }
 
-  function corpoAtualizacao(lista){
-    const cont={n:0}; let h='';
-    const novas=lista.novas||lista.envios||[], canc=lista.canceladas||[];
-    h+=`<div class="ex-bloco"><div class="ex-bt">VENDAS NOVAS — ${novas.length} ${novas.length===1?'envio':'envios'} desde a lista das ${escH(horaDe(new Date(new Date(lista.base_gerada_em||lista.gerada_em).getTime()-3*3600e3).toISOString()))}</div>`+
-       (novas.length? `<table class="ex-tab">${cabecalhoTabela(true)}<tbody>${linhasEnvios(novas,cont,true)}</tbody></table>` : `<p class="ex-vazio">Nenhuma venda nova para hoje.</p>`)+`</div>`;
-    h+=`<div class="ex-bloco ex-bloco-atraso"><div class="ex-bt">CANCELADAS — NÃO ENVIAR — ${canc.length}</div>`+
-       (canc.length? `<table class="ex-tab">${cabecalhoTabela(true)}<tbody>${linhasEnvios(canc,{n:0},true)}</tbody></table>` : `<p class="ex-vazio">Nenhum cancelamento.</p>`)+`</div>`;
-    return h;
-  }
-
-  function caixas(lista){
-    if(lista.tipo==='atualizacao'){
-      const t=lista.totais||{};
-      return [
-        ['Vendas novas',t.novas??0,'Entraram depois da lista principal',''],
-        ['Unidades novas',t.unidades_novas??0,'Soma das quantidades',''],
-        ['Canceladas',t.canceladas??0,'Estavam na lista: NÃO enviar','ex-k-atraso'],
-        ['Já saíram',t.ja_sairam??0,'Saíram da lista porque foram despachadas',''],
-      ];
-    }
-    const t=lista.totais||{};
-    const canais=Object.entries(t.por_canal||{}).map(([c,n])=>`${c}: ${n}`).join(' · ');
+  // boxes: cada um mostra só a sua contagem (não muda com a seleção)
+  function boxes(lista){
+    const g=grupos(lista);
+    const prod=[...g.atrasados,...g.hoje].filter(temProducao).length;
     return [
-      ['Envios',t.envios??0,canais||'—',''],
-      ['Unidades',t.unidades??0,'Soma das quantidades',''],
-      ['Atrasados',t.atrasados??0,'Despacho já venceu','ex-k-atraso'],
-      ['Aguardando NF',t.aguardando_nf??0,'Etiqueta ainda não liberada','ex-k-nf'],
-      ['Conferir',t.conferir??0,'Bling e ML não batem','ex-k-conf'],
-      ['Próximos dias',t.proximos_dias??0,'ML com despacho depois de hoje (fora da lista)',''],
+      ['hoje','Envios para hoje',g.hoje.length,'Despacho hoje','ex-c-hoje'],
+      ['atrasados','Atrasados',g.atrasados.length,'Despacho já venceu','ex-c-atraso'],
+      ['proximos','Próximos dias',g.temProximos?g.proximos.length:'—',g.temProximos?'Despacho depois de hoje':'Listagem antiga: não guardou','ex-c-prox'],
+      ['produzir','Itens para produzir',prod,'Envios com fabricação própria','ex-c-prod'],
+      ['conferir','Conferir',g.conferir.length,'Bling e ML não batem','ex-c-conf2'],
+      ['completa','Listagem completa',g.hoje.length+g.atrasados.length+g.proximos.length,'Mostra tudo','ex-c-todos'],
     ];
+  }
+  function htmlBoxes(lista){
+    const g=grupos(lista);
+    return boxes(lista).map(([k,l,val,hint,cor])=>{
+      const on= k==='completa' ? !FILTRO.size : FILTRO.has(k);
+      const off= k==='proximos' && !g.temProximos;
+      return `<div class="kpi click ex-box ${cor}${on?' on':''}${off?' ex-box-off':''}" data-box="${k}" title="${off?'Esta listagem não guardou os próximos dias':(k==='completa'?'Mostra tudo (limpa os filtros)':'Clique para filtrar; combine com outros boxes')}">
+        <div class="lbl">${escH(l)}</div><div class="hint">${escH(hint)}</div><div class="val">${val}</div><div class="flag">${k==='completa'?'MOSTRANDO TUDO':'FILTRANDO'}</div></div>`;
+    }).join('');
+  }
+  // total da seleção, em texto, logo abaixo dos boxes
+  function textoSelecao(lista){
+    const v=visao(lista);
+    const partes=STATUS.filter(s=>v.mostra.includes(s)&&(s!=='proximos'||v.g.temProximos)).map(s=>`${NOME_FILTRO[s]} ${v.sel[s].length}`);
+    const tot=STATUS.reduce((s,k)=>s+v.sel[k].length,0);
+    const un=STATUS.reduce((s,k)=>s+v.sel[k].reduce((a,e)=>a+(e.itens||[]).reduce((t,i)=>t+Number(i.qtd||0),0),0),0);
+    let t= partes.length ? `Mostrando <b>${tot}</b> ${tot===1?'envio':'envios'} (${partes.join(' + ')}) · ${num(un)} un.` : 'Mostrando só os pedidos a conferir';
+    if(v.produzir) t+=' · só itens de fabricação própria';
+    if(v.conferir && partes.length) t+=` · ${v.g.conferir.length} a conferir`;
+    if(v.canceladas.length) t+=` · ${v.canceladas.length} ${v.canceladas.length===1?'cancelada':'canceladas'}`;
+    return t;
   }
 
   // ---------------------------------------------------------------
@@ -324,82 +384,92 @@ const EXP = (function(){
 
   // Formato aprovado pelo Vinicius em 13/10/2026 (linha em branco depois
   // de cada título, títulos de seção em MAIÚSCULAS, separador antes da
-  // produção). Mexer aqui muda o texto do WhatsApp E a impressão.
+  // produção). 14/10: segue o FILTRO dos boxes; próximos dias por data e
+  // via; conferir com cada pedido. Mexer aqui muda o texto copiado E a
+  // impressão simplificada.
   const SEPARADOR='---------------------------------------------';
-  function textoSimplificado(lista, negrito){
-    if(lista.tipo==='atualizacao') return textoAtualizacao(lista, negrito);
-    const B=(t)=> negrito? `*${t}*` : t;
-    const envios=lista.envios||[];
-    const hora=horarioAgencia(envios);
-    const T_TRANSP='ENVIAR VIA TRANSPORTADORA:';
-    const T_AGENCIA=`ENVIAR VIA AGÊNCIA DO MERCADO LIVRE ATÉ ÀS ${hora}:`;
-    const L=[];
-    L.push(B(`VENDAS ${diaExtenso(lista.dia)} (${ddmm(lista.dia)}):`));
-
-    const secao=(titulo, via)=>{
-      const num=numerar(envios, via);
-      L.push(''); L.push(B(titulo));
-      L.push(''); L.push(B('Envios Atrasados:')); L.push('');
-      if(num.atrasados.length) num.atrasados.forEach(x=>L.push(`${nPacote(x.n)}: ${conteudoPacote(x.e)} (era para ${ddmm(x.e.dia_despacho)})`)); else L.push('-');
-      L.push(''); L.push(B('Envios para Hoje:')); L.push('');
-      if(num.hoje.length) num.hoje.forEach(x=>L.push(`${nPacote(x.n)}: ${conteudoPacote(x.e)}`)); else L.push('-');
-    };
-    secao(T_TRANSP,'transportadora');
-    secao(T_AGENCIA,'agencia');
-
-    L.push(''); L.push(SEPARADOR); L.push('');
-    L.push(B('ITENS PARA PRODUÇÃO:'));
-    L.push(''); L.push(B(T_TRANSP)); L.push(''); L.push(...producao(envios,'transportadora'));
-    L.push(''); L.push(B(T_AGENCIA)); L.push(''); L.push(...producao(envios,'agencia'));
-    if(!(lista.versao>=2)) { L.push(''); L.push('(Lista gerada antes da versão com origem dos produtos: itens para produção não disponíveis.)'); }
-    const conf=(lista.conferir||[]).length;
-    if(conf){ L.push(''); L.push(B(`CONFERIR: ${conf} ${conf===1?'pedido':'pedidos'} — ver a lista completa no sistema.`)); }
-    return L.join('\n');
+  function horaAgenciaLista(lista){
+    const base= lista.tipo==='atualizacao' && LISTA_BASE && LISTA_BASE.id===lista.base_id ? (LISTA_BASE.envios||[]) : (lista.envios||[]);
+    const h=horarioAgencia(base.length?base:(lista.novas||[]));
+    return h!=='--:--' ? h : ((lista.agenda&&lista.agenda.despacho)||'--:--');
   }
-
-  // ATUALIZAÇÃO (gerada depois do corte): só o que mudou desde a principal.
-  //   Vendas novas: continuam a numeração da principal (PACOTE 09, 10…).
-  //   Canceladas: com o MESMO número que tinham na principal, para achar
-  //   o pacote na pilha.
-  function textoAtualizacao(lista, negrito){
+  function textoSimplificado(lista, negrito){
     const B=(t)=> negrito? `*${t}*` : t;
-    const base=LISTA_BASE && LISTA_BASE.id===lista.base_id ? LISTA_BASE : null;
-    const baseEnvios=base? (base.envios||[]) : [];
-    const hora=horarioAgencia(baseEnvios.length? baseEnvios : (lista.novas||[])) !== '--:--'
-      ? horarioAgencia(baseEnvios.length? baseEnvios : (lista.novas||[]))
-      : ((lista.agenda&&lista.agenda.despacho)||'--:--');
+    const v=visao(lista), mapa=mapaPacotes(lista), ehAtu=lista.tipo==='atualizacao';
     const T_TRANSP='ENVIAR VIA TRANSPORTADORA:';
-    const T_AGENCIA=`ENVIAR VIA AGÊNCIA DO MERCADO LIVRE ATÉ ÀS ${hora}:`;
-    const novas=lista.novas||lista.envios||[], canc=lista.canceladas||[];
+    const T_AGENCIA=`ENVIAR VIA AGÊNCIA DO MERCADO LIVRE ATÉ ÀS ${horaAgenciaLista(lista)}:`;
+    const VIAS=[[T_TRANSP,'transportadora'],[T_AGENCIA,'agencia']];
     const L=[];
-    L.push(B(`ATUALIZAÇÃO VENDAS ${diaExtenso(lista.dia)} (${ddmm(lista.dia)}) - ${horaDe(new Date(new Date(lista.gerada_em).getTime()-3*3600e3).toISOString())}:`));
+    const pac=(e)=>{ const x=mapa.get(e.chave); return x? nPacote(x.n) : 'PACOTE'; };
+    const ord=(l)=>l.slice().sort((a,b)=>((mapa.get(a.chave)||{n:999}).n-(mapa.get(b.chave)||{n:999}).n));
+    L.push(B(ehAtu
+      ? `ATUALIZAÇÃO VENDAS ${diaExtenso(lista.dia)} (${ddmm(lista.dia)}) - ${horaDe(new Date(new Date(lista.gerada_em).getTime()-3*3600e3).toISOString())}:`
+      : `VENDAS ${diaExtenso(lista.dia)} (${ddmm(lista.dia)}):`));
+    let blocos=0;
+    const sep=()=>{ if(blocos++) { L.push(''); L.push(SEPARADOR); } };
 
-    L.push(''); L.push(B('VENDAS NOVAS:'));
-    for(const [titulo,via] of [[T_TRANSP,'transportadora'],[T_AGENCIA,'agencia']]){
-      const ultimo=numerar(baseEnvios, via).ultimo;
-      const num=numerar(novas, via);
-      const linhas=[...num.atrasados,...num.hoje].map(x=>`${nPacote(ultimo+x.n)}: ${conteudoPacote(x.e)}`+(x.e.atrasado?` (era para ${ddmm(x.e.dia_despacho)})`:''));
-      L.push(''); L.push(B(titulo)); L.push('');
-      L.push(...(linhas.length? linhas : ['-']));
+    if(!v.produzir){
+      // envios do dia (atrasados / hoje), por via
+      const doDia=['atrasados','hoje'].filter(s=>v.mostra.includes(s));
+      if(doDia.length){
+        sep();
+        if(ehAtu){ L.push(''); L.push(B('VENDAS NOVAS:')); }
+        for(const [titulo,via] of VIAS){
+          L.push(''); L.push(B(titulo));
+          if(doDia.includes('atrasados')){
+            const l=ord(v.sel.atrasados.filter(e=>viaDe(e)===via));
+            L.push(''); L.push(B('Envios Atrasados:')); L.push('');
+            if(l.length) l.forEach(e=>L.push(`${pac(e)}: ${conteudoPacote(e)} (era para ${ddmm(e.dia_despacho)})`)); else L.push('-');
+          }
+          if(doDia.includes('hoje')){
+            const l=ord(v.sel.hoje.filter(e=>viaDe(e)===via));
+            L.push(''); L.push(B('Envios para Hoje:')); L.push('');
+            if(l.length) l.forEach(e=>L.push(`${pac(e)}: ${conteudoPacote(e)}`)); else L.push('-');
+          }
+        }
+      }
+      // próximos dias: por data e via, sem número de pacote
+      if(v.mostra.includes('proximos') && v.g.temProximos){
+        sep();
+        L.push(''); L.push(B('ENVIOS PRÓXIMOS DIAS:'));
+        const prox=v.sel.proximos;
+        if(!prox.length){ L.push(''); L.push('-'); }
+        const dias=[...new Set(prox.map(e=>e.dia_despacho))].sort();
+        for(const d of dias) for(const [via,nome] of [['agencia','VIA AGÊNCIA'],['transportadora','VIA TRANSPORTADORA']]){
+          const l=prox.filter(e=>e.dia_despacho===d && viaDe(e)===via).sort(ordemSkuE);
+          if(!l.length) continue;
+          L.push(''); L.push(B(`${diaExtenso(d)} (${ddmm(d)}) — ${nome}:`)); L.push('');
+          l.forEach(e=>L.push(`- ${conteudoPacote(e)};`));
+        }
+      }
+      // atualização: canceladas, com o número que tinham na principal
+      if(v.canceladas.length){
+        sep();
+        L.push(''); L.push(B('VENDAS CANCELADAS (NÃO ENVIAR):'));
+        for(const [titulo,via] of VIAS){
+          const l=v.canceladas.filter(e=>viaDe(e)===via);
+          L.push(''); L.push(B(titulo)); L.push('');
+          L.push(...(l.length? l.map(e=>`${pac(e)}: ${conteudoPacote(e)}`) : ['-']));
+        }
+      }
     }
 
-    L.push(''); L.push(SEPARADOR); L.push('');
-    L.push(B('VENDAS CANCELADAS (NÃO ENVIAR):'));
-    for(const [titulo,via] of [[T_TRANSP,'transportadora'],[T_AGENCIA,'agencia']]){
-      const nums=numerar(baseEnvios, via).porChave;
-      const linhas=canc.filter(e=>viaDe(e)===via).map(e=>{
-        const n=nums.get(e.chave);
-        return `${n? nPacote(n) : 'PACOTE'}: ${conteudoPacote(e)}`;
-      });
-      L.push(''); L.push(B(titulo)); L.push('');
-      L.push(...(linhas.length? linhas : ['-']));
+    // itens para produção (do que está filtrado; na completa, o que sai hoje)
+    const prodEnvios=v.prodStatus.flatMap(s=>v.sel[s]);
+    if(v.prodStatus.length && (v.produzir || v.completa || v.mostra.length)){
+      sep();
+      L.push(''); L.push(B(ehAtu?'ITENS PARA PRODUÇÃO (VENDAS NOVAS):':'ITENS PARA PRODUÇÃO:'));
+      for(const [titulo,via] of VIAS){ L.push(''); L.push(B(titulo)); L.push(''); L.push(...producao(prodEnvios,via)); }
+      if(!(lista.versao>=2)) { L.push(''); L.push('(Listagem gerada antes da versão com origem dos produtos: itens para produção não disponíveis.)'); }
     }
 
-    L.push(''); L.push(SEPARADOR); L.push('');
-    L.push(B('ITENS PARA PRODUÇÃO (VENDAS NOVAS):'));
-    L.push(''); L.push(B(T_TRANSP)); L.push(''); L.push(...producao(novas,'transportadora'));
-    L.push(''); L.push(B(T_AGENCIA)); L.push(''); L.push(...producao(novas,'agencia'));
-    if(!base) { L.push(''); L.push('(Não consegui abrir a lista principal do dia: os números dos pacotes podem não bater.)'); }
+    // conferir: cada pedido com o motivo
+    if(v.conferir && v.g.conferir.length){
+      sep();
+      L.push(''); L.push(B(`CONFERIR (${v.g.conferir.length} ${v.g.conferir.length===1?'PEDIDO':'PEDIDOS'}):`)); L.push('');
+      v.g.conferir.forEach(c=>L.push(`- Pedido ${c.pedido}${c.canal?' ('+c.canal+')':''}: ${c.motivo}`));
+    }
+    if(ehAtu && !(LISTA_BASE && LISTA_BASE.id===lista.base_id)) { L.push(''); L.push('(Não consegui abrir a listagem principal do dia: os números dos pacotes podem não bater.)'); }
     return L.join('\n');
   }
 
@@ -411,7 +481,7 @@ const EXP = (function(){
       const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
       document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); }finally{ ta.remove(); }
     }
-    msg('Texto copiado. É só colar no WhatsApp.');
+    msg(FILTRO.size ? `Listagem copiada (filtro: ${rotuloFiltro()}).` : 'Listagem copiada. É só colar no WhatsApp.');
     marcarVista();
   }
 
@@ -441,24 +511,39 @@ const EXP = (function(){
   }
 
   function render(){
+    const bts=['imprimir','copiar','imprimir-simples','imprimir-resumo'];
     if(!LISTA){
-      f('kpis').innerHTML=''; f('avisos').style.display='none';
+      f('kpis').innerHTML=''; f('avisos').style.display='none'; f('sel-total').innerHTML='';
       f('corpo').innerHTML='';
-      f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true;
+      bts.forEach(k=>{ if(f(k)) f(k).disabled=true; });
       f('simples').style.display='none'; f('titulo').textContent=''; f('nova').style.display='none'; return;
     }
-    f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Listagem de envios <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')}`;
+    const ag=agendaTxt(LISTA);
+    f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Listagem de envios <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')}`
+      +(ag?`<div class="ex-agenda">${escH(ag)}</div>`:'');
     const nova=LISTA.automatica && !LISTA.vista_em;
     f('nova').style.display= nova ? '' : 'none';
-    f('nova').innerHTML= nova ? `<b>${LISTA.tipo==='atualizacao'?'Atualização automática nova':'Lista automática nova'}.</b> Copie para o WhatsApp ou imprima: o aviso some quando alguém fizer isso.` : '';
-    f('kpis').innerHTML=caixas(LISTA).map(([l,v,h,c])=>`<div class="kpi ${c}"><div class="lbl">${l}</div><div class="hint">${escH(h)}</div><div class="val">${v}</div></div>`).join('');
+    f('nova').innerHTML= nova ? `<b>${LISTA.tipo==='atualizacao'?'Atualização automática não lida':'Listagem automática não lida'}.</b> Copie ou imprima: o aviso some quando alguém fizer isso.` : '';
+    f('kpis').innerHTML=htmlBoxes(LISTA);
+    f('sel-total').innerHTML=textoSelecao(LISTA);
     const av=(LISTA.avisos||[]);
     f('avisos').innerHTML=av.map(a=>`<div>• ${escH(a)}</div>`).join('');
     f('avisos').style.display=av.length?'':'none';
-    f('corpo').innerHTML= LISTA.tipo==='atualizacao' ? corpoAtualizacao(LISTA) : corpoLista(LISTA);
+    f('corpo').innerHTML=corpoLista(LISTA);
+    f('simples-tit').innerHTML= FILTRO.size
+      ? `Listagem simplificada <span>· filtrada: ${escH(rotuloFiltro())} — é o texto que vai ser copiado</span>`
+      : `Listagem simplificada <span>· é o texto que vai ser copiado</span>`;
     f('simples-texto').innerHTML=textoHtml(textoSimplificado(LISTA,true));
     f('simples').style.display='';
-    f('imprimir').disabled=false; f('copiar').disabled=false; f('imprimir-simples').disabled=false;
+    bts.forEach(k=>{ if(f(k)) f(k).disabled=false; });
+  }
+  // clique nos boxes: liga/desliga o filtro; "Listagem completa" limpa tudo
+  function clicarBox(k){
+    if(!LISTA) return;
+    if(k==='completa') FILTRO.clear();
+    else if(k==='proximos' && !grupos(LISTA).temProximos) return;
+    else if(FILTRO.has(k)) FILTRO.delete(k); else FILTRO.add(k);
+    render();
   }
 
   const hojeSP=()=>new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
@@ -589,7 +674,7 @@ const EXP = (function(){
 
   function mostrarPainel(){
     f('detalhe').style.display='none'; f('painel').style.display='';
-    LISTA=null; LISTA_ID=null; LISTA_BASE=null; msg('');
+    LISTA=null; LISTA_ID=null; LISTA_BASE=null; FILTRO.clear(); msg('');
     renderPainel();
   }
   function mostrarDetalhe(){
@@ -601,7 +686,7 @@ const EXP = (function(){
     if(!id||OCUPADO) return;
     msg('Abrindo…');
     try{
-      LISTA=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(id)}); LISTA_ID=Number(id);
+      LISTA=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(id)}); LISTA_ID=Number(id); FILTRO.clear();
       LISTA_BASE=null;
       if(LISTA.tipo==='atualizacao' && LISTA.base_id){
         try{ LISTA_BASE=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(LISTA.base_id)}); }catch(e){ LISTA_BASE=null; }
@@ -617,7 +702,7 @@ const EXP = (function(){
     msg('Consultando Mercado Livre e Bling… pode levar até 1 minuto.');
     try{
       const r=await chamar({acao:'gerar'});
-      LISTA=Object.assign({},r.lista,{gerada_por:USER&&USER.nome, automatica:false, vista_em:new Date().toISOString()}); LISTA_ID=r.id; LISTA_BASE=null;
+      LISTA=Object.assign({},r.lista,{gerada_por:USER&&USER.nome, automatica:false, vista_em:new Date().toISOString()}); LISTA_ID=r.id; LISTA_BASE=null; FILTRO.clear();
       await carregarPainel();
       render(); mostrarDetalhe();
       msg((LISTA.avisos||[]).length? 'Lista gerada com avisos — veja abaixo.' : 'Lista gerada e guardada no painel.', !!(LISTA.avisos||[]).length);
@@ -633,10 +718,11 @@ const EXP = (function(){
       #print-area .ex-p{font-size:8.5pt}
       #print-area .ex-bloco{margin-bottom:7px;break-inside:auto}
       #print-area .ex-bt{font-size:9.5pt;font-weight:700;padding:4px 6px;background:#e9edf1;border-left:3px solid #0d5c37;margin-top:4px;break-after:avoid}
-      #print-area .ex-bt-sku{font-family:monospace;font-size:10pt}
       #print-area .ex-bt-q{float:right;font-weight:600;color:#3a4049}
-      #print-area .ex-bloco-atraso .ex-bt{border-left-color:#c81e1e;color:#c81e1e;background:#fdecec}
+      #print-area .ex-bloco-atraso .ex-bt{border-left-color:#991b1b;color:#991b1b;background:#fdecec}
+      #print-area .ex-bloco-prox .ex-bt{border-left-color:#1d4ed8;background:#eaf0fd}
       #print-area .ex-bloco-conf .ex-bt{border-left-color:#7c3aed;background:#f3eefe}
+      #print-area tr.ex-via td{font-size:7.5pt;font-weight:700;background:#f4f6f8;color:#3a4049}
       #print-area .ex-tab td{font-size:8.5pt;padding:3px 5px;white-space:normal;overflow:visible;text-overflow:clip}
       #print-area .ex-n{font-weight:700}
       #print-area .ex-qtd{font-weight:700;font-size:10pt !important}
@@ -645,46 +731,104 @@ const EXP = (function(){
       #print-area .ex-comp{font-size:7pt;color:#5b6472;margin-top:1px}
       #print-area .ex-mudo{font-size:7pt;color:#5b6472}
       #print-area .ex-fora{font-size:7pt;color:#b45309}
-      #print-area .ex-atraso{color:#c81e1e;font-weight:700}
+      #print-area .ex-atraso{color:#991b1b;font-weight:700}
       #print-area .ex-sit{font-size:7pt;font-weight:700}
       #print-area .ex-s-nf{color:#b45309}
       #print-area .ex-s-ok{color:#0d5c37}
       #print-area tr.ex-novo td{border-top:1px solid #9aa3ad}
-      #print-area .ex-vazio{font-size:10pt;padding:10px 0}
+      #print-area .ex-vazio{font-size:9pt;padding:6px 0;color:#5b6472}
     }`;
 
   function imprimir(){
     if(!LISTA) return;
-    const kp=caixas(LISTA).filter(k=>k[0]!=='Próximos dias');
     $('print-area').innerHTML=`<style>${CSS_PRINT}</style><div class="ex-p">
       <div class="pr-topo">
         <img src="logo-print.png" class="pr-logo" onerror="this.onerror=null;this.src='logo.png';this.className='pr-logo pr-logo-inv'">
         <div><p class="pr-tit">${LISTA.tipo==='atualizacao'?'Atualização da ':''}Listagem de envios — ${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</p>
-             <div class="pr-sub">${LISTA.tipo==='atualizacao'?'Vendas novas e canceladas desde a lista principal':'Envios a despachar hoje e atrasados · Mercado Livre e Bling'}</div></div>
-        <div class="pr-quando">Gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.gerada_por?'<br>por '+escH(LISTA.gerada_por):''}${LISTA_ID?'<br>Lista nº '+LISTA_ID:''}</div>
+             <div class="pr-sub">${escH(rotuloFiltro())} · ${textoSelecao(LISTA)}</div></div>
+        <div class="pr-quando">Gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.gerada_por?'<br>por '+escH(LISTA.gerada_por):''}${LISTA_ID?'<br>Listagem nº '+LISTA_ID:''}</div>
       </div>
-      <div class="pr-kpis">${kp.map(([l,v])=>`<div class="pr-kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('')}</div>
       ${(LISTA.avisos||[]).length? `<div class="pr-warn" style="margin-bottom:6px">${(LISTA.avisos||[]).map(a=>'• '+escH(a)).join('<br>')}</div>`:''}
-      ${LISTA.tipo==='atualizacao' ? corpoAtualizacao(LISTA) : corpoLista(LISTA)}
-      <div class="pr-rodape"><span>Carrinhos_Net — Sistema de Controle</span><span>Envios com despacho depois de hoje: ${(LISTA.totais||{}).proximos_dias??0}</span></div>
+      ${corpoLista(LISTA)}
+      <div class="pr-rodape"><span>Carrinhos_Net — Sistema de Controle</span><span>${escH(agendaTxt(LISTA))}</span></div>
     </div>`;
     window.print();
     marcarVista();
   }
 
-  const CSS_SIMPLES=`
+  // ---------------------------------------------------------------
+  // MEIA FOLHA (14/10/2026): A4 EM PÉ dividida ao meio na VERTICAL
+  // (metade da esquerda e metade da direita, duas tiras altas). O
+  // conteúdo enche a metade da ESQUERDA e, se não couber, continua na da
+  // DIREITA; só depois vai para outra folha. Linha tracejada no meio para
+  // cortar.
+  //   Cada bloco = {html, linhas}: "linhas" é quantas linhas de texto ele
+  //   ocupa (texto longo quebra em mais de uma).
+  // ---------------------------------------------------------------
+  const MF_LINHAS=54;          // linhas por metade (10 pt, metade de A4 em pé)
+  const MF_CHARS=44;           // caracteres por linha (aprox.)
+  const CSS_MEIA=`
     @media print{
-      @page{size:A4 portrait;margin:14mm}
-      #print-area .ex-s{font-size:11pt;line-height:1.45;white-space:pre-wrap;color:#1a1d23}
-      #print-area .ex-s b{font-weight:700}
-      #print-area .ex-s-rod{margin-top:10px;font-size:7pt;color:#5b6472;border-top:1px solid #d7dbe0;padding-top:4px}
+      @page{size:A4 portrait;margin:8mm}
+      #print-area .mf-folha{display:grid;grid-template-columns:1fr 1fr;column-gap:12mm;height:278mm;position:relative;break-after:page;page-break-after:always}
+      #print-area .mf-folha:last-child{break-after:auto;page-break-after:auto}
+      #print-area .mf-folha::after{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed #9aa3ad}
+      #print-area .mf-metade{display:flex;flex-direction:column;height:278mm;overflow:hidden}
+      #print-area .mf-txt{flex:1;font-size:10pt;line-height:1.35;color:#1a1d23}
+      #print-area .mf-txt div{white-space:pre-wrap;word-break:break-word}
+      #print-area .mf-txt b{font-weight:700}
+      #print-area .mf-mudo{color:#5b6472;font-size:8.5pt}
+      #print-area .mf-rod{font-size:7pt;color:#5b6472;border-top:1px solid #d7dbe0;padding-top:3px;display:flex;justify-content:space-between;gap:6px}
     }`;
+  function meiaFolha(blocos, rodape){
+    // reparte os blocos em metades de até MF_LINHAS linhas
+    const metades=[[]]; let usadas=0;
+    for(const b of blocos){
+      if(usadas+b.linhas>MF_LINHAS && metades[metades.length-1].length){ metades.push([]); usadas=0; }
+      metades[metades.length-1].push(b); usadas+=b.linhas;
+    }
+    const total=metades.length;
+    const html=metades.map((m,i)=>`<div class="mf-metade"><div class="mf-txt">${m.map(b=>b.html).join('')}</div>
+        <div class="mf-rod"><span>${escH(rodape)}</span><span>${total>1?`parte ${i+1} de ${total}`:''}</span></div></div>`);
+    let folhas='';
+    for(let i=0;i<html.length;i+=2) folhas+=`<div class="mf-folha">${html[i]}${html[i+1]||'<div></div>'}</div>`;
+    return `<style>${CSS_MEIA}</style>${folhas}`;
+  }
+  const linhasDe=(t)=>Math.max(1,Math.ceil(String(t).length/MF_CHARS));
   function imprimirSimples(){
     if(!LISTA) return;
-    $('print-area').innerHTML=`<style>${CSS_SIMPLES}</style><div class="ex-s">${textoHtml(textoSimplificado(LISTA,true))}</div>
-      <div class="ex-s-rod">Carrinhos_Net — ${LISTA.tipo==='atualizacao'?'Atualização da ':''}Listagem de envios ${escH(brData(LISTA.dia))} · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA_ID?' · listagem nº '+LISTA_ID:''}</div>`;
+    const linhas=textoSimplificado(LISTA,true).split('\n');
+    const blocos=linhas.map(l=>({html:`<div>${l?textoHtml(l):'&nbsp;'}</div>`, linhas:linhasDe(l.replace(/\*/g,''))}));
+    $('print-area').innerHTML=meiaFolha(blocos,
+      `Carrinhos_Net — ${LISTA.tipo==='atualizacao'?'Atualização · ':''}Listagem ${brData(LISTA.dia)} · ${horaSP(LISTA.gerada_em)}${FILTRO.size?' · '+rotuloFiltro():''}`);
     window.print();
     marcarVista();
+  }
+  function imprimirResumo(){
+    if(!LISTA) return;
+    const rs=resumoProdutos(LISTA);
+    const blocos=[
+      {html:`<div><b>RESUMO DE PRODUTOS — ${escH(diaExtenso(LISTA.dia))} (${escH(ddmm(LISTA.dia))})</b></div>`, linhas:1},
+      {html:`<div class="mf-mudo">${escH(rotuloFiltro())} · ${rs.length} ${rs.length===1?'produto':'produtos'}</div>`, linhas:1},
+      {html:'<div>&nbsp;</div>', linhas:1},
+    ];
+    if(!rs.length) blocos.push({html:'<div>Nenhum produto com esses filtros.</div>', linhas:1});
+    for(const r of rs){
+      const desc=String(r.descricao||'').slice(0,70);
+      blocos.push({html:`<div><b>${escH(r.sku)}</b> — ${r.pacotes} ${r.pacotes===1?'pacote':'pacotes'} · ${escH(num(r.unidades))} un.</div>`+
+                        (desc?`<div class="mf-mudo">${escH(desc)}</div>`:''), linhas: desc?2:1});
+    }
+    $('print-area').innerHTML=meiaFolha(blocos, `Carrinhos_Net — Resumo de produtos ${brData(LISTA.dia)} · listagem das ${horaSP(LISTA.gerada_em)}`);
+    window.print();
+    marcarVista();
+  }
+
+  // horário de corte e de despacho do ML guardados na listagem
+  function agendaTxt(lista){
+    const a=lista.agenda;
+    if(!a) return '';
+    if(a.trabalha===false) return 'Agência do ML: sem despacho neste dia';
+    return `Corte do ML: ${a.corte||'--:--'} · despacho na agência até ${a.despacho||'--:--'}`;
   }
 
   // ---------------------------------------------------------------
@@ -720,6 +864,8 @@ const EXP = (function(){
     f('imprimir-simples').addEventListener('click',imprimirSimples);
     f('gerar').addEventListener('click',gerar);
     f('imprimir').addEventListener('click',imprimir);
+    f('imprimir-resumo').addEventListener('click',imprimirResumo);
+    f('kpis').addEventListener('click',(ev)=>{ const b=ev.target.closest('[data-box]'); if(b) clicarBox(b.dataset.box); });
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
     ['f-leitura','f-origem','f-de','f-ate'].forEach(k=>f(k).addEventListener('change',recarregarDoInicio));
