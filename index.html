@@ -163,6 +163,31 @@
   #ex-corpo .ex-s-propria{color:#60a5fa;border-color:#60a5fa}
   #ex-corpo .ex-s-outra{color:var(--muted)}
   .ex-vazio{color:var(--muted);padding:30px;text-align:center}
+  /* Emissão de Etiquetas */
+  #scr-etiquetas .toolbar select{min-width:150px}
+  #et-painel-tbody tr.ex-dia td{background:var(--surface2);font-weight:600;color:var(--text);padding:8px 14px}
+  #et-painel-tbody tr.ex-linha{cursor:pointer}
+  #et-painel-tbody tr.ex-linha:hover td{background:var(--surface2)}
+  .et-bloco{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
+  .et-bt{padding:10px 14px;font-weight:600;border-left:3px solid var(--accent);background:var(--surface2);display:flex;align-items:center;gap:10px}
+  .et-bt .et-q{margin-left:auto;font-weight:500;color:var(--muted);font-size:13px}
+  .et-bloco-atraso .et-bt{border-left-color:var(--danger);color:var(--danger)}
+  .et-bloco-prox .et-bt{border-left-color:#60a5fa}
+  .et-tab{table-layout:fixed;width:100%}
+  .et-tab th,.et-tab td{vertical-align:top;white-space:normal;overflow:visible;text-overflow:clip;word-break:break-word}
+  .et-tab td.et-cb{width:34px;text-align:center}
+  .et-tab input[type=checkbox]{width:16px;height:16px;cursor:pointer}
+  .et-tab input[type=checkbox]:disabled{cursor:not-allowed;opacity:.35}
+  .et-prod{font-family:ui-monospace,Consolas,monospace;font-size:12.5px;line-height:1.45}
+  .et-n{font-weight:700;white-space:nowrap}
+  .et-mudo{font-size:11px;color:var(--muted)}
+  .et-sit{font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;border:1px solid var(--border);white-space:nowrap;display:inline-block}
+  .et-s-ok{color:var(--ok);border-color:var(--ok)}
+  .et-s-nao{color:var(--warn);border-color:var(--warn)}
+  .et-s-fora{color:var(--muted)}
+  .et-emit{font-size:11.5px;color:var(--ok);white-space:nowrap}
+  .et-barra{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-top:4px;box-shadow:0 -4px 14px rgba(0,0,0,.18)}
+  .et-barra b{color:var(--text)}
   /* painel de listas */
   .ex-resumo{font-size:13px;color:var(--muted);margin:-4px 0 12px}
   .ex-resumo b{color:var(--text)}
@@ -667,6 +692,7 @@
       <div class="navgroup" id="grp-expedicao">
         <div class="navtit navtit-toggle" data-grp="grp-expedicao">Expedição<span class="caret">▾</span></div>
         <button data-tela="expedicao" id="nav-expedicao"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1z"/><path d="M16 6h2.2a1.3 1.3 0 0 1 1.3 1.3v12.4a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V7.3A1.3 1.3 0 0 1 5.8 6H8"/><path d="M8.5 12l1.6 1.6 3-3M8.5 17h7"/></svg><span class="nav-lbl">Lista do dia</span><span class="badge-dot" id="badge-expedicao" style="display:none"></span></button>
+        <button data-tela="etiquetas" id="nav-etiquetas"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.6V5a1.5 1.5 0 0 1 1.5-1.5h7.6a1.5 1.5 0 0 1 1.06.44l6.9 6.9a1.5 1.5 0 0 1 0 2.12l-7.6 7.6a1.5 1.5 0 0 1-2.12 0l-6.9-6.9a1.5 1.5 0 0 1-.44-1.06z"/><circle cx="8.2" cy="8.2" r="1.6"/></svg><span class="nav-lbl">Emissão de Etiquetas</span></button>
       </div>
       <div class="navgroup" id="grp-financeiro">
         <div class="navtit navtit-toggle" data-grp="grp-financeiro">Controle Financeiro<span class="caret">▾</span></div>
@@ -958,7 +984,6 @@
         <button class="act prim" id="ex-copiar" disabled title="Copia a lista simplificada, pronta para colar no WhatsApp">Copiar para WhatsApp</button>
         <button class="act" id="ex-imprimir-simples" disabled title="Imprime a lista simplificada (A4 em pé): imprima ou escolha Salvar como PDF">Imprimir simplificada</button>
         <button class="act" id="ex-imprimir" disabled title="Imprime a lista completa (A4 deitado): imprima ou escolha Salvar como PDF">Imprimir completa</button>
-        <button class="act" id="ex-etiquetas" disabled title="TESTE: baixa as etiquetas do Mercado Livre (agência) com o produto escrito embaixo, 3 por folha A4">Etiquetas ML (teste)</button>
         <span id="ex-msg2" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="ex-titulo" id="ex-titulo"></div>
@@ -970,6 +995,43 @@
         <div id="ex-simples-texto" class="ex-simples-texto"></div>
       </div>
       <div id="ex-corpo"></div>
+      </div>
+    </section>
+
+    <!-- =================== TELA EXPEDIÇÃO — EMISSÃO DE ETIQUETAS =================== -->
+    <section class="tela" id="scr-etiquetas">
+      <!-- PAINEL: as listas geradas (as mesmas da Lista do dia) -->
+      <div id="et-painel">
+        <div class="toolbar">
+          <button class="act" id="et-recarregar" title="Busca de novo as listas">↻ Atualizar</button>
+          <span class="rot">de</span><input type="date" id="et-f-de" title="Listas a partir deste dia">
+          <span class="rot">até</span><input type="date" id="et-f-ate" title="Listas até este dia">
+          <button class="act" id="et-f-limpar" title="Remove o filtro de período">Limpar filtros</button>
+          <span id="et-msg" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div class="ex-resumo">As listas são geradas na tela <b>Lista do dia</b>. Abra uma lista para escolher os envios do Mercado Livre (ME2) e emitir as etiquetas com o produto escrito embaixo — 3 por folha A4.</div>
+        <div class="tablewrap"><div class="scroll"><table><thead><tr>
+          <th style="width:9%">Gerada às</th><th style="width:16%">Tipo</th><th style="width:15%">Origem</th>
+          <th>Envios ME2</th><th style="width:28%">Etiquetas emitidas</th>
+        </tr></thead><tbody id="et-painel-tbody"></tbody></table></div>
+        <div class="foot"><span id="et-painel-cont">—</span><span>Clique numa lista para abrir</span></div></div>
+      </div>
+
+      <!-- DETALHE: escolher os envios e emitir -->
+      <div id="et-detalhe" style="display:none">
+        <div class="toolbar">
+          <button class="act" id="et-voltar" title="Volta para o painel com todas as listas">← Voltar ao painel</button>
+          <button class="act" id="et-situacao" title="Consulta de novo no Mercado Livre a situação de cada envio">↻ Situação agora</button>
+          <label style="font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px"><input type="checkbox" id="et-original"> baixar também o PDF original do ML</label>
+          <span id="et-msg2" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div class="ex-titulo" id="et-titulo"></div>
+        <div id="et-avisos" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.5"></div>
+        <div id="et-corpo"></div>
+        <div class="et-barra">
+          <span id="et-sel-txt">Nenhum envio selecionado</span>
+          <button class="act prim" id="et-emitir" disabled style="margin-left:auto" title="Baixa as etiquetas selecionadas do Mercado Livre e monta o PDF A4 (3 por folha)">Emitir etiquetas selecionadas</button>
+        </div>
       </div>
     </section>
 
@@ -2453,6 +2515,7 @@ async function abrirApp(){
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-arquivos').style.display = temPermissao('arquivos_contabeis.gerar') ? '' : 'none';
   $('nav-expedicao').style.display = temPermissao('expedicao.ver') ? '' : 'none';
+  $('nav-etiquetas').style.display = temPermissao('expedicao.etiquetas') ? '' : 'none';
   // métricas saem de vendas e envios: quem vê vendas vê as métricas
   $('nav-metricas').style.display = temPermissao('vendas.ver') ? '' : 'none';
   $('nav-mediacoes').style.display = temPermissao('mediacoes.ver') ? '' : 'none';
@@ -2530,6 +2593,7 @@ function sair(aviso){
 <script src="boletos.js"></script>
 <script src="arquivos.js"></script>
 <script src="expedicao.js"></script>
+<script src="etiquetas.js"></script>
 <script src="usuarios.js"></script>
 <script src="produtos.js"></script>
 <script src="opcoes.js"></script>

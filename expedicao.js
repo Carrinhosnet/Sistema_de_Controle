@@ -443,7 +443,7 @@ const EXP = (function(){
     if(!LISTA){
       f('kpis').innerHTML=''; f('avisos').style.display='none';
       f('corpo').innerHTML='';
-      f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true; if(f('etiquetas')) f('etiquetas').disabled=true;
+      f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true;
       f('simples').style.display='none'; f('titulo').textContent=''; f('nova').style.display='none'; return;
     }
     f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Lista do dia <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')}`;
@@ -458,7 +458,6 @@ const EXP = (function(){
     f('simples-texto').innerHTML=textoHtml(textoSimplificado(LISTA,true));
     f('simples').style.display='';
     f('imprimir').disabled=false; f('copiar').disabled=false; f('imprimir-simples').disabled=false;
-    if(f('etiquetas')) f('etiquetas').disabled=!temPermissao('expedicao.gerar');
   }
 
   const hojeSP=()=>new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
@@ -647,69 +646,6 @@ const EXP = (function(){
   }
 
   // ---------------------------------------------------------------
-  // ETIQUETAS DO ML COM A DESCRIÇÃO (TESTE — 14/10/2026)
-  //   Função expedicao-etiquetas: baixa a etiqueta original de cada envio
-  //   da agência e devolve um PDF A4 com 3 etiquetas por folha, cada uma
-  //   com as linhas "SKU - quantidade" embaixo (mesmo texto da lista:
-  //   combo desmontado, fracionado pelo SKU base). Ordem = a dos PACOTES.
-  //   Também baixa o PDF original do ML, para conferir o formato.
-  //   No teste usa só etiquetas JÁ IMPRESSAS (baixar uma não impressa faz
-  //   o ML marcar como impressa); se não houver, pergunta antes.
-  // ---------------------------------------------------------------
-  function baixarArquivo(base64, nome){
-    const bin=atob(base64), u8=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
-    const url=URL.createObjectURL(new Blob([u8],{type:'application/pdf'}));
-    const a=document.createElement('a'); a.href=url; a.download=nome;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),60000);
-  }
-  async function etiquetas(){
-    if(!LISTA || OCUPADO) return;
-    const fonte=LISTA.tipo==='atualizacao' ? (LISTA.novas||LISTA.envios||[]) : (LISTA.envios||[]);
-    const num=numerar(fonte,'agencia');
-    const ordem=[...num.atrasados,...num.hoje].filter(x=>x.e.envio);
-    const sit=(x)=>String(x.e.situacao||'').toUpperCase();
-    let escolhidos=ordem.filter(x=>sit(x).startsWith('ETIQUETA IMPRESSA'));
-    if(!escolhidos.length){
-      const liberadas=ordem.filter(x=>sit(x).startsWith('ETIQUETA LIBERADA'));
-      if(!liberadas.length){ msg('Nesta lista não há envio da agência com etiqueta liberada ou impressa.',true); return; }
-      if(!confirm(`Nenhuma etiqueta desta lista consta como impressa.\n\nBaixar as ${liberadas.length} etiquetas LIBERADAS? No Mercado Livre elas passam a constar como impressas (igual a baixar pelo painel).`)) return;
-      escolhidos=liberadas;
-    }
-    const envios=escolhidos.map(x=>({envio:String(x.e.envio), linhas:desmontar(x.e.itens).map(itemTxt)}));
-    OCUPADO=true; const b=f('etiquetas')||{}; b.disabled=true;
-    msg(`Baixando ${envios.length} ${envios.length===1?'etiqueta':'etiquetas'} do Mercado Livre…`);
-    try{
-      const r=await chamarEtiquetas({acao:'etiquetas', envios});
-      const falhas=(r.info||[]).filter(i=>!i.ok);
-      const tam=[...new Set((r.info||[]).filter(i=>i.ok).flatMap(i=>i.tamanhos||[]))];
-      const pags=[...new Set((r.info||[]).filter(i=>i.ok).map(i=>i.paginas))];
-      const dia=(LISTA.dia||'').split('-').reverse().join('-');
-      baixarArquivo(r.pdf, `Etiquetas com descricao ${dia}.pdf`);
-      setTimeout(()=>baixarArquivo(r.original, `Etiquetas ML original ${dia}.pdf`), 800);
-      msg(`${envios.length-falhas.length} de ${envios.length} etiquetas baixadas · páginas por envio: ${pags.join('/')||'-'} · tamanho (pt): ${tam.join(', ')||'-'}`
-        + (falhas.length? ` · FALHARAM: ${falhas.map(i=>i.envio+' ('+i.erro+')').join('; ')}` : ''), !!falhas.length);
-    }catch(e){ msg('Etiquetas: '+e.message,true); }
-    finally{ OCUPADO=false; b.disabled=false; }
-  }
-  async function chamarEtiquetas(corpo){
-    if(USER && !verificarSessao()) throw new Error('Sessão expirada.');
-    renovarSessao();
-    let resp;
-    try{
-      resp=await fetch(FUNC_URL('expedicao-etiquetas'),{method:'POST',
-        headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,
-                 'Content-Type':'application/json','x-sessao':(USER&&USER.token)||''},
-        body:JSON.stringify(corpo)});
-    }catch(e){ throw new Error('Sem conexão com o servidor (a função expedicao-etiquetas foi publicada?).'); }
-    const txt=await resp.text(); let data; try{ data=JSON.parse(txt); }catch{ data=null; }
-    if(resp.ok && data && data.ok) return data;
-    const det=(data&&data.info||[]).filter(i=>!i.ok).map(i=>i.envio+': '+i.erro).join('; ');
-    throw new Error(((data&&data.erro)||('HTTP '+resp.status+(txt?': '+txt.slice(0,150):'')))+(det?' — '+det:''));
-  }
-
-  // ---------------------------------------------------------------
   // AVISO: lista automática nova (em qualquer tela do sistema)
   //   Confere a cada 2 minutos. O aviso flutuante e a bolinha do menu
   //   ficam até alguém copiar para o WhatsApp ou imprimir a lista.
@@ -739,7 +675,6 @@ const EXP = (function(){
     f('imprimir-simples').addEventListener('click',imprimirSimples);
     f('gerar').addEventListener('click',gerar);
     f('imprimir').addEventListener('click',imprimir);
-    if(f('etiquetas')) f('etiquetas').addEventListener('click',etiquetas);
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
     f('f-leitura').addEventListener('change',renderPainel);
@@ -761,7 +696,10 @@ const EXP = (function(){
   document.addEventListener('DOMContentLoaded',()=>{
     const b=$('ex-toast-abrir'); if(b) b.addEventListener('click',abrirPendente);
   });
-  return { init, abrirPendente, verificarPendentes };
+  // usados também pela tela Emissão de Etiquetas (etiquetas.js): o texto
+  // de cada pacote e a numeração saem IGUAIS aos da Lista do dia
+  return { init, abrirPendente, verificarPendentes,
+           util:{ desmontar, itemTxt, numerar, viaDe, conteudoPacote } };
 })();
 
 registrarTela('expedicao', EXP);
