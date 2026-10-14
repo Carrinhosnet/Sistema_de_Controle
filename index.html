@@ -762,6 +762,21 @@
                color:var(--cor);border:1px solid color-mix(in srgb,var(--cor) 55%,transparent);background:color-mix(in srgb,var(--cor) 10%,transparent)}
   .et-mkt-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--cor)}
 
+  /* ====== BOTÕES DE AÇÃO — fundo transparente (14/10/2026) ======
+     Os botões verdes deixam de ser preenchidos: fundo transparente com um
+     leve tom de verde, borda e texto em verde. Com o mouse em cima o tom
+     de fundo fica mais forte. Mesmo padrão dos botões amarelo (.ac) e
+     vermelho (.dg) que já existiam. Ficam preenchidos de propósito só o
+     "Entrar" do login e o botão ☰ (precisam aparecer sobre qualquer fundo). */
+  .toolbar button.prim, button.act.prim, .btn-save, .ex-toast button, .ini-gerar, .res button{
+    background:color-mix(in srgb,var(--accent) 8%,transparent);
+    border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);
+    color:var(--accent);font-weight:600}
+  .toolbar button.prim:hover:not(:disabled), button.act.prim:hover:not(:disabled), .btn-save:hover:not(:disabled),
+  .ex-toast button:hover, .ini-gerar:hover, .res button:hover{
+    background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:var(--accent);color:var(--accent)}
+  .toolbar button.prim:disabled, button.act.prim:disabled, .btn-save:disabled{opacity:.45;cursor:not-allowed}
+
   /* ====== MENU LATERAL — painel flutuante (14/10/2026) ======
      Inspirado no modelo enviado: cartao escuro solto das bordas, lista
      dentro de um painel interno, icones verdes, item ativo preenchido em
