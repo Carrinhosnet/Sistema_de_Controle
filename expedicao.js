@@ -152,7 +152,7 @@ const EXP = (function(){
     if(e.despachar_ate) return `${diaSemana(e.dia_despacho)} ${ddmm(e.dia_despacho)} ${horaDe(e.despachar_ate)}`;
     return `${diaSemana(e.dia_despacho)} ${ddmm(e.dia_despacho)}`;
   }
-  const corSituacao=(s)=> /^AGUARDANDO NF/.test(s)?'ex-s-nf' : /^ETIQUETA (LIBERADA|IMPRESSA)/.test(s)?'ex-s-ok' : /^ETIQUETA PRÓPRIA/.test(s)?'ex-s-propria' : 'ex-s-outra';
+  const corSituacao=(s)=> /^AGUARDANDO NF/.test(s)?'ex-s-nf' : /^ETIQUETA (LIBERADA|IMPRESSA)/.test(s)?'ex-s-ok' : /^ETIQUETA PRÓPRIA/.test(s)?'ex-s-propria' : /^CANCELADO/.test(s)?'ex-s-canc' : 'ex-s-outra';
   const NOME_VIA={transportadora:'Via transportadora (ME1, Venda Direta, Shopify…)', agencia:'Via agência do Mercado Livre'};
 
   // linhas de uma tabela de envios: uma linha por item, dados do envio
@@ -175,7 +175,7 @@ const EXP = (function(){
             <td rowspan="${span}" class="ex-envio">${envioHtml(e)}</td>
             <td rowspan="${span}">${escH(e.pedido)}</td>
             <td rowspan="${span}" class="${e.atrasado?'ex-atraso':''}">${escH(despacharHtml(e))}</td>
-            <td rowspan="${span}"><span class="ex-sit ${corSituacao(e.situacao)}">${escH(e.situacao)}</span></td>` : '')+
+            <td rowspan="${span}"><span class="ex-sit ${corSituacao(e.situacao)}">${escH(e.situacao)}</span>${e._sitOriginal!==undefined?`<div class="ex-mudo">antes: ${escH(e._sitOriginal)}</div>`:''}</td>` : '')+
           `</tr>`;
       });
     }
@@ -224,7 +224,8 @@ const EXP = (function(){
     return [...resumo.values()].sort((a,b)=>a.sku.localeCompare(b.sku,'pt-BR',{numeric:true}));
   }
 
-  function corpoLista(lista){
+  // semResumo: a impressão completa não leva o Resumo de Produtos (ele tem botão próprio)
+  function corpoLista(lista, semResumo){
     const v=visao(lista), mapa=mapaPacotes(lista); let h='';
     if(v.mostra.includes('atrasados')) h+=painel('ATRASADOS','ex-bloco-atraso',v.sel.atrasados,mapa,'Nenhum envio atrasado.');
     if(v.mostra.includes('hoje'))      h+=painel(v.g.ehAtu?'PARA ENVIO HOJE — VENDAS NOVAS':'PARA ENVIO HOJE','ex-bloco-hoje',v.sel.hoje,mapa,'Nenhum envio para hoje.');
@@ -239,7 +240,7 @@ const EXP = (function(){
           c.map(x=>`<tr><td>${escH(x.canal)}</td><td>${escH(x.pedido)}</td><td>${x.envio?envioHtml({envio:String(x.envio)}):'—'}</td><td class="pr-desc">${escH(x.motivo)}</td></tr>`).join('')+
           `</tbody></table>` : `<p class="ex-vazio">Nada para conferir.</p>`)+`</div>`;
     }
-    const rs=resumoProdutos(lista);
+    const rs= semResumo ? [] : resumoProdutos(lista);
     if(rs.length){
       h+=`<div class="ex-bloco ex-resumo"><div class="ex-bt">RESUMO DE PRODUTOS<span class="ex-bt-q">${rs.length} ${rs.length===1?'produto':'produtos'}</span></div>
           <table class="ex-tab"><thead><tr><th style="width:15%">SKU</th><th>Descrição</th><th class="num" style="width:10%">Pacotes</th><th class="num" style="width:10%">Unidades</th></tr></thead><tbody>`+
@@ -511,7 +512,7 @@ const EXP = (function(){
   }
 
   function render(){
-    const bts=['imprimir','copiar','imprimir-simples','imprimir-resumo'];
+    const bts=['imprimir','copiar','imprimir-simples','imprimir-resumo','status-etq'];
     if(!LISTA){
       f('kpis').innerHTML=''; f('avisos').style.display='none'; f('sel-total').innerHTML='';
       f('corpo').innerHTML='';
@@ -537,6 +538,53 @@ const EXP = (function(){
     f('simples').style.display='';
     bts.forEach(k=>{ if(f(k)) f(k).disabled=false; });
   }
+  // ---------------------------------------------------------------
+  // ATUALIZAR STATUS DAS ETIQUETAS (14/10/2026)
+  //   Consulta no Mercado Livre, AGORA, só a situação da etiqueta de cada
+  //   envio do ML desta listagem (liberada, impressa, aguardando NF, já
+  //   entregue na agência, cancelado…) e troca só a coluna "Situação".
+  //   Nada mais muda: envios, pacotes, quantidades e o texto continuam a
+  //   foto da hora em que a listagem foi gerada. Não fica gravado: ao
+  //   reabrir a listagem, volta a situação daquela hora.
+  //   ME1 (etiqueta própria) e os outros canais não entram.
+  //   Usa a função expedicao-etiquetas (ação "situacao").
+  // ---------------------------------------------------------------
+  const ROTULOS_VIVOS=/^(ETIQUETA LIBERADA|ETIQUETA IMPRESSA|AGUARDANDO NF|JÁ ENTREGUE NA AGÊNCIA|JÁ SAIU|CANCELADO)$/;
+  let STATUS_EM=null;
+  async function atualizarStatusEtiquetas(){
+    if(!LISTA || OCUPADO) return;
+    const todos=[...(LISTA.envios||[]),...(LISTA.novas||[]),...(LISTA.proximos||[]),...(LISTA.canceladas||[])]
+      .filter(e=>e.canal==='Mercado Livre' && e.envio && e.tipo_envio!=='ME1');
+    const ids=[...new Set(todos.map(e=>String(e.envio)))];
+    if(!ids.length){ msg('Esta listagem não tem envios do Mercado Livre com etiqueta do ML.'); return; }
+    OCUPADO=true; const b=f('status-etq'); b.disabled=true; const t0=b.textContent; b.textContent='Consultando…';
+    msg(`Consultando no Mercado Livre o status de ${ids.length} ${ids.length===1?'etiqueta':'etiquetas'}…`);
+    try{
+      if(USER && !verificarSessao()) throw new Error('Sessão expirada.');
+      renovarSessao();
+      let resp;
+      try{
+        resp=await fetch(FUNC_URL('expedicao-etiquetas'),{method:'POST',
+          headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','x-sessao':(USER&&USER.token)||''},
+          body:JSON.stringify({acao:'situacao', envios:ids})});
+      }catch(e){ throw new Error('Sem conexão com o servidor.'); }
+      const data=await resp.json().catch(()=>null);
+      if(resp.status===401) throw new Error('Seu perfil precisa da permissão "Emitir etiquetas do Mercado Livre" para consultar o status.');
+      if(!resp.ok || !data || !data.ok) throw new Error((data&&data.erro)||('HTTP '+resp.status));
+      const sit=data.situacoes||{};
+      let mudou=0;
+      for(const e of todos){
+        const s=sit[String(e.envio)];
+        if(!s || !ROTULOS_VIVOS.test(s.rotulo)) continue;      // "ainda não liberada": mantém a data que já estava
+        if(e.situacao!==s.rotulo){ if(e._sitOriginal===undefined) e._sitOriginal=e.situacao; e.situacao=s.rotulo; mudou++; }
+      }
+      STATUS_EM=new Date().toISOString();
+      render();
+      msg(`Status das etiquetas atualizado às ${horaSP(STATUS_EM)} · ${mudou} ${mudou===1?'mudou':'mudaram'} desde a geração.`);
+    }catch(e){ msg('Status das etiquetas: '+e.message,true); }
+    finally{ OCUPADO=false; b.textContent=t0; b.disabled=false; }
+  }
+
   // clique nos boxes: liga/desliga o filtro; "Listagem completa" limpa tudo
   function clicarBox(k){
     if(!LISTA) return;
@@ -686,7 +734,7 @@ const EXP = (function(){
     if(!id||OCUPADO) return;
     msg('Abrindo…');
     try{
-      LISTA=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(id)}); LISTA_ID=Number(id); FILTRO.clear();
+      LISTA=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(id)}); LISTA_ID=Number(id); FILTRO.clear(); STATUS_EM=null;
       LISTA_BASE=null;
       if(LISTA.tipo==='atualizacao' && LISTA.base_id){
         try{ LISTA_BASE=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(LISTA.base_id)}); }catch(e){ LISTA_BASE=null; }
@@ -749,7 +797,7 @@ const EXP = (function(){
         <div class="pr-quando">Gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.gerada_por?'<br>por '+escH(LISTA.gerada_por):''}${LISTA_ID?'<br>Listagem nº '+LISTA_ID:''}</div>
       </div>
       ${(LISTA.avisos||[]).length? `<div class="pr-warn" style="margin-bottom:6px">${(LISTA.avisos||[]).map(a=>'• '+escH(a)).join('<br>')}</div>`:''}
-      ${corpoLista(LISTA)}
+      ${corpoLista(LISTA, true)}
       <div class="pr-rodape"><span>Carrinhos_Net — Sistema de Controle</span><span>${escH(agendaTxt(LISTA))}</span></div>
     </div>`;
     window.print();
@@ -865,6 +913,7 @@ const EXP = (function(){
     f('gerar').addEventListener('click',gerar);
     f('imprimir').addEventListener('click',imprimir);
     f('imprimir-resumo').addEventListener('click',imprimirResumo);
+    f('status-etq').addEventListener('click',atualizarStatusEtiquetas);
     f('kpis').addEventListener('click',(ev)=>{ const b=ev.target.closest('[data-box]'); if(b) clicarBox(b.dataset.box); });
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
