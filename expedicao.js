@@ -12,6 +12,13 @@
 //   Qualquer lista do histórico pode ser reaberta e reimpressa: ela
 //   mostra os envios como estavam na hora em que foi gerada.
 //
+// TELA EM DOIS NÍVEIS (13/10/2026)
+//   PAINEL (inicial): todas as listas geradas, por dia. As NÃO LIDAS —
+//   automáticas de hoje que ainda contam no aviso — ficam destacadas e
+//   no topo do dia; as lidas mostram quem leu e quando. Clicar numa linha
+//   abre o DETALHE (texto do WhatsApp, impressões e lista completa), com
+//   "← Voltar ao painel".
+//
 // COMO A LISTA É ORGANIZADA (tela e PDF iguais)
 //   1. ATRASADOS — despacho vencido, qualquer produto. Sempre no topo.
 //   2. Um bloco por PRODUTO (SKU), em ordem de SKU — envios de hoje que
@@ -370,8 +377,9 @@ const EXP = (function(){
     try{
       await rpc('cn_expedicao_marcar_vista',{p_usuario_id:USER.id,p_id:LISTA_ID});
       LISTA.vista_em=new Date().toISOString();
-      const h=HIST.find(x=>x.id===LISTA_ID); if(h) h.vista_em=LISTA.vista_em;
-      montarHistorico(LISTA_ID); render();
+      const h=HIST.find(x=>x.id===LISTA_ID);
+      if(h){ h.vista_em=LISTA.vista_em; h.vista_por_nome=USER&&USER.nome; h.nao_lida=false; }
+      renderPainel(); render();
       verificarPendentes(true);
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){ /* sem permissão ou sem rede: o aviso continua, sem travar a tela */ }
@@ -383,12 +391,15 @@ const EXP = (function(){
   // ---------------------------------------------------------------
   // tela
   // ---------------------------------------------------------------
-  function msg(t,erro){ f('msg').textContent=t||''; f('msg').style.color=erro?'var(--danger)':'var(--muted)'; }
+  // mensagem aparece no painel e no detalhe (só um dos dois está visível)
+  function msg(t,erro){
+    for(const id of ['msg','msg2']){ const el=f(id); if(!el) continue; el.textContent=t||''; el.style.color=erro?'var(--danger)':'var(--muted)'; }
+  }
 
   function render(){
     if(!LISTA){
       f('kpis').innerHTML=''; f('avisos').style.display='none';
-      f('corpo').innerHTML=`<p class="ex-vazio">Clique em <b>Gerar lista do dia</b>, ou escolha uma lista já gerada.</p>`;
+      f('corpo').innerHTML='';
       f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true;
       f('simples').style.display='none'; f('titulo').textContent=''; f('nova').style.display='none'; return;
     }
@@ -407,23 +418,78 @@ const EXP = (function(){
   }
 
   const hojeSP=()=>new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
-  function rotuloHist(l){
+  const horaSP=(iso)=>horaDe(new Date(new Date(iso).getTime()-3*3600e3).toISOString());
+  const DIAS_LONGOS=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+
+  // ---------------------------------------------------------------
+  // PAINEL: todas as listas geradas (tela inicial)
+  //   Agrupadas por dia, mais recente primeiro. Dentro do dia, as NÃO
+  //   LIDAS vêm no topo — "não lida" = está contando no aviso da página
+  //   (automática, de hoje, ninguém copiou nem imprimiu). A regra vem do
+  //   banco (cn_expedicao_listas.nao_lida), a mesma da bolinha do menu.
+  // ---------------------------------------------------------------
+  function resumoLinha(l){
     const t=l.totais||{};
-    const hora=horaDe(new Date(new Date(l.gerada_em).getTime()-3*3600e3).toISOString());
-    const oque= l.tipo==='atualizacao' ? `Atualização: ${t.novas??0} novas, ${t.canceladas??0} canceladas` : `${t.envios??'?'} envios`;
-    const quem= l.automatica ? 'automática' : (l.gerada_por||'');
-    const nova= l.automatica && !l.vista_em && l.dia===hojeSP() ? '● NOVA — ' : '';
-    return `${nova}${diaSemana(l.dia)} ${brData(l.dia)} ${hora} — ${oque}${quem?' — '+quem:''}`;
+    if(l.tipo==='atualizacao'){
+      return `${t.novas??0} ${Number(t.novas)===1?'venda nova':'vendas novas'} · ${t.canceladas??0} ${Number(t.canceladas)===1?'cancelada':'canceladas'}`;
+    }
+    const partes=[`${t.envios??'?'} envios`, `${t.unidades??'?'} un.`];
+    if(t.atrasados) partes.push(`${t.atrasados} ${t.atrasados===1?'atrasado':'atrasados'}`);
+    if(t.aguardando_nf) partes.push(`${t.aguardando_nf} aguardando NF`);
+    if(t.conferir) partes.push(`${t.conferir} a conferir`);
+    return partes.join(' · ');
   }
-  function montarHistorico(selecionar){
-    f('hist').innerHTML='<option value="">Listas já geradas…</option>'+HIST.map(l=>`<option value="${l.id}">${escH(rotuloHist(l))}</option>`).join('');
-    if(selecionar) f('hist').value=String(selecionar);
+  function renderPainel(){
+    const tb=f('painel-tbody'); if(!tb) return;
+    const naoLidas=HIST.filter(l=>l.nao_lida).length;
+    f('resumo').innerHTML= naoLidas
+      ? `<span class="ex-tag ex-tag-nl">${naoLidas} NÃO ${naoLidas===1?'LIDA':'LIDAS'}</span>&nbsp; ${naoLidas===1?'Esta lista está':'Estas listas estão'} contando no aviso da página até alguém copiar para o WhatsApp ou imprimir.`
+      : 'Todas as listas automáticas de hoje já foram lidas.';
+    if(!HIST.length){
+      tb.innerHTML=`<tr><td colspan="5" class="ex-vazio">Nenhuma lista gerada ainda. Clique em <b>Gerar lista do dia</b>.</td></tr>`;
+      f('painel-cont').textContent='—'; return;
+    }
+    // agrupa por dia; dentro do dia: não lidas primeiro, depois mais recente
+    const dias=[...new Set(HIST.map(l=>l.dia))];
+    let h='';
+    for(const dia of dias){
+      const doDia=HIST.filter(l=>l.dia===dia).sort((a,b)=>(b.nao_lida-a.nao_lida)||String(b.gerada_em).localeCompare(String(a.gerada_em)));
+      const [y,m,d]=dia.split('-').map(Number);
+      const rot= dia===hojeSP() ? 'Hoje' : DIAS_LONGOS[new Date(y,m-1,d).getDay()];
+      h+=`<tr class="ex-dia"><td colspan="5">${escH(rot)} · ${escH(brData(dia))}</td></tr>`;
+      for(const l of doDia){
+        const tipo= l.tipo==='atualizacao'
+          ? `<span class="ex-tag ex-tag-atu">Atualização</span>`
+          : `<span class="ex-tag ex-tag-pri">Lista do dia</span>`;
+        const origem= l.automatica ? 'Automática' : escH(l.gerada_por||'—');
+        const leitura= l.nao_lida
+          ? `<span class="ex-tag ex-tag-nl">NÃO LIDA</span> <span class="ex-lida">· contando no aviso</span>`
+          : (l.vista_em && l.automatica
+              ? `<span class="ex-lida">Lida às ${escH(horaSP(l.vista_em))}${l.vista_por_nome?' por '+escH(l.vista_por_nome):''}</span>`
+              : `<span class="ex-lida">${l.automatica?'Não lida (fora do aviso: dia anterior)':'—'}</span>`);
+        h+=`<tr class="ex-linha${l.nao_lida?' ex-naolida':''}" data-id="${l.id}">
+              <td><b>${escH(horaSP(l.gerada_em))}</b></td><td>${tipo}</td><td>${origem}</td>
+              <td>${escH(resumoLinha(l))}</td><td>${leitura}</td></tr>`;
+      }
+    }
+    tb.innerHTML=h;
+    f('painel-cont').textContent=`${HIST.length} ${HIST.length===1?'lista':'listas'} · ${dias.length} ${dias.length===1?'dia':'dias'}`;
   }
-  async function carregarHistorico(selecionar){
+  async function carregarPainel(){
     try{
-      HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:60}))||[];
-      montarHistorico(selecionar);
-    }catch(e){ msg('Não consegui carregar o histórico: '+e.message,true); }
+      HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:90}))||[];
+      renderPainel();
+    }catch(e){ msg('Não consegui carregar as listas: '+e.message,true); }
+  }
+
+  function mostrarPainel(){
+    f('detalhe').style.display='none'; f('painel').style.display='';
+    LISTA=null; LISTA_ID=null; LISTA_BASE=null; msg('');
+    renderPainel();
+  }
+  function mostrarDetalhe(){
+    f('painel').style.display='none'; f('detalhe').style.display='';
+    window.scrollTo(0,0);
   }
 
   async function abrirLista(id){
@@ -435,34 +501,23 @@ const EXP = (function(){
       if(LISTA.tipo==='atualizacao' && LISTA.base_id){
         try{ LISTA_BASE=await rpc('cn_expedicao_lista',{p_usuario_id:USER.id,p_id:Number(LISTA.base_id)}); }catch(e){ LISTA_BASE=null; }
       }
-      f('hist').value=String(id); msg('');
+      msg(''); render(); mostrarDetalhe();
     }catch(e){ msg(e.message,true); }
-    render();
-  }
-  async function abrirDoHistorico(){ await abrirLista(f('hist').value); }
-
-  // ao entrar na tela: a lista automática nova de hoje; senão, a mais
-  // recente de hoje; senão, nada aberto
-  async function abrirMaisRelevante(){
-    const hoje=hojeSP();
-    const nova=HIST.find(l=>l.automatica && !l.vista_em && l.dia===hoje);
-    const deHoje=HIST.find(l=>l.dia===hoje);
-    const alvo=nova||deHoje;
-    if(alvo) await abrirLista(alvo.id);
   }
 
   async function gerar(){
     if(OCUPADO) return;
-    OCUPADO=true; f('gerar').disabled=true; f('hist').disabled=true;
+    OCUPADO=true; f('gerar').disabled=true;
     const t=f('gerar').textContent; f('gerar').textContent='Gerando…';
     msg('Consultando Mercado Livre e Bling… pode levar até 1 minuto.');
     try{
       const r=await chamar({acao:'gerar'});
       LISTA=Object.assign({},r.lista,{gerada_por:USER&&USER.nome, automatica:false, vista_em:new Date().toISOString()}); LISTA_ID=r.id; LISTA_BASE=null;
-      await carregarHistorico(r.id);
-      msg((LISTA.avisos||[]).length? 'Lista gerada com avisos — veja abaixo.' : 'Lista gerada e guardada no histórico.', !!(LISTA.avisos||[]).length);
+      await carregarPainel();
+      render(); mostrarDetalhe();
+      msg((LISTA.avisos||[]).length? 'Lista gerada com avisos — veja abaixo.' : 'Lista gerada e guardada no painel.', !!(LISTA.avisos||[]).length);
     }catch(e){ msg(e.message,true); }
-    finally{ OCUPADO=false; f('gerar').textContent=t; f('gerar').disabled=!temPermissao('expedicao.gerar'); f('hist').disabled=false; render(); }
+    finally{ OCUPADO=false; f('gerar').textContent=t; f('gerar').disabled=!temPermissao('expedicao.gerar'); }
   }
 
   // ---------------------------------------------------------------
@@ -545,25 +600,29 @@ const EXP = (function(){
     }catch(e){ t.style.display='none'; }
   }
   setInterval(()=>verificarPendentes(false), 30000);
+  // "Abrir" do aviso: leva ao PAINEL, onde as não lidas estão no topo
   async function abrirPendente(){
     if(typeof mostrarTela==='function') mostrarTela('expedicao');
-    await carregarHistorico();
-    await abrirMaisRelevante();
+    mostrarPainel();
+    await carregarPainel();
   }
 
   function bind(){
     f('copiar').addEventListener('click',copiarWhatsApp);
     f('imprimir-simples').addEventListener('click',imprimirSimples);
     f('gerar').addEventListener('click',gerar);
-    f('hist').addEventListener('change',abrirDoHistorico);
     f('imprimir').addEventListener('click',imprimir);
+    f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
+    f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
+    f('painel-tbody').addEventListener('click',(ev)=>{
+      const tr=ev.target.closest('tr.ex-linha'); if(tr) abrirLista(tr.dataset.id);
+    });
   }
   async function init(){
     f('gerar').disabled=!temPermissao('expedicao.gerar');
     if(!temPermissao('expedicao.gerar')) f('gerar').title='Seu perfil pode ver e reimprimir listas, mas não gerar uma nova.';
-    bind(); render();
-    await carregarHistorico();
-    await abrirMaisRelevante();
+    bind(); render(); mostrarPainel();
+    await carregarPainel();
   }
   // o aviso flutuante funciona mesmo antes de abrir a tela
   document.addEventListener('DOMContentLoaded',()=>{

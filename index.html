@@ -163,6 +163,19 @@
   #ex-corpo .ex-s-propria{color:#60a5fa;border-color:#60a5fa}
   #ex-corpo .ex-s-outra{color:var(--muted)}
   .ex-vazio{color:var(--muted);padding:30px;text-align:center}
+  /* painel de listas */
+  .ex-resumo{font-size:13px;color:var(--muted);margin:-4px 0 12px}
+  .ex-resumo b{color:var(--text)}
+  #ex-painel-tbody tr.ex-dia td{background:var(--surface2);font-weight:600;color:var(--text);padding:8px 14px}
+  #ex-painel-tbody tr.ex-linha{cursor:pointer}
+  #ex-painel-tbody tr.ex-linha:hover td{background:var(--surface2)}
+  #ex-painel-tbody tr.ex-naolida td{background:var(--accent-soft)}
+  #ex-painel-tbody tr.ex-naolida td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+  .ex-tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid var(--border);white-space:nowrap}
+  .ex-tag-nl{color:#fff;background:var(--danger);border-color:var(--danger)}
+  .ex-tag-atu{color:#60a5fa;border-color:#60a5fa}
+  .ex-tag-pri{color:var(--accent);border-color:var(--accent)}
+  .ex-lida{color:var(--muted);font-size:12px}
   .ex-nova{background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px}
   /* aviso flutuante: lista automática nova (aparece em qualquer tela) */
   .ex-toast{position:fixed;right:20px;bottom:20px;z-index:60;display:flex;align-items:center;gap:12px;
@@ -915,13 +928,29 @@
     <!-- =================== TELA EXPEDIÇÃO — LISTA DO DIA =================== -->
     <div id="ex-toast" class="ex-toast" style="display:none"><span>📦 <b id="ex-toast-txt">Lista do dia automática nova</b></span><button id="ex-toast-abrir">Abrir</button></div>
     <section class="tela" id="scr-expedicao">
+      <!-- PAINEL: todas as listas geradas (tela inicial) -->
+      <div id="ex-painel">
+        <div class="toolbar">
+          <button class="act prim" id="ex-gerar" title="Consulta Mercado Livre e Bling e guarda a lista no histórico">Gerar lista do dia</button>
+          <button class="act" id="ex-recarregar" title="Busca de novo as listas geradas">↻ Atualizar</button>
+          <span id="ex-msg" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div id="ex-resumo" class="ex-resumo"></div>
+        <div class="tablewrap"><div class="scroll"><table><thead><tr>
+          <th style="width:9%">Gerada às</th><th style="width:16%">Tipo</th><th style="width:15%">Origem</th>
+          <th>Resumo</th><th style="width:24%">Leitura</th>
+        </tr></thead><tbody id="ex-painel-tbody"></tbody></table></div>
+        <div class="foot"><span id="ex-painel-cont">—</span><span>Clique numa lista para abrir</span></div></div>
+      </div>
+
+      <!-- DETALHE: uma lista aberta -->
+      <div id="ex-detalhe" style="display:none">
       <div class="toolbar">
-        <button class="act prim" id="ex-gerar" title="Consulta Mercado Livre e Bling e guarda a lista no histórico">Gerar lista do dia</button>
-        <select id="ex-hist" title="Reabrir uma lista já gerada"><option value="">Listas já geradas…</option></select>
+        <button class="act" id="ex-voltar" title="Volta para o painel com todas as listas">← Voltar ao painel</button>
         <button class="act prim" id="ex-copiar" disabled title="Copia a lista simplificada, pronta para colar no WhatsApp">Copiar para WhatsApp</button>
         <button class="act" id="ex-imprimir-simples" disabled title="Imprime a lista simplificada (A4 em pé): imprima ou escolha Salvar como PDF">Imprimir simplificada</button>
         <button class="act" id="ex-imprimir" disabled title="Imprime a lista completa (A4 deitado): imprima ou escolha Salvar como PDF">Imprimir completa</button>
-        <span id="ex-msg" style="font-size:12px;color:var(--muted)"></span>
+        <span id="ex-msg2" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="ex-titulo" id="ex-titulo"></div>
       <div id="ex-nova" class="ex-nova" style="display:none"></div>
@@ -932,6 +961,7 @@
         <div id="ex-simples-texto" class="ex-simples-texto"></div>
       </div>
       <div id="ex-corpo"></div>
+      </div>
     </section>
 
     <!-- =================== TELA ARQUIVOS CONTÁBEIS =================== -->
