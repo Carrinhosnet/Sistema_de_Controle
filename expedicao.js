@@ -443,7 +443,7 @@ const EXP = (function(){
     if(!LISTA){
       f('kpis').innerHTML=''; f('avisos').style.display='none';
       f('corpo').innerHTML='';
-      f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true; f('etiquetas').disabled=true;
+      f('imprimir').disabled=true; f('copiar').disabled=true; f('imprimir-simples').disabled=true; if(f('etiquetas')) f('etiquetas').disabled=true;
       f('simples').style.display='none'; f('titulo').textContent=''; f('nova').style.display='none'; return;
     }
     f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Lista do dia <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')}`;
@@ -458,7 +458,7 @@ const EXP = (function(){
     f('simples-texto').innerHTML=textoHtml(textoSimplificado(LISTA,true));
     f('simples').style.display='';
     f('imprimir').disabled=false; f('copiar').disabled=false; f('imprimir-simples').disabled=false;
-    f('etiquetas').disabled=!temPermissao('expedicao.gerar');
+    if(f('etiquetas')) f('etiquetas').disabled=!temPermissao('expedicao.gerar');
   }
 
   const hojeSP=()=>new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
@@ -535,7 +535,13 @@ const EXP = (function(){
       const de=f('f-de').value||null, ate=f('f-ate').value||null;
       if(de && ate && de>ate){ msg('A data inicial é depois da final.',true); return; }
       // com período escolhido, traz até 500 listas daquele intervalo
-      HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:(de||ate)?500:90,p_de:de,p_ate:ate}))||[];
+      try{
+        HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:(de||ate)?500:90,p_de:de,p_ate:ate}))||[];
+      }catch(e1){
+        // banco sem o arquivo 125 (filtro de datas): carrega do jeito antigo e avisa
+        HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:90}))||[];
+        if(de||ate) msg('O filtro de datas precisa do arquivo 125 no banco. Mostrando as últimas 90 listas.',true);
+      }
       renderPainel();
     }catch(e){ msg('Não consegui carregar as listas: '+e.message,true); }
   }
@@ -672,7 +678,7 @@ const EXP = (function(){
       escolhidos=liberadas;
     }
     const envios=escolhidos.map(x=>({envio:String(x.e.envio), linhas:desmontar(x.e.itens).map(itemTxt)}));
-    OCUPADO=true; const b=f('etiquetas'); b.disabled=true;
+    OCUPADO=true; const b=f('etiquetas')||{}; b.disabled=true;
     msg(`Baixando ${envios.length} ${envios.length===1?'etiqueta':'etiquetas'} do Mercado Livre…`);
     try{
       const r=await chamarEtiquetas({acao:'etiquetas', envios});
@@ -733,7 +739,7 @@ const EXP = (function(){
     f('imprimir-simples').addEventListener('click',imprimirSimples);
     f('gerar').addEventListener('click',gerar);
     f('imprimir').addEventListener('click',imprimir);
-    f('etiquetas').addEventListener('click',etiquetas);
+    if(f('etiquetas')) f('etiquetas').addEventListener('click',etiquetas);
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
     f('f-leitura').addEventListener('change',renderPainel);
