@@ -2,6 +2,12 @@
 // CARRINHOS_NET — etiquetas.js — Tela "Emissão de Etiquetas" (Expedição)
 // 14/10/2026
 //
+// 1º PASSO: ESCOLHA DO MARKETPLACE (14/10/2026). Quadrados no estilo da
+//   tela inicial. Só o Mercado Livre está conectado; Shopee, TikTok Shop e
+//   Temu aparecem apagados ("Em breve") até ganharem integração. Para ligar
+//   um novo: ativo:true na lista MARKETPLACES e o fluxo dele no escolher().
+//   Toda vez que a tela é aberta pelo menu ela volta para este passo.
+//
 // Depende da base do index.html: $, USER, rpc, SUPABASE_KEY, FUNC_URL,
 // verificarSessao, renovarSessao, temPermissao, registrarTela — e do
 // expedicao.js (EXP.util), para o texto dos pacotes e a numeração
@@ -41,6 +47,19 @@ const ETQ = (function(){
   const SEL=new Set();  // envios marcados
   let BLOCOS=[];        // [{id, titulo, linhas:[{e, n}]}] na ordem da tela
   let OCUPADO=false;
+  let MKT=null;         // marketplace escolhido ('ml')
+
+  // marketplaces: só os ativos abrem; os demais ficam "Em breve"
+  const ICO_SACOLA='<path d="M5.5 8h13l-1 12.5h-11z"/><path d="M9 10.5V7a3 3 0 0 1 6 0v3.5"/>';
+  const ICO_LOJA='<path d="M3.5 9.5 5 4.5h14l1.5 5"/><path d="M3.5 9.5a2.8 2.8 0 0 0 5.6 0 2.9 2.9 0 0 0 5.8 0 2.8 2.8 0 0 0 5.6 0"/><path d="M5 12.3v7.7h14v-7.7"/><path d="M10 20v-4.5h4V20"/>';
+  const ICO_PLAY='<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M10.5 9.3v5.4l4.5-2.7z"/>';
+  const ICO_CAIXA='<path d="M12 2.8 3.5 7.2v9.6L12 21.2l8.5-4.4V7.2z"/><path d="M3.5 7.2 12 11.6l8.5-4.4M12 11.6v9.6"/>';
+  const MARKETPLACES=[
+    {id:'ml',     nome:'Mercado Livre', cor:'#facc15', ico:ICO_SACOLA, ativo:true},
+    {id:'shopee', nome:'Shopee',        cor:'#f97316', ico:ICO_LOJA,   ativo:false},
+    {id:'tiktok', nome:'TikTok Shop',   cor:'#ec4899', ico:ICO_PLAY,   ativo:false},
+    {id:'temu',   nome:'Temu',          cor:'#fb7185', ico:ICO_CAIXA,  ativo:false},
+  ];
 
   const U=()=> (typeof EXP!=='undefined' && EXP.util) ? EXP.util : null;
   const escH=(s)=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -123,6 +142,7 @@ const ETQ = (function(){
       if(de && ate && de>ate){ msg('A data inicial é depois da final.',true); return; }
       HIST=(await rpc('cn_etiquetas_listas',{p_usuario_id:USER.id,p_limite:(de||ate)?500:90,p_de:de,p_ate:ate}))||[];
       renderPainel();
+      if(!de && !ate) renderMkt();
     }catch(e){
       HIST=[]; renderPainel();
       msg(/cn_etiquetas_listas/.test(e.message)||/function/i.test(e.message)
@@ -130,12 +150,52 @@ const ETQ = (function(){
     }
   }
 
+  // ---------------------------------------------------------------
+  // 1º PASSO — escolha do marketplace
+  // ---------------------------------------------------------------
+  function resumoML(){
+    // listagem mais recente de hoje: quantas etiquetas ME2 já saíram
+    const hoje=HIST.filter(l=>l.dia===hojeSP() && l.tipo!=='atualizacao');
+    if(!hoje.length) return {txt:'Nenhuma listagem hoje', falta:0};
+    const l=hoje.slice().sort((a,b)=>String(b.gerada_em).localeCompare(String(a.gerada_em)))[0];
+    const total=Number(l.envios_me2)||0, emit=Math.min(Number(l.emitidas)||0,total);
+    if(!total) return {txt:'Hoje: nenhum envio ME2', falta:0};
+    return {txt: emit>=total ? `Hoje: todas emitidas (${total})` : `Hoje: ${emit} de ${total} emitidas`, falta: total-emit};
+  }
+  function renderMkt(){
+    const g=f('mkt-grade'); if(!g) return;
+    g.innerHTML=MARKETPLACES.map(m=>{
+      let sub, bad='';
+      if(m.ativo){
+        const r= m.id==='ml' ? resumoML() : {txt:'',falta:0};
+        sub=r.txt||'Etiquetas'; if(r.falta>0) bad=`<span class="ini-gbad" title="Envios ME2 da listagem de hoje ainda sem etiqueta emitida">${r.falta>99?'99+':r.falta}</span>`;
+      }else sub='Ainda não conectado';
+      return `<button class="ini-grupo${m.ativo?'':' et-mkt-off'}" style="--cor:${m.cor}" data-mkt="${m.id}" ${m.ativo?`title="Emitir etiquetas do ${escH(m.nome)}"`:'title="Integração ainda não feita" aria-disabled="true"'}>
+          <span class="ini-gico"><svg viewBox="0 0 24 24">${m.ico}</svg></span>
+          ${m.ativo?bad:'<span class="et-mkt-breve">Em breve</span>'}
+          <span class="ini-gtx"><b>${escH(m.nome)}</b><span>${escH(sub)}</span></span>
+        </button>`;
+    }).join('');
+  }
+  function mostrarMkt(){
+    f('detalhe').style.display='none'; f('painel').style.display='none'; f('mkt').style.display='';
+    LISTA=null; LISTA_ID=null; BASE=null; SIT={}; SIT_CARREGADA=false; SEL.clear(); BLOCOS=[]; msg('');
+    MKT=null; renderMkt();
+  }
+  async function escolher(id){
+    const m=MARKETPLACES.find(x=>x.id===id); if(!m || !m.ativo) return;
+    MKT=id;
+    const chip=f('mkt-chip'); if(chip){ chip.textContent=m.nome; chip.style.setProperty('--cor',m.cor); }
+    mostrarPainel();
+    await carregarPainel();
+  }
+
   function mostrarPainel(){
-    f('detalhe').style.display='none'; f('painel').style.display='';
+    f('mkt').style.display='none'; f('detalhe').style.display='none'; f('painel').style.display='';
     LISTA=null; LISTA_ID=null; BASE=null; SIT={}; SIT_CARREGADA=false; SEL.clear(); BLOCOS=[]; msg('');
   }
   function mostrarDetalhe(){
-    f('painel').style.display='none'; f('detalhe').style.display='';
+    f('mkt').style.display='none'; f('painel').style.display='none'; f('detalhe').style.display='';
     window.scrollTo(0,0);
   }
 
@@ -327,6 +387,8 @@ const ETQ = (function(){
 
   // ---------------------------------------------------------------
   function bind(){
+    f('mkt-grade').addEventListener('click',(ev)=>{ const b=ev.target.closest('[data-mkt]'); if(b) escolher(b.dataset.mkt); });
+    f('mkt-voltar').addEventListener('click',async()=>{ if(OCUPADO) return; f('f-de').value=''; f('f-ate').value=''; mostrarMkt(); await carregarPainel(); });
     if(f('diag')) f('diag').addEventListener('click',diagnostico);
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
     ['f-de','f-ate'].forEach(k=>f(k).addEventListener('change',async()=>{ msg(''); await carregarPainel(); }));
@@ -350,10 +412,18 @@ const ETQ = (function(){
     });
   }
   async function init(){
-    bind(); mostrarPainel();
+    bind(); mostrarMkt();
+    await carregarPainel();     // traz as listas para o resumo do quadrado do Mercado Livre
+  }
+  // aberta de novo pelo menu ou pela tela inicial: volta à escolha do
+  // marketplace (menos no meio de uma emissão)
+  async function aoVoltar(){
+    if(OCUPADO) return;
+    f('f-de').value=''; f('f-ate').value='';
+    mostrarMkt();
     await carregarPainel();
   }
-  return { init };
+  return { init, aoVoltar };
 })();
 
 registrarTela('etiquetas', ETQ);

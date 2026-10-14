@@ -738,6 +738,25 @@
   button.mini.ok{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.4)}
   button.mini.dg{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#f87171}
 
+  /* ====== EMISSÃO DE ETIQUETAS — escolha do marketplace (14/10/2026) ======
+     Mesmos quadrados de vidro da tela inicial (.ini-grupo). Marketplace
+     ainda não conectado aparece apagado, com a etiqueta "Em breve". */
+  #et-mkt{position:relative;padding:6px 0 20px}
+  .et-mkt-cab{margin-bottom:20px}
+  .et-mkt-tit{font-size:24px;font-weight:700;color:var(--text);letter-spacing:-.01em}
+  .et-mkt-sub{font-size:13px;color:var(--muted);margin-top:2px}
+  #et-mkt .ini-grupo:not(.et-mkt-off){border-color:color-mix(in srgb,var(--cor) 55%,transparent);
+    background:linear-gradient(rgba(255,255,255,.05),rgba(255,255,255,.05)),color-mix(in srgb,var(--cor) 14%,transparent);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--cor) 25%,transparent),inset 0 0 38px color-mix(in srgb,var(--cor) 24%,transparent),0 12px 30px rgba(0,0,0,.3)}
+  #et-mkt .ini-grupo:not(.et-mkt-off):hover{border-color:var(--cor)}
+  .ini-grupo.et-mkt-off{opacity:.45;cursor:default;filter:saturate(.6)}
+  .ini-grupo.et-mkt-off:hover{transform:none;border-color:rgba(255,255,255,.12)}
+  .et-mkt-breve{position:absolute;top:12px;right:12px;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;
+                color:var(--muted);border:1px solid rgba(255,255,255,.18)}
+  .et-mkt-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12.5px;font-weight:600;
+               color:var(--cor);border:1px solid color-mix(in srgb,var(--cor) 55%,transparent);background:color-mix(in srgb,var(--cor) 10%,transparent)}
+  .et-mkt-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--cor)}
+
   /* ====== MENU LATERAL — painel flutuante (14/10/2026) ======
      Inspirado no modelo enviado: cartao escuro solto das bordas, lista
      dentro de um painel interno, icones verdes, item ativo preenchido em
@@ -777,8 +796,9 @@
   .nav-ico{width:17px;height:17px;flex:0 0 17px;stroke:var(--menu-ico);stroke-width:1.8;opacity:1}
   nav button:hover .nav-ico{stroke:var(--menu-verde)}
   nav button.active .nav-ico{stroke:var(--menu-verde-txt)}
-  /* contador: quadradinho vermelho logo depois do nome */
-  nav .badge-dot{position:static;transform:none;margin-left:2px;flex:0 0 auto;height:18px;min-width:18px;
+  /* contador: quadradinho vermelho encostado na direita do item — todos
+     alinhados na mesma coluna e acompanhando a largura quando o menu é arrastado */
+  nav .badge-dot{position:static;transform:none;margin-left:auto;flex:0 0 auto;height:18px;min-width:18px;
                  border-radius:5px;padding:0 5px;box-shadow:none;font-size:10.5px}
   nav button.active .badge-dot{box-shadow:0 0 0 2px rgba(6,40,28,.25)}
   /* rodape do usuario: avatar redondo + nome + perfil */
@@ -1196,9 +1216,20 @@
 
     <!-- =================== TELA EXPEDIÇÃO — EMISSÃO DE ETIQUETAS =================== -->
     <section class="tela" id="scr-etiquetas">
+      <!-- 1º PASSO: escolher o marketplace (só Mercado Livre ativo por enquanto) -->
+      <div id="et-mkt">
+        <div class="et-mkt-cab">
+          <div class="et-mkt-tit">Emissão de Etiquetas</div>
+          <div class="et-mkt-sub">Escolha o marketplace</div>
+        </div>
+        <div class="ini-grupos" id="et-mkt-grade"></div>
+      </div>
+
       <!-- PAINEL: as listagens geradas (as mesmas da Listagem de Envios) -->
-      <div id="et-painel">
+      <div id="et-painel" style="display:none">
         <div class="toolbar">
+          <button class="act" id="et-mkt-voltar" title="Volta para a escolha do marketplace">← Marketplaces</button>
+          <span class="et-mkt-chip" id="et-mkt-chip" style="--cor:#facc15">Mercado Livre</span>
           <button class="act" id="et-recarregar" title="Busca de novo as listas">↻ Atualizar</button>
           <span class="rot">de</span><input type="date" id="et-f-de" title="Listas a partir deste dia">
           <span class="rot">até</span><input type="date" id="et-f-ate" title="Listas até este dia">
@@ -2765,6 +2796,8 @@ function mostrarTela(t){
     }
   }
   if(TELAS[t] && !CARREGADO[t]){ CARREGADO[t]=true; TELAS[t].init(); }
+  // tela já aberta antes: algumas voltam ao 1º passo (ex.: Emissão de Etiquetas → escolha do marketplace)
+  else if(TELAS[t] && typeof TELAS[t].aoVoltar==='function'){ try{ TELAS[t].aoVoltar(); }catch(e){} }
   if(typeof atualizarBadges==='function') atualizarBadges();
 }
 function sair(aviso){
