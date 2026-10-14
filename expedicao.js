@@ -513,7 +513,7 @@ const EXP = (function(){
       }
       const origem= l.automatica
         ? `<span class="ex-tag ex-tag-auto">Automática</span>`
-        : `<span class="ex-tag ex-tag-manual">${escH(l.gerada_por||'Manual')}</span>`;
+        : `<span class="ex-tag ex-tag-manual">Manual</span>`;   // o nome aparece na coluna Leitura
       const leitura= l.nao_lida
         ? `<span class="ex-tag ex-tag-nl">NÃO LIDA</span>`
         : (l.automatica
