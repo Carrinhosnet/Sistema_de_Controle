@@ -738,6 +738,63 @@
   button.mini.ok{background:rgba(34,197,94,.15);border-color:rgba(34,197,94,.4)}
   button.mini.dg{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:#f87171}
 
+  /* ====== MENU LATERAL — painel flutuante (14/10/2026) ======
+     Inspirado no modelo enviado: cartao escuro solto das bordas, lista
+     dentro de um painel interno, icones verdes, item ativo preenchido em
+     verde-menta com texto escuro, contador vermelho logo depois do nome e
+     usuario no rodape com avatar redondo. Fica no fim da folha de estilos
+     de proposito: sobrescreve as regras antigas do menu sem precisar
+     apaga-las. */
+  :root{ --menu-bg:#0b1210; --menu-painel:#101a17; --menu-borda:rgba(52,227,160,.12);
+         --menu-verde:#34e3a0; --menu-verde-txt:#06281c; --menu-ico:#3ddc97; --menu-txt:#dfe5e2; --menu-tit:#6f7a76 }
+  #app.on{background:
+     radial-gradient(900px 500px at -10% 110%, rgba(52,227,160,.07), transparent 60%),
+     var(--bg)}
+  .sidebar{margin:12px 0 12px 12px;height:calc(100vh - 24px);top:12px;
+           background:linear-gradient(180deg,#0d1613 0%,var(--menu-bg) 100%);
+           border:1px solid var(--menu-borda);border-radius:18px;padding:18px 10px 14px;gap:12px;
+           box-shadow:0 18px 40px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.25),0 0 40px rgba(52,227,160,.05)}
+  .brand{border-bottom:none;padding:2px 8px 4px;margin-bottom:0}
+  .toggle-btn{border-color:rgba(255,255,255,.08);border-radius:9px}
+  .toggle-btn:hover{border-color:var(--menu-verde);color:var(--menu-verde)}
+  /* painel interno que guarda a lista */
+  nav{background:var(--menu-painel);border:1px solid rgba(255,255,255,.04);border-radius:14px;
+      margin:0;padding:8px 6px;gap:2px}
+  nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08)}
+  /* titulos dos grupos: discretos, sem caixa alta */
+  .navtit{text-transform:none;letter-spacing:0;font-size:11.5px;color:var(--menu-tit);padding:12px 10px 6px;font-weight:500}
+  .navgroup:first-child .navtit{padding-top:4px}
+  .navtit-toggle:hover{color:var(--menu-txt)}
+  .navtit .caret{opacity:.6}
+  .navgroup{gap:2px}
+  .navgroup + .navgroup{margin-top:2px}
+  /* itens sem recuo, como no modelo */
+  .navgroup > button{margin-left:0;width:100%}
+  nav button{padding:9px 10px;gap:10px;border:none;border-radius:10px;color:var(--menu-txt);font-weight:500;font-size:13.5px}
+  nav button:hover{background:rgba(52,227,160,.08);color:#fff}
+  nav button.active{background:var(--menu-verde);color:var(--menu-verde-txt);font-weight:600;
+                    box-shadow:0 4px 18px rgba(52,227,160,.28)}
+  .nav-ico{width:17px;height:17px;flex:0 0 17px;stroke:var(--menu-ico);stroke-width:1.8;opacity:1}
+  nav button:hover .nav-ico{stroke:var(--menu-verde)}
+  nav button.active .nav-ico{stroke:var(--menu-verde-txt)}
+  /* contador: quadradinho vermelho logo depois do nome */
+  nav .badge-dot{position:static;transform:none;margin-left:2px;flex:0 0 auto;height:18px;min-width:18px;
+                 border-radius:5px;padding:0 5px;box-shadow:none;font-size:10.5px}
+  nav button.active .badge-dot{box-shadow:0 0 0 2px rgba(6,40,28,.25)}
+  /* rodape do usuario: avatar redondo + nome + perfil */
+  .userbox{flex-direction:row;align-items:center;gap:10px;border-top:none;padding:6px 6px 0}
+  .ub-av{width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:var(--menu-verde);color:var(--menu-verde-txt);
+         display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;
+         box-shadow:0 0 16px rgba(52,227,160,.35)}
+  .ub-txt{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+  .ub-nome{color:#fff;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ub-perfil{color:var(--menu-tit);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ub-sair{margin-left:auto;flex:0 0 auto;background:none;border:1px solid rgba(255,255,255,.08);color:var(--menu-tit);
+           width:30px;height:30px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .ub-sair:hover{color:#f87171;border-color:rgba(248,113,113,.5)}
+  .ub-sair svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  #who{display:none}
+
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -808,7 +865,12 @@
         <button data-tela="opcoes_comerciais" id="nav-opcoes_comerciais"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11.5M9 12h11.5M9 18h11.5"/><path d="M4 6h.9M4 12h.9M4 18h.9"/></svg><span class="nav-lbl">Opções Comerciais</span></button>
       </div>
     </nav>
-    <div class="userbox"><span class="who" id="who"></span><button class="link" id="btn-sair">Sair</button></div>
+    <div class="userbox">
+      <div class="ub-av" id="ub-av"></div>
+      <div class="ub-txt"><span class="ub-nome" id="ub-nome"></span><span class="ub-perfil" id="ub-perfil"></span></div>
+      <button class="ub-sair" id="btn-sair" title="Sair do sistema"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4.5h3.5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H14"/><path d="M10 16.5 5.5 12 10 7.5M5.5 12h10"/></svg></button>
+      <span class="who" id="who"></span>
+    </div>
   </aside>
 
   <div class="content"><main>
@@ -2647,6 +2709,13 @@ async function abrirApp(){
   // marca no banco que o token chegou; não trava a abertura se falhar
   rpc('cn_sessao_ping').catch(function(){});
   $('who').textContent = USER.nome + (USER.perfil_nome? ' · '+USER.perfil_nome : '');
+  // rodape do menu: avatar com a inicial, nome e perfil
+  (function(){
+    const nome=String(USER.nome||'').trim();
+    $('ub-av').textContent = (nome.charAt(0)||'?').toUpperCase();
+    $('ub-nome').textContent = nome;
+    $('ub-perfil').textContent = USER.perfil_nome || '';
+  })();
   await carregarPermissoes();
   $('nav-vendas').style.display = temPermissao('vendas.ver') ? '' : 'none';
   $('nav-reclamacoes').style.display = temPermissao('reclamacoes.ver') ? '' : 'none';
