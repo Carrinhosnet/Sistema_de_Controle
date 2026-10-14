@@ -177,6 +177,8 @@
   #et-painel-tbody tr.ex-dia td{background:var(--surface2);font-weight:600;color:var(--text);padding:8px 14px}
   #et-painel-tbody tr.ex-linha{cursor:pointer}
   #et-painel-tbody tr.ex-linha:hover td{background:var(--surface2)}
+  #et-painel-tbody tr.ex-naolida td{background:var(--accent-soft)}
+  #et-painel-tbody tr.ex-naolida td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
   .et-bloco{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
   .et-bt{padding:10px 14px;font-weight:600;border-left:3px solid var(--accent);background:var(--surface2);display:flex;align-items:center;gap:10px}
   .et-bt .et-q{margin-left:auto;font-weight:500;color:var(--muted);font-size:13px}
@@ -762,6 +764,22 @@
                color:var(--cor);border:1px solid color-mix(in srgb,var(--cor) 55%,transparent);background:color-mix(in srgb,var(--cor) 10%,transparent)}
   .et-mkt-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--cor)}
 
+  /* ====== Listagem de Envios: botão Imprimir com lista de opções (14/10/2026) ====== */
+  .ex-drop{position:relative;display:inline-flex}
+  .ex-drop-ico{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-right:7px;vertical-align:-3px}
+  .ex-drop-seta{margin-left:8px;font-size:11px;display:inline-block;transition:transform .15s}
+  .ex-drop.aberto .ex-drop-seta{transform:rotate(180deg)}
+  .ex-drop-lista{display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:300px;padding:6px;
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.45)}
+  .ex-drop.aberto .ex-drop-lista{display:flex;flex-direction:column;gap:2px}
+  .ex-drop-lista button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;width:100%;
+    padding:9px 12px;background:none;border:1px solid transparent;border-radius:8px;color:var(--text);cursor:pointer;font:inherit}
+  .ex-drop-lista button b{font-size:13.5px;font-weight:600}
+  .ex-drop-lista button span{font-size:11.5px;color:var(--muted)}
+  .ex-drop-lista button:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 10%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+  .ex-drop-lista button:hover:not(:disabled) b{color:var(--accent)}
+  .ex-drop-lista button:disabled{opacity:.45;cursor:not-allowed}
+
   /* ====== BOTÕES DE AÇÃO — fundo transparente (14/10/2026) ======
      Os botões verdes deixam de ser preenchidos: fundo transparente com um
      leve tom de verde, borda e texto em verde. Com o mouse em cima o tom
@@ -872,7 +890,7 @@
       <div class="navgroup" id="grp-expedicao">
         <div class="navtit navtit-toggle" data-grp="grp-expedicao">Expedição<span class="caret">▾</span></div>
         <button data-tela="expedicao" id="nav-expedicao"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1z"/><path d="M16 6h2.2a1.3 1.3 0 0 1 1.3 1.3v12.4a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V7.3A1.3 1.3 0 0 1 5.8 6H8"/><path d="M8.5 12l1.6 1.6 3-3M8.5 17h7"/></svg><span class="nav-lbl">Listagem de Envios</span><span class="badge-dot" id="badge-expedicao" style="display:none"></span></button>
-        <button data-tela="etiquetas" id="nav-etiquetas"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.6V5a1.5 1.5 0 0 1 1.5-1.5h7.6a1.5 1.5 0 0 1 1.06.44l6.9 6.9a1.5 1.5 0 0 1 0 2.12l-7.6 7.6a1.5 1.5 0 0 1-2.12 0l-6.9-6.9a1.5 1.5 0 0 1-.44-1.06z"/><circle cx="8.2" cy="8.2" r="1.6"/></svg><span class="nav-lbl">Emissão de Etiquetas</span></button>
+        <button data-tela="etiquetas" id="nav-etiquetas"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.6V5a1.5 1.5 0 0 1 1.5-1.5h7.6a1.5 1.5 0 0 1 1.06.44l6.9 6.9a1.5 1.5 0 0 1 0 2.12l-7.6 7.6a1.5 1.5 0 0 1-2.12 0l-6.9-6.9a1.5 1.5 0 0 1-.44-1.06z"/><circle cx="8.2" cy="8.2" r="1.6"/></svg><span class="nav-lbl">Emissão de Etiquetas</span><span class="badge-dot" id="badge-etiquetas" data-so-menu style="display:none" title="Listagens ainda não abertas na Emissão de Etiquetas"></span></button>
       </div>
       <div class="navgroup" id="grp-comercial">
         <div class="navtit navtit-toggle" data-grp="grp-comercial">Controle Comercial<span class="caret">▾</span></div>
@@ -1215,9 +1233,16 @@
       <div class="toolbar">
         <button class="act" id="ex-voltar" title="Volta para o painel com todas as listagens">← Voltar ao painel</button>
         <button class="act prim" id="ex-copiar" disabled title="Copia a listagem simplificada (segue os filtros dos boxes), pronta para colar no WhatsApp">Copiar listagem</button>
-        <button class="act prim" id="ex-imprimir-simples" disabled title="Imprime a listagem simplificada em MEIA FOLHA (A4 em pé, metade da esquerda; continua na da direita). Segue os filtros.">Imprimir Versão Simplificada</button>
-        <button class="act prim" id="ex-imprimir" disabled title="Imprime a página como está na tela (A4 deitado). Segue os filtros.">Imprimir Versão Completa</button>
-        <button class="act prim" id="ex-imprimir-resumo" disabled title="Imprime só o Resumo de Produtos em meia folha. Segue os filtros.">Imprimir Resumo de Produtos</button>
+        <!-- um botão só para imprimir: abre a lista com as três versões -->
+        <div class="ex-drop" id="ex-imprimir-drop">
+          <button class="act prim" id="ex-imprimir-menu" disabled aria-haspopup="true" aria-expanded="false" title="Escolha a versão para imprimir (todas seguem os filtros dos boxes)">
+            <svg class="ex-drop-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8" rx="1.6"/><path d="M7 14h10v6.5H7z"/></svg>Imprimir<span class="ex-drop-seta">▾</span></button>
+          <div class="ex-drop-lista" role="menu">
+            <button type="button" role="menuitem" id="ex-imprimir-simples" disabled><b>Versão Simplificada</b><span>Meia folha · A4 em pé, metade esquerda e depois a direita</span></button>
+            <button type="button" role="menuitem" id="ex-imprimir" disabled><b>Versão Completa</b><span>A página como está na tela · A4 deitado</span></button>
+            <button type="button" role="menuitem" id="ex-imprimir-resumo" disabled><b>Resumo de Produtos</b><span>Só o resumo, em meia folha</span></button>
+          </div>
+        </div>
         <button class="act prim" id="ex-status-etq" disabled title="Consulta no Mercado Livre só o status atual da etiqueta de cada envio do ML (liberada, impressa, aguardando NF, já entregue…). O resto da listagem não muda.">↻ Atualizar Status das Etiquetas</button>
         <span id="ex-msg2" style="font-size:12px;color:var(--muted)"></span>
       </div>
@@ -1258,8 +1283,8 @@
         </div>
         <div class="ex-resumo">As listagens são geradas na tela <b>Listagem de Envios</b>. Abra uma lista para escolher os envios do Mercado Livre (ME2) e emitir as etiquetas em <b>A4</b> (igual ao painel do ML) ou <b>térmica 10x15</b> (com o produto escrito nos dados adicionais da NF).</div>
         <div class="tablewrap"><div class="scroll"><table><thead><tr>
-          <th style="width:9%">Gerada às</th><th style="width:16%">Tipo</th><th style="width:15%">Origem</th>
-          <th>Envios ME2</th><th style="width:28%">Etiquetas emitidas</th>
+          <th style="width:8%">Gerada às</th><th style="width:12%">Tipo</th><th style="width:13%">Origem</th>
+          <th>Envios ME2</th><th style="width:23%">Etiquetas emitidas</th><th style="width:19%">Leitura</th>
         </tr></thead><tbody id="et-painel-tbody"></tbody></table></div>
         <div class="foot"><span id="et-painel-cont">—</span><span>Clique numa lista para abrir</span></div></div>
       </div>
@@ -2633,6 +2658,7 @@ async function atualizarBadges(){
     setDot('badge-envios',        temPermissao('envios.ver'),        'cn_envios_pendencias'),
     setDot('badge-boletos',       temPermissao('boletos.ver'),       'cn_boletos_pendencias'),
     setDot('badge-expedicao',     temPermissao('expedicao.ver'),     'cn_expedicao_pendencias'),
+    setDot('badge-etiquetas',     temPermissao('expedicao.etiquetas'), 'cn_etiquetas_pendencias'),
     setDot('badge-produtos',      temPermissao('produtos.ver'),      'cn_produtos_pendencias'),
     setDot('badge-frete',         temPermissao('frete.ver'),         'cn_frete_pendencias'),
     setDot('badge-valores',       temPermissao('valores.ver'),       'cn_valores_pendencias'),

@@ -30,6 +30,11 @@
 //     Térmica → etiqueta 10x15 + NF 10x15 com o produto ("SKU - quantidade",
 //               mesmo texto da Listagem de Envios) nos DADOS ADICIONAIS
 //   O formato escolhido fica lembrado neste computador.
+//
+// NÃO LIDA (arquivo 128): toda listagem com envio ME2 nasce não lida
+//   AQUI (leitura própria, separada da Listagem de Envios). Só deixa de
+//   ser não lida quando alguém abre a lista nesta tela. Aparece como tag
+//   no painel e na bolinha do menu "Emissão de Etiquetas".
 //   Cada emissão fica registrada (quem, quando) e aparece na coluna
 //   "Emitida".
 //   Atenção: emitir uma etiqueta ainda não impressa faz o ML marcar como
@@ -66,6 +71,7 @@ const ETQ = (function(){
   const ddmm=(dia)=>dia? dia.slice(8,10)+'/'+dia.slice(5,7) : '';
   const brData=(dia)=>dia? dia.slice(8,10)+'/'+dia.slice(5,7)+'/'+dia.slice(0,4) : '';
   const hojeSP=()=>new Date(Date.now()-3*3600e3).toISOString().slice(0,10);
+  const diaSP=(iso)=>new Date(new Date(iso).getTime()-3*3600e3).toISOString().slice(0,10);
   const horaSP=(iso)=>{ const m=new Date(new Date(iso).getTime()-3*3600e3).toISOString().match(/T(\d{2}):(\d{2})/); return m? m[1]+':'+m[2] : ''; };
   const quando=(iso)=>{ try{ return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return iso||''; } };
   const DIAS=['dom','seg','ter','qua','qui','sex','sáb'];
@@ -112,7 +118,7 @@ const ETQ = (function(){
     const tb=f('painel-tbody'); if(!tb) return;
     if(!HIST.length){
       const filtro=!!(f('f-de').value||f('f-ate').value);
-      tb.innerHTML=`<tr><td colspan="5" class="ex-vazio">${filtro?'Nenhuma lista nesse período.':'Nenhuma listagem gerada ainda. As listagens são geradas na tela <b>Listagem de Envios</b>.'}</td></tr>`;
+      tb.innerHTML=`<tr><td colspan="6" class="ex-vazio">${filtro?'Nenhuma lista nesse período.':'Nenhuma listagem gerada ainda. As listagens são geradas na tela <b>Listagem de Envios</b>.'}</td></tr>`;
       f('painel-cont').textContent= filtro? '0 listas' : '—'; return;
     }
     const dias=[...new Set(HIST.map(l=>l.dia))];
@@ -120,7 +126,7 @@ const ETQ = (function(){
     for(const dia of dias){
       const [y,m,d]=dia.split('-').map(Number);
       const rot= dia===hojeSP() ? 'Hoje' : DIAS_LONGOS[new Date(y,m-1,d).getDay()];
-      h+=`<tr class="ex-dia"><td colspan="5">${escH(rot)} · ${escH(brData(dia))}</td></tr>`;
+      h+=`<tr class="ex-dia"><td colspan="6">${escH(rot)} · ${escH(brData(dia))}</td></tr>`;
       for(const l of HIST.filter(x=>x.dia===dia)){
         const tipo= l.tipo==='atualizacao' ? `<span class="ex-tag ex-tag-atu">Atualização</span>` : `<span class="ex-tag ex-tag-pri">Listagem</span>`;
         const origem= l.automatica ? 'Automática' : escH(l.gerada_por||'—');
@@ -130,11 +136,15 @@ const ETQ = (function(){
           : emit>=total ? `<span class="et-emit">✓ todas (${emit})</span>${l.ultima_emissao?` <span class="ex-lida">· última às ${escH(horaSP(l.ultima_emissao))}</span>`:''}`
           : emit ? `<b>${emit}</b> de ${total}${l.ultima_emissao?` <span class="ex-lida">· última às ${escH(horaSP(l.ultima_emissao))}</span>`:''}`
           : `<span class="ex-lida">nenhuma ainda</span>`;
-        h+=`<tr class="ex-linha" data-id="${l.id}"><td><b>${escH(horaSP(l.gerada_em))}</b></td><td>${tipo}</td><td>${origem}</td><td>${env}</td><td>${et}</td></tr>`;
+        const leit= l.nao_lida ? `<span class="ex-tag ex-tag-nl">NÃO LIDA</span>`
+          : l.vista_em ? `<span class="ex-lida">${diaSP(l.vista_em)===l.dia?'Lida às '+escH(horaSP(l.vista_em)):'Lida em '+escH(ddmm(diaSP(l.vista_em)))+' às '+escH(horaSP(l.vista_em))}${l.vista_por_nome?' por '+escH(l.vista_por_nome):''}</span>`
+          : (('nao_lida' in l) && !total ? '<span class="ex-lida">sem envio ME2</span>' : '<span class="ex-lida">—</span>');
+        h+=`<tr class="ex-linha${l.nao_lida?' ex-naolida':''}" data-id="${l.id}"><td><b>${escH(horaSP(l.gerada_em))}</b></td><td>${tipo}</td><td>${origem}</td><td>${env}</td><td>${et}</td><td>${leit}</td></tr>`;
       }
     }
     tb.innerHTML=h;
-    f('painel-cont').textContent=`${HIST.length} ${HIST.length===1?'lista':'listas'} · ${dias.length} ${dias.length===1?'dia':'dias'}`;
+    const nl=HIST.filter(l=>l.nao_lida).length;
+    f('painel-cont').textContent=`${HIST.length} ${HIST.length===1?'lista':'listas'} · ${dias.length} ${dias.length===1?'dia':'dias'}${nl?` · ${nl} não ${nl===1?'lida':'lidas'}`:''}`;
   }
   async function carregarPainel(){
     try{
@@ -301,8 +311,21 @@ const ETQ = (function(){
       }
       SEL.clear(); SIT={}; SIT_CARREGADA=false;
       montarBlocos(); msg(''); mostrarDetalhe(); render();
+      marcarLida(Number(id));
       await carregarSituacao();
     }catch(e){ msg(e.message,true); }
+  }
+
+  // abriu a lista aqui: deixa de ser NÃO LIDA na Emissão (arquivo 128).
+  // Sem o 128 rodado a chamada falha em silêncio e nada muda.
+  async function marcarLida(id){
+    const l=HIST.find(x=>Number(x.id)===id);
+    if(l && !l.nao_lida) return;
+    try{
+      await rpc('cn_etiquetas_marcar_vista',{p_usuario_id:USER.id,p_id:id});
+      if(l){ l.nao_lida=false; l.vista_em=new Date().toISOString(); l.vista_por_nome=USER.nome; }
+      if(typeof atualizarBadges==='function') atualizarBadges();
+    }catch(e){ /* sem o arquivo 128: ignora */ }
   }
 
   async function recarregarEmissoes(){

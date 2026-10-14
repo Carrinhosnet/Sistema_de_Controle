@@ -165,7 +165,8 @@ const INI = (function(){
       const tit=(g.querySelector('.navtit')||{}).textContent||'';
       const telas=[...g.querySelectorAll('button[data-tela]')].filter(bt=>bt.style.display!=='none').map(bt=>{
         const dot=bt.querySelector('.badge-dot');
-        const bad= dot && dot.style.display!=='none' ? dot.textContent.trim() : '';
+        // data-so-menu: aviso que fica só no menu lateral (ex.: Emissão de Etiquetas)
+        const bad= dot && dot.style.display!=='none' && !dot.hasAttribute('data-so-menu') ? dot.textContent.trim() : '';
         return { tela:bt.dataset.tela, nome:((bt.querySelector('.nav-lbl')||{}).textContent||'').trim(),
                  ico:(bt.querySelector('svg')||{}).outerHTML||'', bad };
       });

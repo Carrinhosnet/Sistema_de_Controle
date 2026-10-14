@@ -512,7 +512,7 @@ const EXP = (function(){
   }
 
   function render(){
-    const bts=['imprimir','copiar','imprimir-simples','imprimir-resumo','status-etq'];
+    const bts=['imprimir','copiar','imprimir-simples','imprimir-resumo','imprimir-menu','status-etq'];
     if(!LISTA){
       f('kpis').innerHTML=''; f('avisos').style.display='none'; f('sel-total').innerHTML='';
       f('corpo').innerHTML='';
@@ -909,6 +909,15 @@ const EXP = (function(){
 
   function bind(){
     f('copiar').addEventListener('click',copiarWhatsApp);
+    // botão Imprimir: abre/fecha a lista; escolher uma opção fecha a lista e imprime
+    (function(){
+      const drop=f('imprimir-drop'), bt=f('imprimir-menu'); if(!drop||!bt) return;
+      const fechar=()=>{ drop.classList.remove('aberto'); bt.setAttribute('aria-expanded','false'); };
+      bt.addEventListener('click',(ev)=>{ ev.stopPropagation(); const ab=!drop.classList.contains('aberto'); drop.classList.toggle('aberto',ab); bt.setAttribute('aria-expanded',String(ab)); });
+      drop.querySelector('.ex-drop-lista').addEventListener('click',(ev)=>{ if(ev.target.closest('button')) fechar(); });
+      document.addEventListener('click',(ev)=>{ if(!drop.contains(ev.target)) fechar(); });
+      document.addEventListener('keydown',(ev)=>{ if(ev.key==='Escape') fechar(); });
+    })();
     f('imprimir-simples').addEventListener('click',imprimirSimples);
     f('gerar').addEventListener('click',gerar);
     f('imprimir').addEventListener('click',imprimir);
