@@ -133,7 +133,7 @@
   .toolbar input[type=date]{padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);color-scheme:dark}
   .toolbar .rot{font-size:12px;color:var(--muted)}
   /* ====== EXPEDIÇÃO — LISTA DO DIA (tela) ====== */
-  #scr-expedicao .toolbar select{min-width:300px}
+  #scr-expedicao .toolbar select{min-width:150px}
   .ex-titulo{font-size:13px;color:var(--muted);margin:-6px 0 12px}
   .ex-titulo b{color:var(--text)}
   .kpi.ex-k-atraso .val{color:var(--danger)}
@@ -933,6 +933,14 @@
         <div class="toolbar">
           <button class="act prim" id="ex-gerar" title="Consulta Mercado Livre e Bling e guarda a lista no histórico">Gerar lista do dia</button>
           <button class="act" id="ex-recarregar" title="Busca de novo as listas geradas">↻ Atualizar</button>
+          <select id="ex-f-leitura" title="Filtrar pela leitura">
+            <option value="">Leitura: todas</option>
+            <option value="nao">Não lidas</option>
+            <option value="sim">Lidas</option>
+          </select>
+          <span class="rot">de</span><input type="date" id="ex-f-de" title="Listas a partir deste dia">
+          <span class="rot">até</span><input type="date" id="ex-f-ate" title="Listas até este dia">
+          <button class="act" id="ex-f-limpar" title="Remove os filtros de leitura e de período">Limpar filtros</button>
           <span id="ex-msg" style="font-size:12px;color:var(--muted)"></span>
         </div>
         <div id="ex-resumo" class="ex-resumo"></div>

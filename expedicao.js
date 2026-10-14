@@ -12,6 +12,9 @@
 //   Qualquer lista do histórico pode ser reaberta e reimpressa: ela
 //   mostra os envios como estavam na hora em que foi gerada.
 //
+// FILTROS DO PAINEL: leitura (todas / não lidas / lidas) e período
+//   (de / até — aplicado no banco, acha listas antigas também).
+//
 // TELA EM DOIS NÍVEIS (13/10/2026)
 //   PAINEL (inicial): todas as listas geradas, por dia. As NÃO LIDAS —
 //   automáticas de hoje que ainda contam no aviso — ficam destacadas e
@@ -445,15 +448,25 @@ const EXP = (function(){
     f('resumo').innerHTML= naoLidas
       ? `<span class="ex-tag ex-tag-nl">${naoLidas} NÃO ${naoLidas===1?'LIDA':'LIDAS'}</span>&nbsp; ${naoLidas===1?'Esta lista está':'Estas listas estão'} contando no aviso da página até alguém copiar para o WhatsApp ou imprimir.`
       : 'Todas as listas automáticas de hoje já foram lidas.';
-    if(!HIST.length){
-      tb.innerHTML=`<tr><td colspan="5" class="ex-vazio">Nenhuma lista gerada ainda. Clique em <b>Gerar lista do dia</b>.</td></tr>`;
-      f('painel-cont').textContent='—'; return;
+    // filtro de LEITURA (o de período já veio aplicado do banco)
+    //   não lidas = automáticas que ninguém copiou nem imprimiu (de
+    //               qualquer dia; as de hoje são as que contam no aviso)
+    //   lidas     = alguém copiou/imprimiu, e as geradas à mão
+    const leitura=f('f-leitura').value;
+    const VIS=HIST.filter(l=> leitura==='nao' ? (l.automatica && !l.vista_em)
+                          : leitura==='sim' ? !!l.vista_em : true);
+    const temFiltro= !!(leitura || f('f-de').value || f('f-ate').value);
+    if(!VIS.length){
+      tb.innerHTML= temFiltro
+        ? `<tr><td colspan="5" class="ex-vazio">Nenhuma lista com esses filtros.</td></tr>`
+        : `<tr><td colspan="5" class="ex-vazio">Nenhuma lista gerada ainda. Clique em <b>Gerar lista do dia</b>.</td></tr>`;
+      f('painel-cont').textContent= temFiltro ? `0 de ${HIST.length} listas` : '—'; return;
     }
     // agrupa por dia; dentro do dia: não lidas primeiro, depois mais recente
-    const dias=[...new Set(HIST.map(l=>l.dia))];
+    const dias=[...new Set(VIS.map(l=>l.dia))];
     let h='';
     for(const dia of dias){
-      const doDia=HIST.filter(l=>l.dia===dia).sort((a,b)=>(b.nao_lida-a.nao_lida)||String(b.gerada_em).localeCompare(String(a.gerada_em)));
+      const doDia=VIS.filter(l=>l.dia===dia).sort((a,b)=>(b.nao_lida-a.nao_lida)||String(b.gerada_em).localeCompare(String(a.gerada_em)));
       const [y,m,d]=dia.split('-').map(Number);
       const rot= dia===hojeSP() ? 'Hoje' : DIAS_LONGOS[new Date(y,m-1,d).getDay()];
       h+=`<tr class="ex-dia"><td colspan="5">${escH(rot)} · ${escH(brData(dia))}</td></tr>`;
@@ -473,11 +486,15 @@ const EXP = (function(){
       }
     }
     tb.innerHTML=h;
-    f('painel-cont').textContent=`${HIST.length} ${HIST.length===1?'lista':'listas'} · ${dias.length} ${dias.length===1?'dia':'dias'}`;
+    f('painel-cont').textContent=(VIS.length<HIST.length? `${VIS.length} de ${HIST.length} listas` : `${VIS.length} ${VIS.length===1?'lista':'listas'}`)
+      +` · ${dias.length} ${dias.length===1?'dia':'dias'}`;
   }
   async function carregarPainel(){
     try{
-      HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:90}))||[];
+      const de=f('f-de').value||null, ate=f('f-ate').value||null;
+      if(de && ate && de>ate){ msg('A data inicial é depois da final.',true); return; }
+      // com período escolhido, traz até 500 listas daquele intervalo
+      HIST=(await rpc('cn_expedicao_listas',{p_usuario_id:USER.id,p_limite:(de||ate)?500:90,p_de:de,p_ate:ate}))||[];
       renderPainel();
     }catch(e){ msg('Não consegui carregar as listas: '+e.message,true); }
   }
@@ -614,6 +631,11 @@ const EXP = (function(){
     f('imprimir').addEventListener('click',imprimir);
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
+    f('f-leitura').addEventListener('change',renderPainel);
+    ['f-de','f-ate'].forEach(k=>f(k).addEventListener('change',async()=>{ msg(''); await carregarPainel(); }));
+    f('f-limpar').addEventListener('click',async()=>{
+      f('f-leitura').value=''; f('f-de').value=''; f('f-ate').value=''; msg(''); await carregarPainel();
+    });
     f('painel-tbody').addEventListener('click',(ev)=>{
       const tr=ev.target.closest('tr.ex-linha'); if(tr) abrirLista(tr.dataset.id);
     });
