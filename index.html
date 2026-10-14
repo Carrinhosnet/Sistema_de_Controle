@@ -12,15 +12,16 @@
   :root{
     --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --border:#2a2f3a;
     --text:#e6e8ec; --muted:#9aa1ad;
-    /* verde da marca — VERDE-MENTA desde 14/10/2026 (mesmo do menu lateral).
+    /* verde da marca — VERDE LIMA NEON desde 14/10/2026 (mesmo do menu lateral).
        --accent      TEXTO/borda/destaque sobre o fundo escuro
        --forte       FUNDO dos botoes principais (com texto ESCURO: --accent-txt)
        --forte-h     botao com o mouse em cima (um pouco mais claro)
        --soft        preenchimento discreto (linha nao lida, selo ADM)
-       Antes era #26a269 / #0d5c37 / #0a4529 / #102a1d. A IMPRESSAO continua
-       no verde escuro (#0d5c37): menta em papel branco fica ilegivel. */
-    --accent:#34e3a0; --accent-soft:#0f2a22;
-    --accent-forte:#34e3a0; --accent-forte-h:#5cebb5; --accent-txt:#06281c;
+       Antes era #26a269 / #0d5c37 / #0a4529 / #102a1d (e por alguns minutos a
+       menta #34e3a0). A IMPRESSAO continua
+       no verde escuro (#0d5c37): verde claro em papel branco fica ilegivel. */
+    --accent:#a3ff3a; --accent-soft:#1a2810;
+    --accent-forte:#a3ff3a; --accent-forte-h:#bbff6b; --accent-txt:#142400;
     --ok:#22c55e; --danger:#ef4444; --warn:#f59e0b;
     --radius:10px; --font:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   }
@@ -59,7 +60,7 @@
                border:1px solid rgba(255,255,255,.16);border-radius:8px;color:var(--text)}
   .field input::placeholder{color:rgba(230,232,236,.45)}
   .field input:focus{outline:none;border-color:var(--accent);
-                     box-shadow:0 0 0 3px rgba(52,227,160,.30);background:rgba(255,255,255,.10)}
+                     box-shadow:0 0 0 3px rgba(163,255,58,.30);background:rgba(255,255,255,.10)}
   .btn{width:100%;padding:12px;background:var(--accent-forte);color:var(--accent-txt);border:none;
        border-radius:8px;font-weight:700;cursor:pointer;transition:background .15s,transform .15s}
   .btn:hover{background:var(--accent-forte-h);transform:translateY(-1px)}
@@ -768,15 +769,15 @@
      usuario no rodape com avatar redondo. Fica no fim da folha de estilos
      de proposito: sobrescreve as regras antigas do menu sem precisar
      apaga-las. */
-  :root{ --menu-bg:#0b1210; --menu-painel:#101a17; --menu-borda:rgba(52,227,160,.12);
-         --menu-verde:var(--accent); --menu-verde-txt:var(--accent-txt); --menu-ico:#3ddc97; --menu-txt:#dfe5e2; --menu-tit:#6f7a76 }
+  :root{ --menu-bg:#0b1210; --menu-painel:#101a17; --menu-borda:rgba(163,255,58,.12);
+         --menu-verde:var(--accent); --menu-verde-txt:var(--accent-txt); --menu-ico:var(--accent); --menu-txt:#dfe5e2; --menu-tit:#6f7a76 }
   #app.on{background:
-     radial-gradient(900px 500px at -10% 110%, rgba(52,227,160,.07), transparent 60%),
+     radial-gradient(900px 500px at -10% 110%, rgba(163,255,58,.07), transparent 60%),
      var(--bg)}
   .sidebar{margin:12px 0 12px 12px;height:calc(100vh - 24px);top:12px;
            background:linear-gradient(180deg,#0d1613 0%,var(--menu-bg) 100%);
            border:1px solid var(--menu-borda);border-radius:18px;padding:18px 10px 14px;gap:12px;
-           box-shadow:0 18px 40px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.25),0 0 40px rgba(52,227,160,.05)}
+           box-shadow:0 18px 40px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.25),0 0 40px rgba(163,255,58,.05)}
   .brand{border-bottom:none;padding:2px 8px 4px;margin-bottom:0}
   .toggle-btn{border-color:rgba(255,255,255,.08);border-radius:9px}
   .toggle-btn:hover{border-color:var(--menu-verde);color:var(--menu-verde)}
@@ -794,9 +795,9 @@
   /* itens sem recuo, como no modelo */
   .navgroup > button{margin-left:0;width:100%}
   nav button{padding:9px 10px;gap:10px;border:none;border-radius:10px;color:var(--menu-txt);font-weight:500;font-size:13.5px}
-  nav button:hover{background:rgba(52,227,160,.08);color:#fff}
+  nav button:hover{background:rgba(163,255,58,.08);color:#fff}
   nav button.active{background:var(--menu-verde);color:var(--menu-verde-txt);font-weight:600;
-                    box-shadow:0 4px 18px rgba(52,227,160,.28)}
+                    box-shadow:0 4px 18px rgba(163,255,58,.28)}
   .nav-ico{width:17px;height:17px;flex:0 0 17px;stroke:var(--menu-ico);stroke-width:1.8;opacity:1}
   nav button:hover .nav-ico{stroke:var(--menu-verde)}
   nav button.active .nav-ico{stroke:var(--menu-verde-txt)}
@@ -809,7 +810,7 @@
   .userbox{flex-direction:row;align-items:center;gap:10px;border-top:none;padding:6px 6px 0}
   .ub-av{width:38px;height:38px;flex:0 0 38px;border-radius:50%;background:var(--menu-verde);color:var(--menu-verde-txt);
          display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;
-         box-shadow:0 0 16px rgba(52,227,160,.35)}
+         box-shadow:0 0 16px rgba(163,255,58,.35)}
   .ub-txt{display:flex;flex-direction:column;min-width:0;line-height:1.25}
   .ub-nome{color:#fff;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ub-perfil{color:var(--menu-tit);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
