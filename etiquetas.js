@@ -21,6 +21,11 @@
 //   Leitura. Paginação no banco, 30 por página. A limpeza de 180 dias é
 //   a mesma da Listagem (arquivo 127).
 //
+// QUADRADO DO MERCADO LIVRE (arquivo 130): "Hoje: X de Y emitidas" conta o
+//   que saiu por esta tela E o que o ML diz que já está impresso/entregue.
+//   Cada consulta de status (abrir a lista ou ↻ Atualizar Status) é gravada
+//   no banco (cn_etiquetas_salvar_status).
+//
 // DETALHE (15/10/2026): no topo ← Voltar ao painel · selo do marketplace
 //   · ↻ Atualizar Status das Etiquetas. Abaixo do título, o corte/despacho
 //   do ML. BOXES iguais aos da Listagem de Envios (Envios para hoje ·
@@ -218,7 +223,9 @@ const ETQ = (function(){
     const hoje=HIST.filter(l=>l.dia===hojeSP() && l.tipo!=='atualizacao');
     if(!hoje.length) return {txt:'Nenhuma listagem hoje', falta:0};
     const l=hoje.slice().sort((a,b)=>String(b.gerada_em).localeCompare(String(a.gerada_em)))[0];
-    const total=Number(l.envios_me2)||0, emit=Math.min(Number(l.emitidas)||0,total);
+    // emitidas = saiu por esta tela OU o ML diz impressa/entregue (arquivo 130);
+    // envio cancelado não conta como pendência
+    const total=Math.max(0,(Number(l.envios_me2)||0)-(Number(l.canceladas)||0)), emit=Math.min(Number(l.emitidas)||0,total);
     if(!total) return {txt:'Hoje: nenhum envio ME2', falta:0};
     return {txt: emit>=total ? `Hoje: todas emitidas (${total})` : `Hoje: ${emit} de ${total} emitidas`, falta: total-emit};
   }
@@ -394,6 +401,9 @@ const ETQ = (function(){
     try{
       const r=await chamar({acao:'situacao', envios:ids});
       SIT=r.situacoes||{}; SIT_CARREGADA=true;
+      // guarda o status no banco: o quadrado do Mercado Livre passa a contar
+      // o que o ML já diz impresso/entregue (arquivo 130; sem ele, ignora)
+      rpc('cn_etiquetas_salvar_status',{p_usuario_id:USER.id, p_situacoes:SIT}).catch(()=>{});
       // tira da seleção o que deixou de estar disponível
       for(const id of [...SEL]) if(!disponivel(id)) SEL.delete(id);
       msg('');
