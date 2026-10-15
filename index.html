@@ -199,6 +199,16 @@
   .et-emit{font-size:11.5px;color:var(--ok);white-space:nowrap}
   .et-barra{position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-top:4px;box-shadow:0 -4px 14px rgba(0,0,0,.18)}
   .et-barra b{color:var(--text)}
+  /* formato da impressão: dois botões lado a lado (um aceso) */
+  .et-fmt{margin-left:auto;display:inline-flex;padding:3px;gap:3px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+  .et-fmt-op{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border:1px solid transparent;border-radius:8px;background:none;
+             color:var(--muted);font:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
+  .et-fmt-op:hover{color:var(--text)}
+  .et-fmt-op[aria-checked="true"]{color:var(--accent);font-weight:600;border-color:color-mix(in srgb,var(--accent) 55%,transparent);
+             background:color-mix(in srgb,var(--accent) 12%,transparent)}
+  .et-fmt-op svg,.et-emitir svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .et-barra .et-emitir{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .et-barra .et-emitir:disabled{opacity:.45;cursor:not-allowed}
   /* painel de listas */
   .ex-resumo{font-size:13px;color:var(--muted);margin:-4px 0 12px}
   .ex-resumo b{color:var(--text)}
@@ -1321,23 +1331,33 @@
 
       <!-- DETALHE: escolher os envios e emitir -->
       <div id="et-detalhe" style="display:none">
-        <div class="toolbar">
-          <button class="act" id="et-voltar" title="Volta para o painel com todas as listas">← Voltar ao painel</button>
-          <button class="act" id="et-situacao" title="Consulta de novo no Mercado Livre a situação de cada envio">↻ Situação agora</button>
-          <label style="font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px"><input type="checkbox" id="et-original"> baixar também o PDF original do ML</label>
-          <button class="act" id="et-diag" title="TESTE: baixa a etiqueta de 1 envio nos formatos PDF e térmico (ZPL) para conferir o que o ML devolve">Diagnóstico de formatos</button>
+        <!-- linha de cima: voltar + selo do marketplace + atualizar status -->
+        <div class="et-mkt-topo">
+          <button class="act" id="et-voltar" title="Volta para o painel com todas as listagens">← Voltar ao painel</button>
+          <span class="et-mkt-chip" id="et-mkt-chip2" style="--cor:#facc15">Mercado Livre</span>
           <span id="et-msg2" style="font-size:12px;color:var(--muted)"></span>
+          <button class="act prim" id="et-situacao" style="margin-left:auto" title="Consulta de novo no Mercado Livre o status da etiqueta de cada envio (liberada, impressa, aguardando NF, já entregue…)">↻ Atualizar Status das Etiquetas</button>
         </div>
         <div class="ex-titulo" id="et-titulo"></div>
         <div id="et-avisos" style="display:none;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:12.5px;line-height:1.5"></div>
+        <!-- boxes: os mesmos da Listagem de Envios (filtram os painéis abaixo) -->
+        <div class="kpis ex-boxes" id="et-kpis"></div>
+        <div class="ex-sel-total" id="et-sel-total"></div>
         <div id="et-corpo"></div>
         <div class="et-barra">
           <span id="et-sel-txt">Nenhum envio selecionado</span>
-          <select id="et-formato" style="margin-left:auto;min-width:220px" title="Formato da impressão">
-            <option value="a4">A4 — igual ao painel do ML</option>
-            <option value="termica">Térmica 10x15 — produto na NF</option>
+          <div class="et-fmt" role="radiogroup" aria-label="Formato da impressão">
+            <button type="button" role="radio" class="et-fmt-op" data-fmt="a4" aria-checked="true" title="Folha A4, igual ao painel do Mercado Livre (identificação + etiqueta + NF)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 2.8h7.6l4.4 4.4v14H6.5z"/><path d="M14 2.8v4.5h4.5M9.5 12h5M9.5 15.5h5"/></svg>Impressão Folha A4</button>
+            <button type="button" role="radio" class="et-fmt-op" data-fmt="termica" aria-checked="false" title="Etiqueta 10x15 + NF 10x15 com o produto escrito nos dados adicionais">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 7.5h7M8.5 11h7M8.5 14.5h4"/><path d="M8.5 18h1M11 18h1M13.5 18h2"/></svg>Etiqueta Térmica 10x15</button>
+          </div>
+          <select id="et-formato" hidden aria-hidden="true">
+            <option value="a4">Impressão Folha A4</option>
+            <option value="termica">Etiqueta Térmica 10x15</option>
           </select>
-          <button class="act prim" id="et-emitir" disabled title="Baixa as etiquetas selecionadas do Mercado Livre e monta o PDF no formato escolhido">Emitir etiquetas selecionadas</button>
+          <button class="act prim et-emitir" id="et-emitir" disabled title="Baixa as etiquetas selecionadas do Mercado Livre e monta o PDF no formato escolhido">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8.5V3.5h10v5"/><rect x="3.5" y="8.5" width="17" height="8" rx="1.6"/><path d="M7 14h10v6.5H7z"/></svg><span id="et-emitir-txt">Emitir etiquetas selecionadas</span></button>
         </div>
       </div>
     </section>

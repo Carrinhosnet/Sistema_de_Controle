@@ -21,7 +21,15 @@
 //   Leitura. Paginação no banco, 30 por página. A limpeza de 180 dias é
 //   a mesma da Listagem (arquivo 127).
 //
-// DETALHE: três blocos com caixas de seleção — só ME2 (ME1 tem
+// DETALHE (15/10/2026): no topo ← Voltar ao painel · selo do marketplace
+//   · ↻ Atualizar Status das Etiquetas. Abaixo do título, o corte/despacho
+//   do ML. BOXES iguais aos da Listagem de Envios (Envios para hoje ·
+//   Atrasados · Próximos dias · Listagem completa), que se combinam e
+//   FILTRAM os blocos — o que sai do filtro também sai da seleção.
+//   Formato em dois botões (Impressão Folha A4 / Etiqueta Térmica 10x15).
+//   Saíram o "baixar também o PDF original" e o "Diagnóstico de formatos"
+//   (eram só para os testes).
+//   Blocos com caixas de seleção — só ME2 (ME1 tem
 //   etiqueta própria e não entra):
 //     ATRASADOS · PARA HOJE · PRÓXIMOS DIAS
 //   "Situação agora" é consultada AO VIVO no ML (a lista é uma foto da
@@ -54,6 +62,7 @@ const ETQ = (function(){
   let SIT={};           // situação ao vivo por envio
   let SIT_CARREGADA=false;
   const SEL=new Set();  // envios marcados
+  const FILTRO=new Set(); // boxes ligados (vazio = Listagem completa)
   let BLOCOS=[];        // [{id, titulo, linhas:[{e, n}]}] na ordem da tela
   let OCUPADO=false;
   let MKT=null;         // marketplace escolhido ('ml')
@@ -230,20 +239,20 @@ const ETQ = (function(){
   }
   function mostrarMkt(){
     f('detalhe').style.display='none'; f('painel').style.display='none'; f('mkt').style.display='';
-    LISTA=null; LISTA_ID=null; BASE=null; SIT={}; SIT_CARREGADA=false; SEL.clear(); BLOCOS=[]; msg('');
+    LISTA=null; LISTA_ID=null; BASE=null; SIT={}; SIT_CARREGADA=false; SEL.clear(); FILTRO.clear(); BLOCOS=[]; msg('');
     MKT=null; renderMkt();
   }
   async function escolher(id){
     const m=MARKETPLACES.find(x=>x.id===id); if(!m || !m.ativo) return;
     MKT=id;
-    const chip=f('mkt-chip'); if(chip){ chip.textContent=m.nome; chip.style.setProperty('--cor',m.cor); }
+    for(const c of [f('mkt-chip'),f('mkt-chip2')]) if(c){ c.textContent=m.nome; c.style.setProperty('--cor',m.cor); }
     mostrarPainel();
     await carregarPainel();
   }
 
   function mostrarPainel(){
     f('mkt').style.display='none'; f('detalhe').style.display='none'; f('painel').style.display='';
-    LISTA=null; LISTA_ID=null; BASE=null; SIT={}; SIT_CARREGADA=false; SEL.clear(); BLOCOS=[]; msg('');
+    LISTA=null; LISTA_ID=null; BASE=null; SIT={}; SIT_CARREGADA=false; SEL.clear(); FILTRO.clear(); BLOCOS=[]; msg('');
   }
   function mostrarDetalhe(){
     f('mkt').style.display='none'; f('painel').style.display='none'; f('detalhe').style.display='';
@@ -280,16 +289,67 @@ const ETQ = (function(){
   }
   const disponivel=(envio)=> SIT_CARREGADA && SIT[envio] && SIT[envio].disponivel;
 
+  // ---------------------------------------------------------------
+  // BOXES — mesmos da Listagem de Envios (cores, layout, combinação)
+  // ---------------------------------------------------------------
+  const NOME_BOX={hoje:'Envios para hoje', atrasados:'Atrasados', proximos:'Próximos dias'};
+  const bloco=(id)=>BLOCOS.find(b=>b.id===id)||{linhas:[]};
+  const temProx=()=>!bloco('proximos').semProximos;
+  function blocosVisiveis(){ return FILTRO.size ? BLOCOS.filter(b=>FILTRO.has(b.id)) : BLOCOS; }
+  function htmlBoxes(){
+    const n=(id)=>bloco(id).linhas.length;
+    const L=[
+      ['hoje','Envios para hoje',n('hoje'),'Despacho hoje','ex-c-hoje'],
+      ['atrasados','Atrasados',n('atrasados'),'Despacho já venceu','ex-c-atraso'],
+      ['proximos','Próximos dias',temProx()?n('proximos'):'—',temProx()?'Despacho depois de hoje':'Listagem antiga: não guardou','ex-c-prox'],
+      ['completa','Listagem completa',n('hoje')+n('atrasados')+(temProx()?n('proximos'):0),'Mostra tudo','ex-c-todos'],
+    ];
+    return L.map(([k,l,val,hint,cor])=>{
+      const on= k==='completa' ? !FILTRO.size : FILTRO.has(k);
+      const off= k==='proximos' && !temProx();
+      return `<div class="kpi click ex-box ${cor}${on?' on':''}${off?' ex-box-off':''}" data-box="${k}" title="${off?'Esta listagem não guardou os próximos dias':(k==='completa'?'Mostra tudo (limpa os filtros)':'Clique para filtrar; combine com outros boxes')}">
+        <div class="lbl">${escH(l)}</div><div class="hint">${escH(hint)}</div><div class="val">${val}</div><div class="flag">${k==='completa'?'MOSTRANDO TUDO':'FILTRANDO'}</div></div>`;
+    }).join('');
+  }
+  function textoSelecao(){
+    const vis=blocosVisiveis().filter(b=>!b.semProximos);
+    const ordem=['atrasados','hoje','proximos'];
+    const partes=ordem.map(id=>vis.find(b=>b.id===id)).filter(Boolean).map(b=>`${NOME_BOX[b.id]} ${b.linhas.length}`);
+    const tot=vis.reduce((s,b)=>s+b.linhas.length,0);
+    const disp=SIT_CARREGADA ? vis.reduce((s,b)=>s+b.linhas.filter(x=>disponivel(x.e.envio)).length,0) : null;
+    return `Mostrando <b>${tot}</b> ${tot===1?'envio':'envios'}${partes.length?` (${partes.join(' + ')})`:''}${disp!==null?` · ${disp} com etiqueta disponível`:''}`;
+  }
+  function clicarBox(k){
+    if(!LISTA || OCUPADO) return;
+    if(k==='completa') FILTRO.clear();
+    else if(k==='proximos' && !temProx()) return;
+    else if(FILTRO.has(k)) FILTRO.delete(k); else FILTRO.add(k);
+    // o que saiu do filtro sai também da seleção (para não emitir o que não está na tela)
+    const vis=new Set(blocosVisiveis().flatMap(b=>b.linhas.map(x=>String(x.e.envio))));
+    for(const id of [...SEL]) if(!vis.has(id)) SEL.delete(id);
+    render();
+  }
+  // horário de corte e de despacho do ML guardados na listagem
+  function agendaTxt(lista){
+    const a=lista && lista.agenda; if(!a) return '';
+    if(a.trabalha===false) return 'Agência do ML: sem despacho neste dia';
+    return `Corte do ML: ${a.corte||'--:--'} · despacho na agência até ${a.despacho||'--:--'}`;
+  }
+
   function render(){
-    if(!LISTA){ f('corpo').innerHTML=''; return; }
+    if(!LISTA){ f('corpo').innerHTML=''; f('kpis').innerHTML=''; f('sel-total').innerHTML=''; return; }
     const u=U();
-    f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Listagem de envios <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')} · só Mercado Livre ME2 (ME1 tem etiqueta própria)`;
+    const ag=agendaTxt(LISTA);
+    f('titulo').innerHTML=`${LISTA.tipo==='atualizacao'?'<b>Atualização</b> da ':''}Listagem de envios <b>${escH(diaSemana(LISTA.dia))} ${escH(brData(LISTA.dia))}</b> · gerada em ${escH(quando(LISTA.gerada_em))}${LISTA.automatica?' · <b>automática</b>':(LISTA.gerada_por?' por '+escH(LISTA.gerada_por):'')} · Somente envios por agência`
+      + (ag ? `<div class="ex-agenda">${escH(ag)}</div>` : '');
+    f('kpis').innerHTML=htmlBoxes();
+    f('sel-total').innerHTML=textoSelecao();
     const av=[];
     if(LISTA.tipo==='atualizacao') av.push('Esta é uma ATUALIZAÇÃO: traz só as vendas novas desde a lista principal. Os demais envios estão na lista principal do dia.');
     f('avisos').innerHTML=av.map(a=>`<div>• ${escH(a)}</div>`).join(''); f('avisos').style.display=av.length?'':'none';
     const emis=LISTA.emissoes||{};
     let h='';
-    for(const b of BLOCOS){
+    for(const b of blocosVisiveis()){
       const disp=b.linhas.filter(x=>disponivel(x.e.envio));
       const todosMarcados= disp.length>0 && disp.every(x=>SEL.has(String(x.e.envio)));
       h+=`<div class="et-bloco ${b.cls}"><div class="et-bt">
@@ -299,7 +359,7 @@ const ETQ = (function(){
         h+=`<div class="ex-vazio">Esta lista foi gerada antes da tela de etiquetas e não guardou os envios dos próximos dias. Gere uma listagem nova na Listagem de Envios para vê-los.</div></div>`; continue;
       }
       if(!b.linhas.length){ h+=`<div class="ex-vazio">Nenhum envio.</div></div>`; continue; }
-      h+=`<table class="et-tab"><thead><tr><th class="et-cb" style="width:40px"></th><th style="width:76px">Pacote</th><th>Produtos (o que sai escrito na etiqueta)</th>
+      h+=`<table class="et-tab"><thead><tr><th class="et-cb" style="width:40px"></th><th style="width:76px">Pacote</th><th>Produtos</th>
             <th style="width:15%">Envio / pedido</th><th style="width:9%">Despacho</th><th style="width:15%">Situação agora</th><th style="width:13%">Emitida</th></tr></thead><tbody>`;
       for(const x of b.linhas){
         const e=x.e, id=String(e.envio), ok=disponivel(id), em=emis[id];
@@ -350,7 +410,7 @@ const ETQ = (function(){
       if(LISTA.tipo==='atualizacao' && LISTA.base_id){
         try{ BASE=await rpc('cn_etiquetas_lista',{p_usuario_id:USER.id,p_id:Number(LISTA.base_id)}); }catch(e){ BASE=null; }
       }
-      SEL.clear(); SIT={}; SIT_CARREGADA=false;
+      SEL.clear(); FILTRO.clear(); SIT={}; SIT_CARREGADA=false;
       montarBlocos(); msg(''); mostrarDetalhe(); render();
       marcarLida(Number(id));
       await carregarSituacao();
@@ -380,7 +440,7 @@ const ETQ = (function(){
     if(!LISTA || OCUPADO || !SEL.size) return;
     const u=U();
     // ordem da tela: atrasados, hoje, próximos dias
-    const escolhidos=BLOCOS.flatMap(b=>b.linhas).filter(x=>SEL.has(String(x.e.envio)));
+    const escolhidos=blocosVisiveis().flatMap(b=>b.linhas).filter(x=>SEL.has(String(x.e.envio)));
     const emis=LISTA.emissoes||{};
     const repetidas=escolhidos.filter(x=>emis[String(x.e.envio)]).length;
     const novas=escolhidos.filter(x=>SIT[String(x.e.envio)] && SIT[String(x.e.envio)].rotulo==='ETIQUETA LIBERADA').length;
@@ -390,70 +450,29 @@ const ETQ = (function(){
     if(!confirm(aviso)) return;
     const envios=escolhidos.map(x=>({envio:String(x.e.envio), pedido:String(x.e.pedido||''), linhas:u.desmontar(x.e.itens).map(u.itemTxt)}));
     const formato=f('formato').value==='termica'?'termica':'a4';
-    OCUPADO=true; atualizarBarra(); f('emitir').textContent='Emitindo…';
+    OCUPADO=true; atualizarBarra(); f('emitir-txt').textContent='Emitindo…';
     msg(`Baixando ${envios.length} ${envios.length===1?'etiqueta':'etiquetas'} do Mercado Livre e montando o PDF…`);
     try{
-      const r=await chamar({acao:'etiquetas', lista_id:LISTA_ID, envios, formato, original:f('original').checked});
+      const r=await chamar({acao:'etiquetas', lista_id:LISTA_ID, envios, formato, original:false});
       const agora=new Date(Date.now()-3*3600e3).toISOString();
       const carimbo=`${agora.slice(8,10)}-${agora.slice(5,7)}-${agora.slice(0,4)} ${agora.slice(11,13)}h${agora.slice(14,16)}`;
       baixarArquivo(r.pdf, `Etiquetas ML ${formato==='termica'?'termica':'A4'} ${carimbo}.pdf`);
       try{ localStorage.setItem('cn_et_formato',formato); }catch(e){}
-      if(r.original) setTimeout(()=>baixarArquivo(r.original, `Etiquetas ML original ${carimbo}.pdf`), 800);
       const info=r.info||[], falhas=info.filter(i=>!i.ok), oks=info.filter(i=>i.ok);
       for(const i of oks){ SEL.delete(String(i.envio)); if(SIT[i.envio]) SIT[i.envio]=Object.assign({},SIT[i.envio],{rotulo:'ETIQUETA IMPRESSA'}); }
       await recarregarEmissoes();
       render();
-      const tam=[...new Set(oks.flatMap(i=>i.tamanhos||[]))];
-      msg(`${oks.length} de ${envios.length} etiquetas no PDF${f('original').checked&&tam.length?` · páginas do ML: ${tam.join(', ')} pt`:''}`
+      msg(`${oks.length} de ${envios.length} etiquetas no PDF`
         + (falhas.length? ` · NÃO SAÍRAM: ${falhas.map(i=>i.envio+' ('+i.erro+')').join('; ')}` : '')
         + (r.aviso? ' · '+r.aviso : ''), !!(falhas.length||r.aviso));
     }catch(e){ msg('Etiquetas: '+e.message,true); }
-    finally{ OCUPADO=false; f('emitir').textContent='Emitir etiquetas selecionadas'; atualizarBarra(); }
-  }
-
-  // ---------------------------------------------------------------
-  // DIAGNÓSTICO (14/10/2026): baixa a etiqueta de 1 envio em PDF e em
-  // ZPL (térmica) e salva os arquivos + um resumo, para conferir o que
-  // a API do ML devolve em cada formato. Usa o 1º envio marcado ou, sem
-  // nenhum marcado, o 1º com etiqueta disponível.
-  // ---------------------------------------------------------------
-  function baixarBinario(base64, nome, tipo){
-    const bin=atob(base64), u8=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
-    const url=URL.createObjectURL(new Blob([u8],{type:tipo}));
-    const a=document.createElement('a'); a.href=url; a.download=nome;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),60000);
-  }
-  async function diagnostico(){
-    if(!LISTA || OCUPADO) return;
-    const todos=BLOCOS.flatMap(b=>b.linhas).map(x=>String(x.e.envio));
-    const envio=todos.find(id=>SEL.has(id)) || todos.find(id=>disponivel(id));
-    if(!envio){ msg('Marque um envio com etiqueta disponível para o diagnóstico.',true); return; }
-    if(!confirm(`Diagnóstico com o envio ${envio}.\n\nSe a etiqueta ainda não foi impressa, no Mercado Livre ela passa a constar como impressa.`)) return;
-    OCUPADO=true; msg(`Diagnóstico do envio ${envio}: baixando PDF e ZPL…`);
-    try{
-      const r=await chamar({acao:'diagnostico', envio});
-      const d=r.diagnostico||{};
-      const resumo=JSON.parse(JSON.stringify(d));
-      for(const t of ['pdf','zpl2']){
-        const x=d[t]; if(!x||!x.arquivo) continue;
-        const ext= x.inicio&&x.inicio.startsWith('%PDF') ? 'pdf' : (x.inicio&&x.inicio.startsWith('PK') ? 'zip' : 'txt');
-        baixarBinario(x.arquivo, `diagnostico ${envio} ${t}.${ext}`, ext==='pdf'?'application/pdf':(ext==='zip'?'application/zip':'text/plain'));
-        delete resumo[t].arquivo;
-      }
-      const txt=JSON.stringify(resumo,null,2);
-      setTimeout(()=>baixarBinario(btoa(unescape(encodeURIComponent(txt))), `diagnostico ${envio} resumo.json`, 'application/json'), 900);
-      msg(`Diagnóstico pronto: 3 arquivos baixados (PDF, ZPL e resumo). Mande os três.`);
-    }catch(e){ msg('Diagnóstico: '+e.message,true); }
-    finally{ OCUPADO=false; }
+    finally{ OCUPADO=false; f('emitir-txt').textContent='Emitir etiquetas selecionadas'; atualizarBarra(); }
   }
 
   // ---------------------------------------------------------------
   function bind(){
     f('mkt-grade').addEventListener('click',(ev)=>{ const b=ev.target.closest('[data-mkt]'); if(b) escolher(b.dataset.mkt); });
     f('mkt-voltar').addEventListener('click',async()=>{ if(OCUPADO) return; limparFiltros(); mostrarMkt(); await carregarPainel(); });
-    if(f('diag')) f('diag').addEventListener('click',diagnostico);
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
     ['f-leitura','f-origem','f-de','f-ate'].forEach(k=>f(k).addEventListener('change',recarregarDoInicio));
     f('f-periodo').addEventListener('change',async()=>{ aplicarPeriodo(f('f-periodo').value); await recarregarDoInicio(); });
@@ -466,8 +485,12 @@ const ETQ = (function(){
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('situacao').addEventListener('click',()=>{ if(LISTA && !OCUPADO) carregarSituacao(); });
     f('emitir').addEventListener('click',emitir);
+    // formato: dois botões; o select escondido guarda o valor
+    const marcarFormato=(v)=>{ f('formato').value=v; document.querySelectorAll('#scr-etiquetas .et-fmt-op').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.fmt===v))); atualizarBarra(); };
     try{ const fm=localStorage.getItem('cn_et_formato'); if(fm==='termica'||fm==='a4') f('formato').value=fm; }catch(e){}
-    f('formato').addEventListener('change',atualizarBarra);
+    marcarFormato(f('formato').value);
+    document.querySelector('#scr-etiquetas .et-fmt').addEventListener('click',(ev)=>{ const b=ev.target.closest('.et-fmt-op'); if(b && !OCUPADO) marcarFormato(b.dataset.fmt); });
+    f('kpis').addEventListener('click',(ev)=>{ const b=ev.target.closest('[data-box]'); if(b) clicarBox(b.dataset.box); });
     f('corpo').addEventListener('change',(ev)=>{
       const t=ev.target;
       if(t.classList.contains('et-um')){
