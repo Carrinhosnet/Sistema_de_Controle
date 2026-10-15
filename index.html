@@ -760,6 +760,12 @@
   .ini-grupo.et-mkt-off:hover{transform:none;border-color:rgba(255,255,255,.12)}
   .et-mkt-breve{position:absolute;top:12px;right:12px;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;
                 color:var(--muted);border:1px solid rgba(255,255,255,.18)}
+  .et-mkt-topo{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+  .et-mkt-topo button.act{padding:9px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer}
+  .et-mkt-topo button.act:hover{border-color:var(--accent)}
+  #scr-etiquetas .toolbar input[type=search]{padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);color-scheme:dark}
+  #scr-etiquetas .foot button.act:disabled{opacity:.4;cursor:default}
+  #scr-etiquetas .toolbar input[type=search]:focus{outline:none;border-color:var(--accent)}
   .et-mkt-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12.5px;font-weight:600;
                color:var(--cor);border:1px solid color-mix(in srgb,var(--cor) 55%,transparent);background:color-mix(in srgb,var(--cor) 10%,transparent)}
   .et-mkt-chip::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--cor)}
@@ -1272,21 +1278,45 @@
 
       <!-- PAINEL: as listagens geradas (as mesmas da Listagem de Envios) -->
       <div id="et-painel" style="display:none">
-        <div class="toolbar">
+        <!-- 1ª linha: voltar + marketplace aberto; filtros na linha de baixo -->
+        <div class="et-mkt-topo">
           <button class="act" id="et-mkt-voltar" title="Volta para a escolha do marketplace">← Marketplaces</button>
           <span class="et-mkt-chip" id="et-mkt-chip" style="--cor:#facc15">Mercado Livre</span>
-          <button class="act" id="et-recarregar" title="Busca de novo as listas">↻ Atualizar</button>
-          <span class="rot">de</span><input type="date" id="et-f-de" title="Listas a partir deste dia">
-          <span class="rot">até</span><input type="date" id="et-f-ate" title="Listas até este dia">
-          <button class="act" id="et-f-limpar" title="Remove o filtro de período">Limpar filtros</button>
+        </div>
+        <div class="toolbar">
+          <button class="act prim" id="et-recarregar" title="Busca de novo as listagens">↻ Atualizar</button>
+          <input type="search" id="et-f-busca" placeholder="Buscar pedido, envio ou SKU" title="Mostra só as listagens que têm esse pedido, envio ou SKU (Enter para buscar)" style="min-width:250px">
+          <select id="et-f-leitura" title="Filtrar pela leitura nesta tela">
+            <option value="">Leitura: todas</option>
+            <option value="nao">Não lidas</option>
+            <option value="sim">Lidas</option>
+          </select>
+          <select id="et-f-origem" title="Filtrar pela origem">
+            <option value="">Origem: todas</option>
+            <option value="auto">Automáticas</option>
+            <option value="manual">Manuais</option>
+          </select>
+          <select id="et-f-periodo" title="Período rápido (preenche as datas de / até)">
+            <option value="">Período: todos</option>
+            <option value="hoje">Hoje</option>
+            <option value="ontem">Ontem</option>
+            <option value="7">Últimos 7 dias</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="custom" hidden>Período: personalizado</option>
+          </select>
+          <span class="rot">de</span><input type="date" id="et-f-de" title="Listagens a partir deste dia">
+          <span class="rot">até</span><input type="date" id="et-f-ate" title="Listagens até este dia">
+          <button class="act prim" id="et-f-limpar" title="Remove todos os filtros: leitura, origem, busca e período">Limpar filtros</button>
           <span id="et-msg" style="font-size:12px;color:var(--muted)"></span>
         </div>
         <div class="ex-resumo">As listagens são geradas na tela <b>Listagem de Envios</b>. Abra uma lista para escolher os envios do Mercado Livre (ME2) e emitir as etiquetas em <b>A4</b> (igual ao painel do ML) ou <b>térmica 10x15</b> (com o produto escrito nos dados adicionais da NF).</div>
         <div class="tablewrap"><div class="scroll"><table><thead><tr>
-          <th style="width:8%">Gerada às</th><th style="width:12%">Tipo</th><th style="width:13%">Origem</th>
-          <th>Envios ME2</th><th style="width:23%">Etiquetas emitidas</th><th style="width:19%">Leitura</th>
+          <th style="width:9%">Gerada às</th><th style="width:20%">Origem</th>
+          <th>Envios ME2</th><th style="width:28%">Leitura</th>
         </tr></thead><tbody id="et-painel-tbody"></tbody></table></div>
-        <div class="foot"><span id="et-painel-cont">—</span><span>Clique numa lista para abrir</span></div></div>
+        <div class="foot"><span id="et-painel-cont">—</span><span style="display:flex;align-items:center;gap:10px">
+          <button class="act" id="et-prev" style="padding:4px 10px">‹ Anterior</button><span id="et-paginfo" style="font-size:12px;color:var(--muted)">—</span><button class="act" id="et-next" style="padding:4px 10px">Próxima ›</button>
+        </span></div></div>
       </div>
 
       <!-- DETALHE: escolher os envios e emitir -->

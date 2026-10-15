@@ -13,9 +13,13 @@
 // expedicao.js (EXP.util), para o texto dos pacotes e a numeração
 // saírem IGUAIS aos da Listagem de Envios.
 //
-// PAINEL: as listagens geradas na Listagem de Envios, com quantos envios do
-//   Mercado Livre (ME2) cada uma tem e quantos já tiveram etiqueta
-//   emitida (arquivo 126: cn_etiquetas_listas).
+// PAINEL (15/10/2026 — arquivo 129): igual ao da Listagem de Envios.
+//   Selo do marketplace no canto superior esquerdo; botões ← Marketplaces
+//   e ↻ Atualizar; busca (pedido, envio ou SKU — Enter), filtros de
+//   leitura, origem, período rápido e de/até; Limpar filtros.
+//   Colunas: Gerada às · Origem (Automática / Manual) · Envios ME2 ·
+//   Leitura. Paginação no banco, 30 por página. A limpeza de 180 dias é
+//   a mesma da Listagem (arquivo 127).
 //
 // DETALHE: três blocos com caixas de seleção — só ME2 (ME1 tem
 //   etiqueta própria e não entra):
@@ -114,51 +118,88 @@ const ETQ = (function(){
   // ---------------------------------------------------------------
   // PAINEL
   // ---------------------------------------------------------------
+  const POR_PAGINA=30;
+  let PAG=1, TOTAL=0;
+  // "às 10:42" no mesmo dia da listagem; "em 15/10 às 10:42" se foi em outro dia
+  const quandoLeu=(iso,dia)=> diaSP(iso)===dia ? `às ${escH(horaSP(iso))}` : `em ${escH(ddmm(diaSP(iso)))} às ${escH(horaSP(iso))}`;
   function renderPainel(){
     const tb=f('painel-tbody'); if(!tb) return;
+    const temFiltro= !!(f('f-leitura').value || f('f-origem').value || f('f-busca').value.trim() || f('f-de').value || f('f-ate').value);
+    marcarAtalho();
     if(!HIST.length){
-      const filtro=!!(f('f-de').value||f('f-ate').value);
-      tb.innerHTML=`<tr><td colspan="6" class="ex-vazio">${filtro?'Nenhuma lista nesse período.':'Nenhuma listagem gerada ainda. As listagens são geradas na tela <b>Listagem de Envios</b>.'}</td></tr>`;
-      f('painel-cont').textContent= filtro? '0 listas' : '—'; return;
+      tb.innerHTML= temFiltro
+        ? `<tr><td colspan="4" class="ex-vazio">Nenhuma listagem com esses filtros.</td></tr>`
+        : `<tr><td colspan="4" class="ex-vazio">Nenhuma listagem gerada ainda. As listagens são geradas na tela <b>Listagem de Envios</b>.</td></tr>`;
+      f('painel-cont').textContent='0 listagens'; atualizarPaginacao(); return;
     }
-    const dias=[...new Set(HIST.map(l=>l.dia))];
-    let h='';
-    for(const dia of dias){
-      const [y,m,d]=dia.split('-').map(Number);
-      const rot= dia===hojeSP() ? 'Hoje' : DIAS_LONGOS[new Date(y,m-1,d).getDay()];
-      h+=`<tr class="ex-dia"><td colspan="6">${escH(rot)} · ${escH(brData(dia))}</td></tr>`;
-      for(const l of HIST.filter(x=>x.dia===dia)){
-        const tipo= l.tipo==='atualizacao' ? `<span class="ex-tag ex-tag-atu">Atualização</span>` : `<span class="ex-tag ex-tag-pri">Listagem</span>`;
-        const origem= l.automatica ? 'Automática' : escH(l.gerada_por||'—');
-        const total=Number(l.envios_me2)||0, emit=Number(l.emitidas)||0;
-        const env= `<b>${total}</b> ${total===1?'envio':'envios'}${l.tem_proximos?'':' <span class="ex-lida">· sem "próximos dias" (lista anterior a esta tela)</span>'}`;
-        const et= !total ? '<span class="ex-lida">—</span>'
-          : emit>=total ? `<span class="et-emit">✓ todas (${emit})</span>${l.ultima_emissao?` <span class="ex-lida">· última às ${escH(horaSP(l.ultima_emissao))}</span>`:''}`
-          : emit ? `<b>${emit}</b> de ${total}${l.ultima_emissao?` <span class="ex-lida">· última às ${escH(horaSP(l.ultima_emissao))}</span>`:''}`
-          : `<span class="ex-lida">nenhuma ainda</span>`;
-        const leit= l.nao_lida ? `<span class="ex-tag ex-tag-nl">NÃO LIDA</span>`
-          : l.vista_em ? `<span class="ex-lida">${diaSP(l.vista_em)===l.dia?'Lida às '+escH(horaSP(l.vista_em)):'Lida em '+escH(ddmm(diaSP(l.vista_em)))+' às '+escH(horaSP(l.vista_em))}${l.vista_por_nome?' por '+escH(l.vista_por_nome):''}</span>`
-          : (('nao_lida' in l) && !total ? '<span class="ex-lida">sem envio ME2</span>' : '<span class="ex-lida">—</span>');
-        h+=`<tr class="ex-linha${l.nao_lida?' ex-naolida':''}" data-id="${l.id}"><td><b>${escH(horaSP(l.gerada_em))}</b></td><td>${tipo}</td><td>${origem}</td><td>${env}</td><td>${et}</td><td>${leit}</td></tr>`;
+    let h='', diaAnt=null;
+    for(const l of HIST){
+      if(l.dia!==diaAnt){
+        const [y,m,d]=l.dia.split('-').map(Number);
+        const rot= l.dia===hojeSP() ? 'Hoje' : DIAS_LONGOS[new Date(y,m-1,d).getDay()];
+        h+=`<tr class="ex-dia"><td colspan="4">${escH(rot.charAt(0).toUpperCase()+rot.slice(1))} · ${escH(brData(l.dia))}</td></tr>`;
+        diaAnt=l.dia;
       }
+      const origem= l.automatica
+        ? `<span class="ex-tag ex-tag-auto">Automática</span>`
+        : `<span class="ex-tag ex-tag-manual">Manual</span>`;
+      const total=Number(l.envios_me2)||0;
+      const env= `<b>${total}</b> ${total===1?'envio':'envios'}`
+        + (l.tipo==='atualizacao' ? ' <span class="ex-lida">· atualização (só as vendas novas)</span>' : '')
+        + (l.tem_proximos ? '' : ' <span class="ex-lida">· sem "próximos dias" (lista anterior a esta tela)</span>')
+        + (l.achado ? `<div class="ex-achado">encontrado: ${escH(l.achado)}</div>` : '');
+      const leit= l.nao_lida ? `<span class="ex-tag ex-tag-nl">NÃO LIDA</span>`
+        : l.vista_em ? `<span class="ex-lida">Lida ${quandoLeu(l.vista_em,l.dia)}${l.vista_por_nome?' por '+escH(l.vista_por_nome):''}</span>`
+        : `<span class="ex-lida">${total?'—':'sem envio ME2'}</span>`;
+      h+=`<tr class="ex-linha${l.nao_lida?' ex-naolida':''}" data-id="${l.id}">
+            <td><b>${escH(horaSP(l.gerada_em))}</b></td><td>${origem}</td><td>${env}</td><td>${leit}</td></tr>`;
     }
     tb.innerHTML=h;
-    const nl=HIST.filter(l=>l.nao_lida).length;
-    f('painel-cont').textContent=`${HIST.length} ${HIST.length===1?'lista':'listas'} · ${dias.length} ${dias.length===1?'dia':'dias'}${nl?` · ${nl} não ${nl===1?'lida':'lidas'}`:''}`;
+    const ini=(PAG-1)*POR_PAGINA+1, fim=ini+HIST.length-1;
+    f('painel-cont').textContent= TOTAL>HIST.length ? `${ini}–${fim} de ${TOTAL} listagens` : `${TOTAL} ${TOTAL===1?'listagem':'listagens'}`;
+    atualizarPaginacao();
   }
+  function atualizarPaginacao(){
+    const paginas=Math.max(1,Math.ceil(TOTAL/POR_PAGINA));
+    f('paginfo').textContent=`Página ${PAG} de ${paginas}`;
+    f('prev').disabled= PAG<=1; f('next').disabled= PAG>=paginas;
+  }
+  // período rápido (Hoje / Ontem / 7 dias / 30 dias): preenche as datas
+  const diaMenos=(n)=>new Date(Date.now()-3*3600e3-n*86400e3).toISOString().slice(0,10);
+  const PERIODOS={ hoje:()=>[hojeSP(),hojeSP()], ontem:()=>[diaMenos(1),diaMenos(1)],
+                   '7':()=>[diaMenos(6),hojeSP()], '30':()=>[diaMenos(29),hojeSP()] };
+  function aplicarPeriodo(v){
+    if(PERIODOS[v]){ const [de,ate]=PERIODOS[v](); f('f-de').value=de; f('f-ate').value=ate; }
+    else if(v===''){ f('f-de').value=''; f('f-ate').value=''; }
+  }
+  // datas digitadas à mão: mostra o período que bate, ou "personalizado"
+  function marcarAtalho(){
+    const de=f('f-de').value, ate=f('f-ate').value;
+    let v= (!de && !ate) ? '' : 'custom';
+    for(const k of Object.keys(PERIODOS)){ const [a,b]=PERIODOS[k](); if(de===a && ate===b){ v=k; break; } }
+    f('f-periodo').value=v;
+  }
+  function semFiltros(){ return !(f('f-leitura').value || f('f-origem').value || f('f-busca').value.trim() || f('f-de').value || f('f-ate').value); }
+  function limparFiltros(){ f('f-leitura').value=''; f('f-origem').value=''; f('f-busca').value=''; f('f-de').value=''; f('f-ate').value=''; PAG=1; }
   async function carregarPainel(){
     try{
       const de=f('f-de').value||null, ate=f('f-ate').value||null;
       if(de && ate && de>ate){ msg('A data inicial é depois da final.',true); return; }
-      HIST=(await rpc('cn_etiquetas_listas',{p_usuario_id:USER.id,p_limite:(de||ate)?500:90,p_de:de,p_ate:ate}))||[];
+      const r=(await rpc('cn_etiquetas_listas',{p_usuario_id:USER.id, p_pagina:PAG, p_por_pagina:POR_PAGINA,
+        p_de:de, p_ate:ate, p_leitura:f('f-leitura').value||null, p_origem:f('f-origem').value||null,
+        p_busca:f('f-busca').value.trim()||null}))||[];
+      HIST=r; TOTAL= r.length ? Number(r[0].total)||r.length : 0;
+      // página além do fim (ex.: depois de um filtro): volta para a primeira
+      if(!r.length && PAG>1){ PAG=1; return carregarPainel(); }
       renderPainel();
-      if(!de && !ate) renderMkt();
+      if(PAG===1 && semFiltros()) renderMkt();   // resumo do quadrado do Mercado Livre
     }catch(e){
-      HIST=[]; renderPainel();
-      msg(/cn_etiquetas_listas/.test(e.message)||/function/i.test(e.message)
-        ? 'Falta rodar o arquivo 126 no banco (SQL Editor).' : 'Não consegui carregar as listas: '+e.message, true);
+      HIST=[]; TOTAL=0; renderPainel();
+      msg(/cn_etiquetas_listas|function/i.test(e.message)
+        ? 'Falta rodar o arquivo 129 no banco (SQL Editor).' : 'Não consegui carregar as listagens: '+e.message, true);
     }
   }
+  const recarregarDoInicio=async()=>{ PAG=1; msg(''); await carregarPainel(); };
 
   // ---------------------------------------------------------------
   // 1º PASSO — escolha do marketplace
@@ -411,11 +452,16 @@ const ETQ = (function(){
   // ---------------------------------------------------------------
   function bind(){
     f('mkt-grade').addEventListener('click',(ev)=>{ const b=ev.target.closest('[data-mkt]'); if(b) escolher(b.dataset.mkt); });
-    f('mkt-voltar').addEventListener('click',async()=>{ if(OCUPADO) return; f('f-de').value=''; f('f-ate').value=''; mostrarMkt(); await carregarPainel(); });
+    f('mkt-voltar').addEventListener('click',async()=>{ if(OCUPADO) return; limparFiltros(); mostrarMkt(); await carregarPainel(); });
     if(f('diag')) f('diag').addEventListener('click',diagnostico);
     f('recarregar').addEventListener('click',async()=>{ msg('Atualizando…'); await carregarPainel(); msg(''); });
-    ['f-de','f-ate'].forEach(k=>f(k).addEventListener('change',async()=>{ msg(''); await carregarPainel(); }));
-    f('f-limpar').addEventListener('click',async()=>{ f('f-de').value=''; f('f-ate').value=''; msg(''); await carregarPainel(); });
+    ['f-leitura','f-origem','f-de','f-ate'].forEach(k=>f(k).addEventListener('change',recarregarDoInicio));
+    f('f-periodo').addEventListener('change',async()=>{ aplicarPeriodo(f('f-periodo').value); await recarregarDoInicio(); });
+    f('f-busca').addEventListener('keydown',(ev)=>{ if(ev.key==='Enter') recarregarDoInicio(); });
+    f('f-busca').addEventListener('search',recarregarDoInicio);   // "x" do campo limpa a busca
+    f('f-limpar').addEventListener('click',async()=>{ limparFiltros(); await recarregarDoInicio(); });
+    f('prev').addEventListener('click',async()=>{ if(PAG>1){ PAG--; await carregarPainel(); window.scrollTo(0,0); } });
+    f('next').addEventListener('click',async()=>{ PAG++; await carregarPainel(); window.scrollTo(0,0); });
     f('painel-tbody').addEventListener('click',(ev)=>{ const tr=ev.target.closest('tr.ex-linha'); if(tr) abrirLista(tr.dataset.id); });
     f('voltar').addEventListener('click',async()=>{ mostrarPainel(); await carregarPainel(); });
     f('situacao').addEventListener('click',()=>{ if(LISTA && !OCUPADO) carregarSituacao(); });
@@ -442,7 +488,7 @@ const ETQ = (function(){
   // marketplace (menos no meio de uma emissão)
   async function aoVoltar(){
     if(OCUPADO) return;
-    f('f-de').value=''; f('f-ate').value='';
+    limparFiltros();
     mostrarMkt();
     await carregarPainel();
   }
