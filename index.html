@@ -880,7 +880,9 @@
   #mp-drawer .fld select:disabled{opacity:1}
   .pill.mp-mensagem{border-color:rgba(96,165,250,.55);color:#93c5fd}
   .pill.mp-informacao{border-color:rgba(245,158,11,.55);color:#fcd34d}
-  #mp-tbody td:nth-child(2){white-space:normal}
+  #mp-tbody td:nth-child(3){white-space:normal}
+  #mp-canais-modal .mp-c-nome{width:100%;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
+  #mp-canais-modal .mp-c-nome:focus{outline:none;border-color:var(--accent)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -966,20 +968,21 @@
   <div class="content"><main>
     <!-- =================== TELA MENSAGENS PADRÕES E INFORMAÇÕES (Tarefas Diárias) =================== -->
     <section class="tela" id="scr-mensagens">
-      <div class="subtabs">
-        <button id="mp-tab-todas" class="active">Todas</button>
-        <button id="mp-tab-mensagem">Mensagens</button>
-        <button id="mp-tab-informacao">Informações</button>
-      </div>
       <div class="toolbar">
         <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
           <input id="mp-busca" placeholder="Buscar no título ou no texto" /></div>
+        <select id="mp-f-tipo"><option value="">Mensagens e informações</option><option value="mensagem">Só mensagens</option><option value="informacao">Só informações</option></select>
+        <select id="mp-f-canal"><option value="">Todos os canais</option></select>
+        <button class="act" id="mp-limpar">Limpar filtros</button>
+      </div>
+      <div class="toolbar">
         <button class="act prim" id="mp-nova-msg">+ Nova Mensagem</button>
         <button class="act prim" id="mp-nova-info">+ Nova Informação</button>
+        <button class="act" id="mp-canais">Canais</button>
         <span id="mp-msg" style="font-size:12px;color:var(--muted)"></span>
       </div>
       <div class="tablewrap"><div class="scroll"><table><thead><tr>
-        <th style="width:120px">Tipo</th><th>Título</th><th style="width:240px">Última alteração</th>
+        <th style="width:120px">Tipo</th><th style="width:200px">Canal</th><th>Título</th><th style="width:240px">Última alteração</th>
       </tr></thead><tbody id="mp-tbody"></tbody></table></div>
         <div class="foot"><span id="mp-contagem"></span><span>Clique num título para abrir o texto e copiar</span></div>
       </div>
@@ -2372,6 +2375,7 @@
   <div class="body">
     <div class="grid">
       <div class="fld"><label>Tipo</label><select id="mp-e-tipo"><option value="mensagem">Mensagem</option><option value="informacao">Informação</option></select></div>
+      <div class="fld"><label>Canal *</label><select id="mp-e-canal"></select></div>
       <div class="fld full"><label>Título *</label><input id="mp-e-titulo" maxlength="150" placeholder="Ex.: Compra ME1 — envio por transportadora"></div>
       <div class="fld full"><label>Texto *</label><textarea id="mp-e-texto" placeholder="Escreva o texto exatamente como ele deve ser copiado."></textarea></div>
     </div>
@@ -2387,6 +2391,20 @@
     </div>
   </div>
 </aside>
+
+<!-- ===== MODAL CANAIS (Mensagens Padrões e Informações) ===== -->
+<div class="modal" id="mp-canais-modal"><div class="box" style="width:520px">
+  <h3>Canais <button class="x" id="mp-canais-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">&times;</button></h3>
+  <div class="content">
+    <p style="color:var(--muted);font-size:12px;margin-bottom:12px">Renomear um canal muda o nome em todos os textos dele. Só dá para excluir canal que nenhum texto usa.</p>
+    <div class="toolbar" style="margin-bottom:12px">
+      <div class="search" style="min-width:0"><input id="mp-c-novo" placeholder="Nome do novo canal" style="padding-left:12px" maxlength="60"></div>
+      <button class="act prim" id="mp-c-add">+ Adicionar</button>
+    </div>
+    <div class="drawer-erro" id="mp-c-erro" style="padding:0 0 8px"></div>
+    <table class="res"><thead><tr><th>Canal</th><th class="num">Textos</th><th></th></tr></thead><tbody id="mp-c-tbody"></tbody></table>
+  </div>
+</div></div>
 
 <!-- ===== DRAWER OPÇÃO DE PRODUTO ===== -->
 <div class="overlay" id="op-overlay"></div>

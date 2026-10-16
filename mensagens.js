@@ -1,6 +1,6 @@
 // =====================================================================
 // CARRINHOS_NET — TELA: Mensagens Padrões e Informações
-// Grupo do menu: Tarefas Diárias (16/10/2026 — arquivo 136)
+// Grupo do menu: Tarefas Diárias (arquivos 136 e 137)
 // Depende da base do index.html: $, rpc, USER, temPermissao, copiar,
 // registrarTela.
 //
@@ -8,16 +8,25 @@
 //   Um lugar para guardar textos prontos:
 //     MENSAGEM    → texto que vai para o cliente (ex.: aviso de compra ME1)
 //     INFORMAÇÃO  → anotação interna da operação
+//   Cada texto pertence a um CANAL (WhatsApp, Mercado Livre (ME1)...).
 //   A lista mostra só os títulos. Clicar abre o texto inteiro, com o
 //   botão "Copiar texto" (copia exatamente como foi escrito, com as
 //   quebras de linha).
 //
+// FILTROS (16/10/2026 — arquivo 137): tipo (mensagens / informações /
+//   os dois), canal e busca no título e no texto. Substituíram as abas.
+//
+// CANAIS: lista própria (tabela textos_canais), editada pelo botão
+//   "Canais": adicionar, renomear (vale para todos os textos do canal)
+//   e excluir (só canal sem texto).
+//
 // PERMISSÕES
-//   mensagens.ver     → abrir, ler e copiar (o texto abre só para leitura)
-//   mensagens.editar  → "Nova Mensagem", "Nova Informação", editar, excluir
+//   mensagens.ver     → abrir, filtrar, ler e copiar (texto só leitura)
+//   mensagens.editar  → "Nova Mensagem", "Nova Informação", "Canais",
+//                       editar e excluir
 // =====================================================================
 const MP = (function(){
-  let LINHAS=[], TIPO='', EDIT=null;   // EDIT = registro aberto (null = novo)
+  let LINHAS=[], CANAIS=[], EDIT=null;   // EDIT = texto aberto (null = novo)
   const f=(id)=>$('mp-'+id);
   const ROTULO={mensagem:'Mensagem', informacao:'Informação'};
   const escH=(s)=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -26,26 +35,39 @@ const MP = (function(){
   async function init(){
     bind();
     const ed=podeEditar();
-    f('nova-msg').style.display = ed ? '' : 'none';
-    f('nova-info').style.display = ed ? '' : 'none';
+    ['nova-msg','nova-info','canais'].forEach(id=>{ f(id).style.display = ed ? '' : 'none'; });
+    await carregarCanais();
     await carregar();
   }
 
-  function subTab(t){
-    TIPO=t;
-    [['todas',''],['mensagem','mensagem'],['informacao','informacao']]
-      .forEach(([id,v])=>f('tab-'+id).classList.toggle('active', v===t));
-    carregar();
+  // ---------- canais (filtro, drawer e modal) ----------
+  async function carregarCanais(){
+    try{ CANAIS=await rpc('cn_textos_canais_listar',{p_usuario_id:USER.id})||[]; }
+    catch(e){ CANAIS=[]; f('msg').textContent='Não consegui carregar os canais: '+(e.message||e); }
+    // filtro: mantém o que estava escolhido, se o canal ainda existir
+    const sel=f('f-canal'), atual=sel.value;
+    sel.innerHTML='<option value="">Todos os canais</option>'+
+      CANAIS.map(c=>`<option value="${c.id}">${escH(c.nome)}</option>`).join('');
+    sel.value = CANAIS.some(c=>String(c.id)===atual) ? atual : '';
+  }
+  function preencherCanalDrawer(atual){
+    const sel=f('e-canal');
+    sel.innerHTML='<option value="">Selecione o canal</option>'+
+      CANAIS.map(c=>`<option value="${c.id}">${escH(c.nome)}</option>`).join('');
+    sel.value = atual!=null ? String(atual) : '';
   }
 
+  // ---------- lista ----------
   async function carregar(){
-    f('tbody').innerHTML='<tr><td colspan="3" class="loading">Carregando…</td></tr>';
+    f('tbody').innerHTML='<tr><td colspan="4" class="loading">Carregando…</td></tr>';
     try{
-      LINHAS=await rpc('cn_textos_listar',{p_usuario_id:USER.id, p_tipo:TIPO||null,
-                                            p_busca:f('busca').value.trim()||null})||[];
+      LINHAS=await rpc('cn_textos_listar',{p_usuario_id:USER.id,
+        p_tipo:f('f-tipo').value||null,
+        p_canal_id:f('f-canal').value ? Number(f('f-canal').value) : null,
+        p_busca:f('busca').value.trim()||null})||[];
       render();
     }catch(e){
-      f('tbody').innerHTML='<tr><td colspan="3" class="empty">Erro: '+escH(e.message||e)+'</td></tr>';
+      f('tbody').innerHTML='<tr><td colspan="4" class="empty">Erro: '+escH(e.message||e)+'</td></tr>';
     }
   }
 
@@ -55,32 +77,34 @@ const MP = (function(){
     const p=n=>String(n).padStart(2,'0');
     return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
+  const temFiltro=()=> !!(f('busca').value.trim() || f('f-tipo').value || f('f-canal').value);
 
   function render(){
     const tb=f('tbody');
     const n=LINHAS.length;
     f('contagem').textContent = n ? `${n} ${n===1?'texto':'textos'}` : '';
     if(!n){
-      const busca=f('busca').value.trim();
-      tb.innerHTML=`<tr><td colspan="3" class="empty">${busca?'Nada encontrado com essa busca.':
+      tb.innerHTML=`<tr><td colspan="4" class="empty">${temFiltro()?'Nada encontrado com esses filtros.':
         (podeEditar()?'Nenhum texto salvo ainda. Use “Nova Mensagem” ou “Nova Informação”.':'Nenhum texto salvo ainda.')}</td></tr>`;
       return;
     }
     tb.innerHTML=LINHAS.map(l=>`<tr style="cursor:pointer" onclick="MP.abrir(${l.id})">
       <td><span class="pill mp-${l.tipo}">${ROTULO[l.tipo]||l.tipo}</span></td>
+      <td>${l.canal?escH(l.canal):'<span style="color:var(--muted)">—</span>'}</td>
       <td><b>${escH(l.titulo)}</b></td>
       <td style="color:var(--muted)">${quando(l.atualizado_em)}${l.atualizado_por_nome?' · '+escH(l.atualizado_por_nome):''}</td>
     </tr>`).join('');
   }
 
+  function limparFiltros(){ f('busca').value=''; f('f-tipo').value=''; f('f-canal').value=''; carregar(); }
+
   // ---------- drawer ----------
   function abreDrawer(){
     f('erro').textContent='';
     const ed=podeEditar();
-    // quem só vê lê o texto, mas não consegue mudar
     // texto e título em "somente leitura" (e não desabilitados) para quem
     // só vê: assim ainda dá para selecionar um trecho com o mouse
-    f('e-tipo').disabled=!ed;
+    f('e-tipo').disabled=!ed; f('e-canal').disabled=!ed;
     f('e-titulo').readOnly=!ed; f('e-texto').readOnly=!ed;
     f('linha-edicao').style.display = ed ? '' : 'none';
     f('excluir').style.display = (ed && EDIT) ? '' : 'none';
@@ -95,6 +119,8 @@ const MP = (function(){
     EDIT=null;
     f('titulo').firstChild.textContent=(tipo==='mensagem'?'Nova mensagem':'Nova informação')+' ';
     f('e-tipo').value=tipo; f('e-titulo').value=''; f('e-texto').value='';
+    // já vem com o canal do filtro, se houver um escolhido
+    preencherCanalDrawer(f('f-canal').value || null);
     abreDrawer();
   }
 
@@ -104,18 +130,20 @@ const MP = (function(){
     const rot=ROTULO[l.tipo]||'Texto';
     f('titulo').firstChild.textContent=(podeEditar() ? 'Editar '+rot.toLowerCase() : rot)+' ';
     f('e-tipo').value=l.tipo; f('e-titulo').value=l.titulo; f('e-texto').value=l.texto;
+    preencherCanalDrawer(l.canal_id);
     abreDrawer();
   }
 
   async function salvar(){
     f('erro').textContent='';
-    const titulo=f('e-titulo').value.trim(), texto=f('e-texto').value;
+    const titulo=f('e-titulo').value.trim(), texto=f('e-texto').value, canal=f('e-canal').value;
+    if(!canal){ f('erro').textContent='Escolha o canal.'; return; }
     if(!titulo){ f('erro').textContent='Informe o título.'; return; }
     if(!texto.trim()){ f('erro').textContent='Escreva o texto.'; return; }
     const b=f('save'); b.disabled=true; const t=b.textContent; b.textContent='Salvando…';
     try{
       await rpc('cn_textos_salvar',{p_usuario_id:USER.id, p_id:EDIT?EDIT.id:null,
-        p_tipo:f('e-tipo').value, p_titulo:titulo, p_texto:texto});
+        p_tipo:f('e-tipo').value, p_canal_id:Number(canal), p_titulo:titulo, p_texto:texto});
       const eraNovo=!EDIT;
       fechar(); await carregar();
       f('msg').textContent = eraNovo ? 'Texto salvo.' : 'Alterações salvas.';
@@ -145,13 +173,76 @@ const MP = (function(){
     setTimeout(()=>{ b.textContent=t; },1400);
   }
 
+  // ---------- modal Canais ----------
+  function renderCanais(){
+    const tb=f('c-tbody');
+    if(!CANAIS.length){ tb.innerHTML='<tr><td colspan="3" class="empty" style="padding:20px">Nenhum canal.</td></tr>'; return; }
+    tb.innerHTML=CANAIS.map(c=>`<tr>
+      <td><input class="mp-c-nome" data-id="${c.id}" value="${escH(c.nome)}" maxlength="60"></td>
+      <td class="num">${Number(c.em_uso)||0}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="mini" onclick="MP.renomearCanal(${c.id})">Salvar nome</button>
+        <button class="mini dg" onclick="MP.excluirCanal(${c.id})">Excluir</button>
+      </td></tr>`).join('');
+  }
+  async function abrirCanais(){
+    if(!podeEditar()) return;
+    f('c-erro').textContent=''; f('c-novo').value='';
+    await carregarCanais(); renderCanais();
+    f('canais-modal').classList.add('open');
+    setTimeout(()=>f('c-novo').focus(),60);
+  }
+  async function fecharCanais(){
+    f('canais-modal').classList.remove('open');
+    await carregar();   // nomes novos aparecem na lista
+  }
+  async function depoisDeMudarCanal(msg){
+    await carregarCanais(); renderCanais();
+    f('c-erro').style.color='var(--ok)'; f('c-erro').textContent=msg;
+    setTimeout(()=>{ f('c-erro').textContent=''; f('c-erro').style.color=''; },2500);
+  }
+  function erroCanal(e){ f('c-erro').style.color=''; f('c-erro').textContent=(e.message||e); }
+
+  async function adicionarCanal(){
+    const nome=f('c-novo').value.trim();
+    if(!nome){ erroCanal('Digite o nome do canal.'); return; }
+    try{
+      await rpc('cn_textos_canal_salvar',{p_usuario_id:USER.id, p_id:null, p_nome:nome});
+      f('c-novo').value='';
+      await depoisDeMudarCanal(`Canal "${nome}" adicionado.`);
+    }catch(e){ erroCanal(e); }
+  }
+  async function renomearCanal(id){
+    const inp=document.querySelector(`.mp-c-nome[data-id="${id}"]`); if(!inp) return;
+    const c=CANAIS.find(x=>x.id===id); const nome=inp.value.trim();
+    if(!nome){ erroCanal('O nome não pode ficar vazio.'); return; }
+    if(c && c.nome===nome) return;
+    try{
+      await rpc('cn_textos_canal_salvar',{p_usuario_id:USER.id, p_id:id, p_nome:nome});
+      await depoisDeMudarCanal('Nome salvo.');
+    }catch(e){ erroCanal(e); }
+  }
+  async function excluirCanal(id){
+    const c=CANAIS.find(x=>x.id===id); if(!c) return;
+    if(Number(c.em_uso)>0){
+      erroCanal(`"${c.nome}" tem ${c.em_uso} texto(s). Mude o canal desses textos antes, ou só renomeie o canal.`);
+      return;
+    }
+    if(!confirm(`Excluir o canal "${c.nome}"?`)) return;
+    try{
+      await rpc('cn_textos_canal_excluir',{p_usuario_id:USER.id, p_id:id});
+      await depoisDeMudarCanal('Canal excluído.');
+    }catch(e){ erroCanal(e); }
+  }
+
   function bind(){
-    f('tab-todas').addEventListener('click',()=>subTab(''));
-    f('tab-mensagem').addEventListener('click',()=>subTab('mensagem'));
-    f('tab-informacao').addEventListener('click',()=>subTab('informacao'));
     let bt; f('busca').addEventListener('input',()=>{ clearTimeout(bt); bt=setTimeout(carregar,350); });
+    f('f-tipo').addEventListener('change',carregar);
+    f('f-canal').addEventListener('change',carregar);
+    f('limpar').addEventListener('click',limparFiltros);
     f('nova-msg').addEventListener('click',()=>novo('mensagem'));
     f('nova-info').addEventListener('click',()=>novo('informacao'));
+    f('canais').addEventListener('click',abrirCanais);
     f('x').addEventListener('click',fechar);
     f('overlay').addEventListener('click',fechar);
     f('cancel').addEventListener('click',fechar);
@@ -159,10 +250,20 @@ const MP = (function(){
     f('save').addEventListener('click',salvar);
     f('excluir').addEventListener('click',excluir);
     f('copiar').addEventListener('click',copiarTexto);
-    document.addEventListener('keydown',(e)=>{ if(e.key==='Escape' && f('drawer').classList.contains('open')) fechar(); });
+    f('canais-x').addEventListener('click',fecharCanais);
+    f('c-add').addEventListener('click',adicionarCanal);
+    f('c-novo').addEventListener('keydown',(e)=>{ if(e.key==='Enter') adicionarCanal(); });
+    f('c-tbody').addEventListener('keydown',(e)=>{
+      if(e.key==='Enter' && e.target.classList.contains('mp-c-nome')) renomearCanal(Number(e.target.dataset.id));
+    });
+    document.addEventListener('keydown',(e)=>{
+      if(e.key!=='Escape') return;
+      if(f('canais-modal').classList.contains('open')) fecharCanais();
+      else if(f('drawer').classList.contains('open')) fechar();
+    });
   }
 
-  return { init, abrir };
+  return { init, abrir, renomearCanal, excluirCanal };
 })();
 window.MP = MP;
 registrarTela('mensagens', MP);
