@@ -1,5 +1,5 @@
 // =====================================================================
-// CARRINHOS_NET — inicio.js — TELA INICIAL (14/10/2026)
+// CARRINHOS_NET — inicio.js — TELA INICIAL (14/10/2026; 16/10: grupo Tarefas Diárias)
 //
 // Abre logo depois do login e quando se clica na LOGO do menu (não há
 // botão de "Início" no menu). É um "o que precisa de mim agora":
@@ -152,6 +152,8 @@ const INI = (function(){
   // menu entra aqui sozinha. A bolinha de pendências do menu vem junto.
   // ---------------------------------------------------------------
   const ICONES_GRUPO={
+    // Tarefas Diárias (16/10/2026): prancheta com lista
+    'grp-tarefas':['#2dd4bf','<path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1z"/><path d="M16 6h2.2a1.3 1.3 0 0 1 1.3 1.3v12.4a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V7.3A1.3 1.3 0 0 1 5.8 6H8"/><path d="M8.5 11.5h7M8.5 15h7M8.5 18.5h4"/>'],
     'grp-expedicao':['#22c55e','<path d="M3.5 7.5 12 3.5l8.5 4v9L12 20.5l-8.5-4z"/><path d="M3.5 7.5 12 11.5l8.5-4M12 11.5v9"/>'],
     'grp-comercial':['#60a5fa','<path d="M3.5 3.5h6.6L21 14.4l-6.6 6.6L3.5 10.1z"/><circle cx="7.6" cy="7.6" r="1.4"/>'],
     'grp-financeiro':['#eab308','<path d="M3.5 20.5h17"/><path d="M6.8 20.5v-6.8M12 20.5V7.5M17.2 20.5v-4.2"/>'],

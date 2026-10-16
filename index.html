@@ -869,6 +869,18 @@
   .ub-sair svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
   #who{display:none}
 
+
+  /* ====== TAREFAS DIÁRIAS — MENSAGENS PADRÕES E INFORMAÇÕES (arquivo 136) ====== */
+  #mp-drawer{width:600px}
+  #mp-drawer .fld textarea{width:100%;min-height:340px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:6px;color:var(--text);font-size:13px;line-height:1.55;font-family:inherit;resize:vertical}
+  #mp-drawer .fld textarea:focus{outline:none;border-color:var(--accent)}
+  /* quem só vê lê o texto normalmente (o padrão do sistema apaga campos readonly) */
+  #mp-drawer .fld input[readonly],#mp-drawer .fld textarea[readonly]{opacity:1;cursor:text}
+  #mp-drawer .fld select:disabled{opacity:1}
+  .pill.mp-mensagem{border-color:rgba(96,165,250,.55);color:#93c5fd}
+  .pill.mp-informacao{border-color:rgba(245,158,11,.55);color:#fcd34d}
+  #mp-tbody td:nth-child(2){white-space:normal}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -903,6 +915,10 @@
       <button class="toggle-btn" id="btn-collapse" title="Esconder menu">‹</button>
     </div>
     <nav id="nav">
+      <div class="navgroup" id="grp-tarefas">
+        <div class="navtit navtit-toggle" data-grp="grp-tarefas">Tarefas Diárias<span class="caret">▾</span></div>
+        <button data-tela="mensagens" id="nav-mensagens"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5a2 2 0 0 1-2 2H7.5l-4 3.5V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/><path d="M7.5 8h9M7.5 11.5h6"/></svg><span class="nav-lbl">Mensagens Padrões e Informações</span></button>
+      </div>
       <div class="navgroup" id="grp-expedicao">
         <div class="navtit navtit-toggle" data-grp="grp-expedicao">Expedição<span class="caret">▾</span></div>
         <button data-tela="expedicao" id="nav-expedicao"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1z"/><path d="M16 6h2.2a1.3 1.3 0 0 1 1.3 1.3v12.4a1.3 1.3 0 0 1-1.3 1.3H5.8a1.3 1.3 0 0 1-1.3-1.3V7.3A1.3 1.3 0 0 1 5.8 6H8"/><path d="M8.5 12l1.6 1.6 3-3M8.5 17h7"/></svg><span class="nav-lbl">Listagem de Envios</span><span class="badge-dot" id="badge-expedicao" style="display:none"></span></button>
@@ -948,6 +964,27 @@
   </aside>
 
   <div class="content"><main>
+    <!-- =================== TELA MENSAGENS PADRÕES E INFORMAÇÕES (Tarefas Diárias) =================== -->
+    <section class="tela" id="scr-mensagens">
+      <div class="subtabs">
+        <button id="mp-tab-todas" class="active">Todas</button>
+        <button id="mp-tab-mensagem">Mensagens</button>
+        <button id="mp-tab-informacao">Informações</button>
+      </div>
+      <div class="toolbar">
+        <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="mp-busca" placeholder="Buscar no título ou no texto" /></div>
+        <button class="act prim" id="mp-nova-msg">+ Nova Mensagem</button>
+        <button class="act prim" id="mp-nova-info">+ Nova Informação</button>
+        <span id="mp-msg" style="font-size:12px;color:var(--muted)"></span>
+      </div>
+      <div class="tablewrap"><div class="scroll"><table><thead><tr>
+        <th style="width:120px">Tipo</th><th>Título</th><th style="width:240px">Última alteração</th>
+      </tr></thead><tbody id="mp-tbody"></tbody></table></div>
+        <div class="foot"><span id="mp-contagem"></span><span>Clique num título para abrir o texto e copiar</span></div>
+      </div>
+    </section>
+
     <!-- =================== TELA VENDAS =================== -->
     <section class="tela" id="scr-vendas">
       <div class="toolbar">
@@ -2327,6 +2364,30 @@
   <div class="foot"><button class="btn-cancel" id="opc-cancel">Cancelar</button><button class="btn-save" id="opc-save">Salvar</button></div>
 </aside>
 
+<!-- ===== DRAWER MENSAGENS PADRÕES E INFORMAÇÕES ===== -->
+<div class="overlay" id="mp-overlay"></div>
+<aside class="drawer" id="mp-drawer">
+  <h2 id="mp-titulo">Mensagem <button class="x" id="mp-x">×</button></h2>
+  <div class="drawer-erro" id="mp-erro"></div>
+  <div class="body">
+    <div class="grid">
+      <div class="fld"><label>Tipo</label><select id="mp-e-tipo"><option value="mensagem">Mensagem</option><option value="informacao">Informação</option></select></div>
+      <div class="fld full"><label>Título *</label><input id="mp-e-titulo" maxlength="150" placeholder="Ex.: Compra ME1 — envio por transportadora"></div>
+      <div class="fld full"><label>Texto *</label><textarea id="mp-e-texto" placeholder="Escreva o texto exatamente como ele deve ser copiado."></textarea></div>
+    </div>
+  </div>
+  <div class="foot foot-2l">
+    <div class="foot-linha">
+      <button class="btn-cancel dg" id="mp-excluir">Excluir</button>
+      <button class="btn-save" id="mp-copiar">Copiar texto</button>
+      <button class="btn-cancel" id="mp-fechar">Fechar</button>
+    </div>
+    <div class="foot-linha" id="mp-linha-edicao">
+      <button class="btn-cancel" id="mp-cancel">Cancelar</button><button class="btn-save" id="mp-save">Salvar</button>
+    </div>
+  </div>
+</aside>
+
 <!-- ===== DRAWER OPÇÃO DE PRODUTO ===== -->
 <div class="overlay" id="op-overlay"></div>
 <aside class="drawer" id="op-drawer" style="max-width:420px">
@@ -2849,6 +2910,7 @@ async function abrirApp(){
   $('nav-envios').style.display = temPermissao('envios.ver') ? '' : 'none';
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-arquivos').style.display = temPermissao('arquivos_contabeis.gerar') ? '' : 'none';
+  $('nav-mensagens').style.display = temPermissao('mensagens.ver') ? '' : 'none';
   $('nav-expedicao').style.display = temPermissao('expedicao.ver') ? '' : 'none';
   $('nav-etiquetas').style.display = temPermissao('expedicao.etiquetas') ? '' : 'none';
   // métricas saem de vendas e envios: quem vê vendas vê as métricas
@@ -2866,7 +2928,7 @@ async function abrirApp(){
   $('nav-estoque').style.display = temPermissao('estoque.ver') ? '' : 'none';
   $('nav-valores').style.display = temPermissao('valores.ver') ? '' : 'none';
   // esconde a categoria inteira se nenhuma tela dela estiver visível
-  ['grp-comercial','grp-expedicao','grp-financeiro','grp-produtos','grp-cadastros'].forEach(function(gid){
+  ['grp-tarefas','grp-comercial','grp-expedicao','grp-financeiro','grp-produtos','grp-cadastros'].forEach(function(gid){
     const g=$(gid); if(!g) return;
     const vis=[...g.querySelectorAll('button')].some(b=>b.style.display!=='none');
     g.style.display = vis ? '' : 'none';
@@ -2948,6 +3010,7 @@ function sair(aviso){
 <script src="metricas.js"></script>
 <script src="mediacoes.js"></script>
 <script src="opcoes_comerciais.js"></script>
+<script src="mensagens.js"></script>
 
 <!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
 <script>
