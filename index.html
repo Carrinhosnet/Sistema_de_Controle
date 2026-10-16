@@ -893,6 +893,70 @@
   #mp-drawer .fld .mp-dd .painel input{width:auto;padding:0;border:0;margin:0;accent-color:var(--accent);cursor:pointer}
   #mp-canais-modal .mp-c-nome{width:100%;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
   #mp-canais-modal .mp-c-nome:focus{outline:none;border-color:var(--accent)}
+
+  /* ===== DEMANDAS (Diárias · Extras · Painel do Gestor) — tarefas.js ===== */
+  .tq-quadro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+  .tq-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;min-height:220px;transition:border-color .15s,background .15s}
+  .tq-col.tq-alvo{border-color:var(--accent);background:var(--accent-soft)}
+  .tq-col-tit{padding:10px 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .tq-col-tit::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .tq-col-andamento .tq-col-tit::before{background:var(--warn)}
+  .tq-col-concluido .tq-col-tit::before{background:var(--ok)}
+  .tq-col-n{margin-left:auto;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:0 8px;font-size:11px;color:var(--text)}
+  .tq-col-corpo{padding:10px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .tq-vazio{color:var(--muted);font-size:12px;text-align:center;padding:24px 8px;border:1px dashed var(--border);border-radius:8px}
+  .tq-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;cursor:grab}
+  .tq-card:hover{border-color:#3a4150}
+  .tq-card.tq-arrastando{opacity:.45}
+  .tq-card.tq-card-atraso{border-left:3px solid var(--danger)}
+  .tq-card.tq-card-pausa{opacity:.6}
+  .tq-card.tq-feito .tq-tit{color:var(--muted)}
+  .tq-etq{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+  .tq-etq:empty{display:none}
+  .tq-etq span{font-size:10.5px;border:1px solid var(--border);border-radius:4px;padding:0 6px;color:var(--muted);white-space:nowrap}
+  .tq-urg-normal{color:var(--muted)}
+  .tq-etq .tq-urg-alta{color:var(--warn);border-color:var(--warn)}
+  .tq-etq .tq-urg-urgente{color:#fff;background:var(--danger);border-color:var(--danger);font-weight:600}
+  .tq-etq .tq-atraso{color:var(--danger);border-color:var(--danger)}
+  .tq-etq .tq-pausa{color:var(--warn);border-color:var(--warn)}
+  .tq-etq .tq-prox{color:#60a5fa;border-color:#60a5fa}
+  .tq-tit{font-weight:600;font-size:13.5px;cursor:pointer;line-height:1.35}
+  .tq-tit:hover{color:var(--accent);text-decoration:underline}
+  .tq-desc{font-size:12px;color:var(--muted);margin-top:3px;white-space:pre-wrap}
+  .tq-itens{list-style:none;margin:8px 0 2px;display:flex;flex-direction:column;gap:3px}
+  .tq-itens label{display:flex;gap:7px;align-items:flex-start;font-size:12.5px;cursor:pointer;line-height:1.4}
+  .tq-itens input{margin-top:2px;accent-color:var(--accent);cursor:pointer;flex:none}
+  .tq-itens li.tq-ok span{text-decoration:line-through;color:var(--muted)}
+  .tq-rodape{display:flex;align-items:center;gap:7px;margin-top:9px;padding-top:8px;border-top:1px solid var(--border);font-size:11.5px;color:var(--muted)}
+  .tq-av{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:10.5px;font-weight:700;flex:none}
+  .tq-resp{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+  .tq-de{color:var(--muted)}
+  .tq-prog{border:1px solid var(--border);border-radius:10px;padding:0 7px;font-weight:600}
+  .tq-prog.tq-prog-ok{color:var(--ok);border-color:var(--ok)}
+  .tq-resumo{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;margin-bottom:14px}
+  .tq-resumo:empty{display:none}
+  .tq-resumo .tq-pessoa{--kpc:var(--accent)}
+  .tq-resumo .lbl{display:flex;align-items:center;gap:7px;font-weight:600;color:var(--text);font-size:13px;margin-bottom:4px}
+  .tq-pessoa-l{font-size:12px;color:var(--muted)}
+  .tq-pessoa-l b{color:var(--text)}
+  .tq-rodape-tela{color:var(--muted);font-size:11.5px;margin-top:12px}
+  /* drawer */
+  #tq-drawer{width:520px}
+  #tq-drawer .fld textarea{width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical}
+  #tq-drawer .fld textarea:focus{outline:none;border-color:var(--accent)}
+  #tq-drawer .tq-dias{display:flex;flex-wrap:wrap;gap:6px}
+  #tq-drawer .fld .tq-dias label{display:inline-flex;align-items:center;gap:5px;margin:0;font-size:12.5px;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 9px;cursor:pointer}
+  #tq-drawer .fld .tq-dias input,#tq-drawer .fld .tq-ck input{width:auto;padding:0;margin:0;accent-color:var(--accent);cursor:pointer}
+  #tq-drawer .fld label.tq-ck{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text);cursor:pointer}
+  #tq-add-item{padding:7px 12px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:13px}
+  #tq-add-item:hover{border-color:var(--accent);color:var(--accent)}
+  .tq-it-ed{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .tq-it-alca{color:var(--muted);font-size:12px}
+  .tq-it-txt{flex:1;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
+  .tq-it-txt:focus{outline:none;border-color:var(--accent)}
+  .tq-it-rm{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px;line-height:1}
+  .tq-it-rm:hover{color:var(--danger);border-color:var(--danger)}
+  @media (max-width:900px){ .tq-quadro{grid-template-columns:1fr} }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -930,6 +994,9 @@
       <div class="navgroup" id="grp-tarefas">
         <div class="navtit navtit-toggle" data-grp="grp-tarefas">Tarefas Diárias<span class="caret">▾</span></div>
         <button data-tela="mensagens" id="nav-mensagens"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5a2 2 0 0 1-2 2H7.5l-4 3.5V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/><path d="M7.5 8h9M7.5 11.5h6"/></svg><span class="nav-lbl">Mensagens Padrões e Informações</span></button>
+        <button data-tela="tarefas_diarias" id="nav-tarefas_diarias"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="1.8"/><path d="M3.5 9h17M8 2.8v3.4M16 2.8v3.4"/><path d="m8.6 14.6 2.2 2.2 4.6-4.6"/></svg><span class="nav-lbl">Demandas Diárias</span><span class="badge-dot" id="badge-tarefas_diarias" style="display:none" title="Demandas diárias suas ainda não concluídas"></span></button>
+        <button data-tela="tarefas_extras" id="nav-tarefas_extras"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2.8 4.5 13.5H12l-1 7.7 8.5-10.7H12z"/></svg><span class="nav-lbl">Demandas Extras</span><span class="badge-dot" id="badge-tarefas_extras" style="display:none" title="Demandas extras em aberto para você"></span></button>
+        <button data-tela="tarefas_gestor" id="nav-tarefas_gestor"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.2"/><rect x="9.5" y="4" width="5" height="11" rx="1.2"/><rect x="16" y="4" width="5" height="7" rx="1.2"/></svg><span class="nav-lbl">Painel do Gestor</span></button>
       </div>
       <div class="navgroup" id="grp-expedicao">
         <div class="navtit navtit-toggle" data-grp="grp-expedicao">Expedição<span class="caret">▾</span></div>
@@ -997,6 +1064,14 @@
         <div class="foot"><span id="mp-contagem"></span><span>Os mais abertos ficam em cima · clique num título para abrir o texto e copiar</span></div>
       </div>
     </section>
+
+    <!-- =================== TELAS DE DEMANDAS (Tarefas Diárias) — o conteúdo é montado pelo tarefas.js =================== -->
+    <section class="tela" id="scr-tarefas_diarias"><div id="td-root"></div>
+      <p class="tq-rodape-tela">Os itens de cada cartão voltam desmarcados todo dia em que a demanda vale (00:05). Marque um item para riscá-lo; arraste o cartão para mudar de coluna.</p></section>
+    <section class="tela" id="scr-tarefas_extras"><div id="tx-root"></div>
+      <p class="tq-rodape-tela">Demandas que não se repetem. As concluídas saem da tela 7 dias depois. Marque um item para riscá-lo; arraste o cartão para mudar de coluna.</p></section>
+    <section class="tela" id="scr-tarefas_gestor"><div id="tg-root"></div>
+      <p class="tq-rodape-tela">Todas as demandas de todas as pessoas. Clique no cartão de uma pessoa para ver só as dela.</p></section>
 
     <!-- =================== TELA VENDAS =================== -->
     <section class="tela" id="scr-vendas">
@@ -2403,6 +2478,67 @@
   </div>
 </aside>
 
+<!-- ===== DRAWER DEMANDAS (Diárias, Extras e Painel do Gestor) ===== -->
+<div class="overlay" id="tq-overlay"></div>
+<aside class="drawer" id="tq-drawer">
+  <h2 id="tq-titulo">Demanda <button class="x" id="tq-x">×</button></h2>
+  <div class="drawer-erro" id="tq-erro"></div>
+  <div class="body">
+    <div class="grid">
+      <div class="fld full"><label>Título *</label><input id="tq-e-titulo" maxlength="150" placeholder="Ex.: Abertura da loja"></div>
+      <div class="fld full"><label>Responsável</label><select id="tq-e-resp"></select></div>
+      <div class="fld full"><label>Descrição <span style="color:var(--muted)">(opcional)</span></label><textarea id="tq-e-desc" rows="2" placeholder="Detalhes, links ou observações"></textarea></div>
+    </div>
+
+    <div id="tq-bl-diaria">
+      <div class="sec-tit">Renovação</div>
+      <div class="grid">
+        <div class="fld full"><label>Quando os itens voltam desmarcados</label>
+          <select id="tq-e-recor">
+            <option value="dias_uteis">Todos os dias úteis (segunda a sexta, sem feriados)</option>
+            <option value="dias_semana">Em dias da semana escolhidos</option>
+            <option value="semanal">Uma vez por semana</option>
+            <option value="mensal">Uma vez por mês</option>
+          </select></div>
+        <div class="fld full" id="tq-bl-dias"><label>Dias da semana</label>
+          <div class="tq-dias" id="tq-e-dias">
+            <label><input type="checkbox" value="1">Seg</label><label><input type="checkbox" value="2">Ter</label><label><input type="checkbox" value="3">Qua</label><label><input type="checkbox" value="4">Qui</label><label><input type="checkbox" value="5">Sex</label><label><input type="checkbox" value="6">Sáb</label><label><input type="checkbox" value="7">Dom</label>
+          </div></div>
+        <div class="fld full" id="tq-bl-semanal"><label>Dia da semana</label>
+          <select id="tq-e-semanal"><option value="1">Segunda</option><option value="2">Terça</option><option value="3">Quarta</option><option value="4">Quinta</option><option value="5">Sexta</option><option value="6">Sábado</option><option value="7">Domingo</option></select></div>
+        <div class="fld full" id="tq-bl-mensal"><label>Dia do mês (1 a 31 — em meses mais curtos vale o último dia)</label>
+          <input id="tq-e-diames" type="number" min="1" max="31" placeholder="Ex.: 5"></div>
+        <div class="fld full"><label class="tq-ck"><input type="checkbox" id="tq-e-ativo"> Ativa <span style="color:var(--muted)">(desmarque para pausar sem apagar)</span></label></div>
+      </div>
+    </div>
+
+    <div id="tq-bl-extra">
+      <div class="sec-tit">Urgência e prazo</div>
+      <div class="grid">
+        <div class="fld"><label>Urgência</label><select id="tq-e-urg"><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
+        <div class="fld"><label>Prazo <span style="color:var(--muted)">(opcional)</span></label><input id="tq-e-prazo" type="date"></div>
+      </div>
+    </div>
+
+    <div class="sec-tit">Itens da demanda</div>
+    <div id="tq-itens"></div>
+    <button type="button" class="act" id="tq-add-item" style="margin-top:8px">+ Adicionar item</button>
+    <p style="color:var(--muted);font-size:11px;margin-top:6px">Enter no último item cria o próximo. Itens em branco são ignorados.</p>
+
+    <div id="tq-info" style="color:var(--muted);font-size:12px;margin-top:16px"></div>
+    <div id="tq-hist-corpo" style="display:none;margin-top:12px"></div>
+  </div>
+  <div class="foot foot-2l">
+    <div class="foot-linha">
+      <button class="btn-cancel dg" id="tq-excluir">Excluir</button>
+      <button class="btn-cancel" id="tq-historico">Histórico</button>
+    </div>
+    <div class="foot-linha">
+      <button class="btn-cancel" id="tq-cancel">Cancelar</button><button class="btn-save" id="tq-save">Salvar</button>
+    </div>
+  </div>
+</aside>
+
 <!-- ===== MODAL CANAIS (Mensagens Padrões e Informações) ===== -->
 <div class="modal" id="mp-canais-modal"><div class="box" style="width:520px">
   <h3>Canais <button class="x" id="mp-canais-x" style="cursor:pointer;color:var(--muted);background:none;border:none;font-size:20px">&times;</button></h3>
@@ -2790,6 +2926,8 @@ async function setDotAviso(id, permitido, fn, montarTitulo){
 async function atualizarBadges(){
   // Roda tudo em paralelo e soma para o contador global da aba.
   const n = await Promise.all([
+    setDot('badge-tarefas_diarias', temPermissao('tarefas.usar'),    'cn_tarefas_diarias_pendencias'),
+    setDot('badge-tarefas_extras',  temPermissao('tarefas.usar'),    'cn_tarefas_extras_pendencias'),
     setDot('badge-vendas',        temPermissao('vendas.ver'),        'cn_vendas_pendencias'),
     setDot('badge-mediacoes',     temPermissao('mediacoes.ver'),     'cn_mediacoes_pendencias'),
     setDot('badge-devolucoes',    temPermissao('devolucoes.ver'),    'cn_devolucoes_pendencias'),
@@ -2940,6 +3078,9 @@ async function abrirApp(){
   $('nav-boletos').style.display = temPermissao('boletos.ver') ? '' : 'none';
   $('nav-arquivos').style.display = temPermissao('arquivos_contabeis.gerar') ? '' : 'none';
   $('nav-mensagens').style.display = temPermissao('mensagens.ver') ? '' : 'none';
+  $('nav-tarefas_diarias').style.display = temPermissao('tarefas.usar') ? '' : 'none';
+  $('nav-tarefas_extras').style.display = temPermissao('tarefas.usar') ? '' : 'none';
+  $('nav-tarefas_gestor').style.display = temPermissao('tarefas.gestor') ? '' : 'none';
   $('nav-expedicao').style.display = temPermissao('expedicao.ver') ? '' : 'none';
   $('nav-etiquetas').style.display = temPermissao('expedicao.etiquetas') ? '' : 'none';
   // métricas saem de vendas e envios: quem vê vendas vê as métricas
@@ -3040,6 +3181,7 @@ function sair(aviso){
 <script src="mediacoes.js"></script>
 <script src="opcoes_comerciais.js"></script>
 <script src="mensagens.js"></script>
+<script src="tarefas.js"></script>
 
 <!-- ============ EVENTOS GLOBAIS + INÍCIO ============ -->
 <script>
