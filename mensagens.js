@@ -16,6 +16,12 @@
 // FILTROS (16/10/2026 — arquivo 137): tipo (mensagens / informações /
 //   os dois), canal e busca no título e no texto. Substituíram as abas.
 //
+// VÁRIOS CANAIS E ORDEM POR USO (16/10/2026 — arquivo 138): um texto
+//   pode ter mais de um canal (lista de seleção com caixas de marcar). A lista sai na ordem
+//   dos mais abertos: cada vez que alguém abre um texto, soma 1.
+//   A ordem só muda quando a lista é carregada de novo (para a linha não
+//   "pular" enquanto a pessoa usa a tela).
+//
 // CANAIS: lista própria (tabela textos_canais), editada pelo botão
 //   "Canais": adicionar, renomear (vale para todos os textos do canal)
 //   e excluir (só canal sem texto).
@@ -50,16 +56,29 @@ const MP = (function(){
       CANAIS.map(c=>`<option value="${c.id}">${escH(c.nome)}</option>`).join('');
     sel.value = CANAIS.some(c=>String(c.id)===atual) ? atual : '';
   }
-  function preencherCanalDrawer(atual){
-    const sel=f('e-canal');
-    sel.innerHTML='<option value="">Selecione o canal</option>'+
-      CANAIS.map(c=>`<option value="${c.id}">${escH(c.nome)}</option>`).join('');
-    sel.value = atual!=null ? String(atual) : '';
+  // canais do texto aberto: lista de seleção com caixas de marcar.
+  // O botão mostra o que está marcado; clicar abre a lista.
+  function preencherCanaisDrawer(marcados){
+    const set=new Set((marcados||[]).map(String));
+    f('e-canais').innerHTML = CANAIS.length
+      ? CANAIS.map(c=>`<label><input type="checkbox" value="${c.id}"${set.has(String(c.id))?' checked':''}> ${escH(c.nome)}</label>`).join('')
+      : '<span style="color:var(--muted);font-size:12px">Nenhum canal cadastrado. Use o botão “Canais”.</span>';
+    f('e-canaisbox').classList.remove('open');
+    rotuloCanais();
+  }
+  const canaisMarcados=()=>[...f('e-canais').querySelectorAll('input:checked')].map(i=>Number(i.value));
+  function rotuloCanais(){
+    const nomes=CANAIS.filter(c=>canaisMarcados().includes(c.id)).map(c=>c.nome);
+    const b=f('e-canaisbtn');
+    b.textContent = !nomes.length ? 'Selecione os canais'
+                  : nomes.length<=2 ? nomes.join(', ')
+                  : `${nomes.length} canais: ${nomes.join(', ')}`;
+    b.title = nomes.join(', ');
   }
 
   // ---------- lista ----------
   async function carregar(){
-    f('tbody').innerHTML='<tr><td colspan="4" class="loading">Carregando…</td></tr>';
+    f('tbody').innerHTML='<tr><td colspan="5" class="loading">Carregando…</td></tr>';
     try{
       LINHAS=await rpc('cn_textos_listar',{p_usuario_id:USER.id,
         p_tipo:f('f-tipo').value||null,
@@ -67,7 +86,7 @@ const MP = (function(){
         p_busca:f('busca').value.trim()||null})||[];
       render();
     }catch(e){
-      f('tbody').innerHTML='<tr><td colspan="4" class="empty">Erro: '+escH(e.message||e)+'</td></tr>';
+      f('tbody').innerHTML='<tr><td colspan="5" class="empty">Erro: '+escH(e.message||e)+'</td></tr>';
     }
   }
 
@@ -84,14 +103,15 @@ const MP = (function(){
     const n=LINHAS.length;
     f('contagem').textContent = n ? `${n} ${n===1?'texto':'textos'}` : '';
     if(!n){
-      tb.innerHTML=`<tr><td colspan="4" class="empty">${temFiltro()?'Nada encontrado com esses filtros.':
+      tb.innerHTML=`<tr><td colspan="5" class="empty">${temFiltro()?'Nada encontrado com esses filtros.':
         (podeEditar()?'Nenhum texto salvo ainda. Use “Nova Mensagem” ou “Nova Informação”.':'Nenhum texto salvo ainda.')}</td></tr>`;
       return;
     }
     tb.innerHTML=LINHAS.map(l=>`<tr style="cursor:pointer" onclick="MP.abrir(${l.id})">
       <td><span class="pill mp-${l.tipo}">${ROTULO[l.tipo]||l.tipo}</span></td>
-      <td>${l.canal?escH(l.canal):'<span style="color:var(--muted)">—</span>'}</td>
+      <td>${l.canais?escH(l.canais):'<span style="color:var(--muted)">—</span>'}</td>
       <td><b>${escH(l.titulo)}</b></td>
+      <td class="num">${Number(l.aberturas)||0}</td>
       <td style="color:var(--muted)">${quando(l.atualizado_em)}${l.atualizado_por_nome?' · '+escH(l.atualizado_por_nome):''}</td>
     </tr>`).join('');
   }
@@ -104,7 +124,8 @@ const MP = (function(){
     const ed=podeEditar();
     // texto e título em "somente leitura" (e não desabilitados) para quem
     // só vê: assim ainda dá para selecionar um trecho com o mouse
-    f('e-tipo').disabled=!ed; f('e-canal').disabled=!ed;
+    f('e-tipo').disabled=!ed;
+    f('e-canaisbtn').disabled=!ed;   // quem só vê lê os canais no botão, sem abrir a lista
     f('e-titulo').readOnly=!ed; f('e-texto').readOnly=!ed;
     f('linha-edicao').style.display = ed ? '' : 'none';
     f('excluir').style.display = (ed && EDIT) ? '' : 'none';
@@ -119,8 +140,8 @@ const MP = (function(){
     EDIT=null;
     f('titulo').firstChild.textContent=(tipo==='mensagem'?'Nova mensagem':'Nova informação')+' ';
     f('e-tipo').value=tipo; f('e-titulo').value=''; f('e-texto').value='';
-    // já vem com o canal do filtro, se houver um escolhido
-    preencherCanalDrawer(f('f-canal').value || null);
+    // já vem com o canal do filtro marcado, se houver um escolhido
+    preencherCanaisDrawer(f('f-canal').value ? [f('f-canal').value] : []);
     abreDrawer();
   }
 
@@ -130,20 +151,32 @@ const MP = (function(){
     const rot=ROTULO[l.tipo]||'Texto';
     f('titulo').firstChild.textContent=(podeEditar() ? 'Editar '+rot.toLowerCase() : rot)+' ';
     f('e-tipo').value=l.tipo; f('e-titulo').value=l.titulo; f('e-texto').value=l.texto;
-    preencherCanalDrawer(l.canal_id);
+    preencherCanaisDrawer(l.canal_ids);
     abreDrawer();
+    registrarAbertura(l);
+  }
+
+  // soma 1 no contador do texto. Atualiza o número na linha, mas não
+  // reordena agora: a ordem nova vale na próxima vez que a lista carregar.
+  // Falhar aqui não atrapalha quem está lendo.
+  async function registrarAbertura(l){
+    try{
+      const n=await rpc('cn_textos_registrar_abertura',{p_usuario_id:USER.id, p_id:l.id});
+      l.aberturas=Number(n)||((Number(l.aberturas)||0)+1);
+      render();
+    }catch(e){}
   }
 
   async function salvar(){
     f('erro').textContent='';
-    const titulo=f('e-titulo').value.trim(), texto=f('e-texto').value, canal=f('e-canal').value;
-    if(!canal){ f('erro').textContent='Escolha o canal.'; return; }
+    const titulo=f('e-titulo').value.trim(), texto=f('e-texto').value, canais=canaisMarcados();
+    if(!canais.length){ f('erro').textContent='Marque pelo menos um canal.'; return; }
     if(!titulo){ f('erro').textContent='Informe o título.'; return; }
     if(!texto.trim()){ f('erro').textContent='Escreva o texto.'; return; }
     const b=f('save'); b.disabled=true; const t=b.textContent; b.textContent='Salvando…';
     try{
       await rpc('cn_textos_salvar',{p_usuario_id:USER.id, p_id:EDIT?EDIT.id:null,
-        p_tipo:f('e-tipo').value, p_canal_id:Number(canal), p_titulo:titulo, p_texto:texto});
+        p_tipo:f('e-tipo').value, p_canal_ids:canais, p_titulo:titulo, p_texto:texto});
       const eraNovo=!EDIT;
       fechar(); await carregar();
       f('msg').textContent = eraNovo ? 'Texto salvo.' : 'Alterações salvas.';
@@ -225,7 +258,7 @@ const MP = (function(){
   async function excluirCanal(id){
     const c=CANAIS.find(x=>x.id===id); if(!c) return;
     if(Number(c.em_uso)>0){
-      erroCanal(`"${c.nome}" tem ${c.em_uso} texto(s). Mude o canal desses textos antes, ou só renomeie o canal.`);
+      erroCanal(`"${c.nome}" tem ${c.em_uso} texto(s). Tire esse canal dos textos antes, ou só renomeie o canal.`);
       return;
     }
     if(!confirm(`Excluir o canal "${c.nome}"?`)) return;
@@ -252,13 +285,18 @@ const MP = (function(){
     f('copiar').addEventListener('click',copiarTexto);
     f('canais-x').addEventListener('click',fecharCanais);
     f('c-add').addEventListener('click',adicionarCanal);
+    // lista de canais do texto: abre/fecha no botão; marcar atualiza o botão
+    f('e-canaisbtn').addEventListener('click',(e)=>{ e.stopPropagation(); f('e-canaisbox').classList.toggle('open'); });
+    f('e-canais').addEventListener('change',rotuloCanais);
+    document.addEventListener('click',(e)=>{ const box=f('e-canaisbox'); if(box && !box.contains(e.target)) box.classList.remove('open'); });
     f('c-novo').addEventListener('keydown',(e)=>{ if(e.key==='Enter') adicionarCanal(); });
     f('c-tbody').addEventListener('keydown',(e)=>{
       if(e.key==='Enter' && e.target.classList.contains('mp-c-nome')) renomearCanal(Number(e.target.dataset.id));
     });
     document.addEventListener('keydown',(e)=>{
       if(e.key!=='Escape') return;
-      if(f('canais-modal').classList.contains('open')) fecharCanais();
+      if(f('e-canaisbox').classList.contains('open')) f('e-canaisbox').classList.remove('open');
+      else if(f('canais-modal').classList.contains('open')) fecharCanais();
       else if(f('drawer').classList.contains('open')) fechar();
     });
   }
