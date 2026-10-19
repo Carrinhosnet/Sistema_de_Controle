@@ -24,6 +24,8 @@
 //   - Editar: quem criou, o responsável ou o gestor. Excluir: quem criou
 //     ou o gestor.
 //   - Ordem dos itens: no drawer, arrastando pela alça ⠿.
+//   - Ordem dos cartões: arrastando o cartão para cima/baixo na coluna
+//     (grava em tarefas_cartoes.ordem — arquivo 142).
 //   - Diárias se renovam nos dias em que valem, no horário escolhido no
 //     cartão (vazio = começo do dia; arquivo 141) (a tela
 //     também pede a renovação ao abrir, caso a rotina não tenha passado).
@@ -334,9 +336,8 @@
 
     function render(){
       for(const [st] of COLUNAS){
-        let l=CARDS.filter(c=>c.status===st && passaBusca(c));
-        // concluídos: o mais recente em cima
-        if(st==='concluido') l=l.slice().sort((a,b)=>String(b.concluido_em||'').localeCompare(String(a.concluido_em||'')));
+        // ordem: a que a pessoa arrastou (vem pronta do banco, arquivo 142)
+        const l=CARDS.filter(c=>c.status===st && passaBusca(c));
         f('col-'+st).innerHTML = l.length ? l.map(cardHtml).join('')
           : `<div class="tq-vazio">${st==='a_fazer'?'Nada a fazer':st==='andamento'?'Nada em andamento':'Nada concluído'}</div>`;
         f('n-'+st).textContent=l.length;
@@ -382,10 +383,22 @@
       }catch(e){ el.checked=!feito; if(it) it.feito=!feito; el.disabled=false; msg('Não foi possível marcar: '+(e.message||e),true); }
     }
 
-    // arrastar entre colunas
+    // arrastar: muda de coluna E muda a posição dentro da coluna.
+    // Uma linha verde mostra onde o cartão vai cair.
     let ARRASTA=null;
     function ligarArrasto(){
       const quadro=f('quadro-cols');
+      const marca=document.createElement('div'); marca.className='tq-marca';
+      const tirarMarca=()=>{ if(marca.parentNode) marca.parentNode.removeChild(marca); };
+      // cartão antes do qual o arrastado vai entrar (null = fim da coluna)
+      function cartaoDepois(corpo, y){
+        for(const el of corpo.querySelectorAll('.tq-card')){
+          if(Number(el.dataset.id)===ARRASTA) continue;
+          const r=el.getBoundingClientRect();
+          if(y < r.top + r.height/2) return el;
+        }
+        return null;
+      }
       quadro.addEventListener('dragstart',(e)=>{
         const card=e.target.closest('.tq-card'); if(!card) return;
         ARRASTA=Number(card.dataset.id);
@@ -393,8 +406,8 @@
         try{ e.dataTransfer.setData('text/plain',String(ARRASTA)); }catch(_){}
         card.classList.add('tq-arrastando');
       });
-      quadro.addEventListener('dragend',(e)=>{
-        ARRASTA=null;
+      quadro.addEventListener('dragend',()=>{
+        ARRASTA=null; tirarMarca();
         quadro.querySelectorAll('.tq-arrastando').forEach(x=>x.classList.remove('tq-arrastando'));
         quadro.querySelectorAll('.tq-alvo').forEach(x=>x.classList.remove('tq-alvo'));
       });
@@ -403,20 +416,51 @@
         e.preventDefault(); e.dataTransfer.dropEffect='move';
         quadro.querySelectorAll('.tq-alvo').forEach(x=>{ if(x!==col) x.classList.remove('tq-alvo'); });
         col.classList.add('tq-alvo');
+        const corpo=col.querySelector('.tq-col-corpo');
+        const vazio=corpo.querySelector('.tq-vazio'); if(vazio) vazio.style.display='none';
+        quadro.querySelectorAll('.tq-col-corpo').forEach(c=>{ if(c!==corpo){ const v=c.querySelector('.tq-vazio'); if(v) v.style.display=''; } });
+        const depois=cartaoDepois(corpo, e.clientY);
+        if(depois) corpo.insertBefore(marca, depois); else corpo.appendChild(marca);
       });
       quadro.addEventListener('drop',async (e)=>{
         const col=e.target.closest('.tq-col'); if(!col || ARRASTA==null) return;
         e.preventDefault();
+        const corpo=col.querySelector('.tq-col-corpo');
+        const depoisEl=cartaoDepois(corpo, e.clientY);
+        const antesDe=depoisEl ? Number(depoisEl.dataset.id) : null;
+        tirarMarca();
         quadro.querySelectorAll('.tq-alvo').forEach(x=>x.classList.remove('tq-alvo'));
         const id=ARRASTA, st=col.dataset.status;
-        const c=CARDS.find(x=>x.id===id); if(!c || c.status===st) return;
-        const antes={status:c.status, concluido_em:c.concluido_em};
-        c.status=st; if(st==='concluido'){ c.concluido_em=new Date().toISOString(); c.concluido_por=USER.nome; }
+        const c=CARDS.find(x=>x.id===id); if(!c) return;
+        const mudouColuna = c.status!==st;
+        // nova ordem da coluna de destino (todos os cartões dela, mesmo os
+        // escondidos pela busca, para não embaralhar a posição deles)
+        const ids=CARDS.filter(x=>x.status===st && x.id!==id).map(x=>x.id);
+        const pos = antesDe!=null && ids.includes(antesDe) ? ids.indexOf(antesDe) : ids.length;
+        ids.splice(pos,0,id);
+        const antigo={lista:CARDS.slice(), status:c.status, concluido_em:c.concluido_em, concluido_por:c.concluido_por,
+                      ordens:new Map(CARDS.map(x=>[x.id,x.ordem]))};
+        if(!mudouColuna){
+          const atuais=CARDS.filter(x=>x.status===st).map(x=>x.id);
+          if(atuais.join(',')===ids.join(',')) return;   // soltou no mesmo lugar
+        }
+        // aplica na tela antes de gravar (volta atrás se o banco recusar)
+        c.status=st;
+        if(mudouColuna && st==='concluido'){ c.concluido_em=new Date().toISOString(); c.concluido_por=USER.nome; }
+        ids.forEach((x,i)=>{ const k=CARDS.find(y=>y.id===x); if(k) k.ordem=i+1; });
+        const posNova=new Map(ids.map((x,i)=>[x,i]));
+        const resto=CARDS.filter(x=>!posNova.has(x.id));
+        CARDS=[...resto, ...ids.map(x=>CARDS.find(y=>y.id===x))];
         render();
         try{
-          await rpc('cn_tarefas_mover',{p_usuario_id:USER.id, p_id:id, p_status:st});
-          if(typeof atualizarBadges==='function') atualizarBadges();
-        }catch(err){ Object.assign(c,antes); render(); msg('Não foi possível mover: '+(err.message||err),true); }
+          if(mudouColuna) await rpc('cn_tarefas_mover',{p_usuario_id:USER.id, p_id:id, p_status:st});
+          await rpc('cn_tarefas_ordenar',{p_usuario_id:USER.id, p_ids:ids});
+          if(mudouColuna && typeof atualizarBadges==='function') atualizarBadges();
+        }catch(err){
+          CARDS=antigo.lista; Object.assign(c,{status:antigo.status, concluido_em:antigo.concluido_em, concluido_por:antigo.concluido_por});
+          CARDS.forEach(x=>{ x.ordem=antigo.ordens.get(x.id); });
+          render(); msg('Não foi possível mover: '+(err.message||err),true);
+        }
       });
     }
 
