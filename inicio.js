@@ -37,8 +37,8 @@ const INI = (function(){
   //   [permissão, função, tela, título, texto(n), cor]
   // ---------------------------------------------------------------
   const PEND=[
-    ['tarefas.usar','cn_tarefas_diarias_pendencias','tarefas_diarias','Demandas diárias', n=>`${n} ${n===1?'demanda diária':'demandas diárias'} em aberto`, '#2dd4bf'],
-    ['tarefas.usar','cn_tarefas_extras_pendencias','tarefas_extras','Demandas extras', n=>`${n} ${n===1?'demanda extra':'demandas extras'} em aberto`, '#2dd4bf'],
+    ['tarefas.usar','cn_tarefas_diarias_pendencias','tarefas_diarias','Demandas diárias vencidas', n=>`${n} ${n===1?'demanda diária passou':'demandas diárias passaram'} do horário de entrega`, '#2dd4bf'],
+    ['tarefas.usar','cn_tarefas_extras_pendencias','tarefas_extras','Demandas extras vencidas', n=>`${n} ${n===1?'demanda extra passou':'demandas extras passaram'} do prazo`, '#2dd4bf'],
     ['expedicao.ver','cn_expedicao_pendencias','expedicao','Listagens não lidas',
       n=>`${n} ${n===1?'listagem automática':'listagens automáticas'} para copiar ou imprimir`, '#22c55e'],
     ['vendas.ver','cn_vendas_pendencias','vendas','Vendas a conferir', n=>`${n} ${n===1?'venda':'vendas'} no Controle de Vendas`, '#ef4444'],

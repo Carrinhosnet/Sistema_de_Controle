@@ -26,8 +26,12 @@
 //   - Ordem dos itens: no drawer, arrastando pela alça ⠿.
 //   - Ordem dos cartões: arrastando o cartão para cima/baixo na coluna
 //     (grava em tarefas_cartoes.ordem — arquivo 142).
-//   - Diárias se renovam nos dias em que valem, no horário escolhido no
-//     cartão (vazio = começo do dia; arquivo 141) (a tela
+//   - Horário de entrega (diárias e extras — arquivo 143): os cartões se
+//     ordenam sozinhos da entrega mais próxima para a mais distante; dá
+//     para arrastar à mão, e "Ordenar por entrega" desfaz a ordem manual.
+//     Passou do horário sem concluir → "Vencida" (e só então a bolinha
+//     do menu avisa).
+//   - Diárias se renovam no começo de cada dia em que valem (a tela
 //     também pede a renovação ao abrir, caso a rotina não tenha passado).
 //   - Extras concluídas somem da tela 7 dias depois.
 // =====================================================================
@@ -110,7 +114,12 @@
     d('e-semanal').value= String(((cartao && cartao.dias_semana)||[1])[0]);
     d('e-diames').value= (cartao && cartao.dia_mes) || '';
     d('e-ativo').checked= !cartao || cartao.ativo!==false;
-    d('e-hora').value= (cartao && cartao.hora_renovacao) || '';
+    // horário de entrega: um campo só, posto no bloco do quadro
+    (quadro==='diaria' ? d('slot-hora-d') : d('slot-hora-x')).appendChild(d('fld-hora'));
+    d('lbl-hora').innerHTML = quadro==='diaria'
+      ? 'Entregar até (horário) <span style="color:var(--muted)">(opcional — vale para cada dia da demanda)</span>'
+      : 'Horário do prazo <span style="color:var(--muted)">(opcional — sem horário = fim do dia)</span>';
+    d('e-hora').value= (cartao && cartao.hora_entrega) || '';
     ajustarRenovacao();
     // extra
     d('e-urg').value= (cartao && cartao.urgencia) || 'normal';
@@ -145,10 +154,10 @@
       itens
     };
     if(!dados.titulo){ d('erro').textContent='Informe o título.'; return; }
+    dados.hora_entrega=d('e-hora').value||null;
     if(ED.quadro==='diaria'){
       dados.recorrencia=d('e-recor').value;
       dados.ativo=d('e-ativo').checked;
-      dados.hora_renovacao=d('e-hora').value||null;
       if(dados.recorrencia==='dias_semana') dados.dias_semana=[...d('e-dias').querySelectorAll('input:checked')].map(i=>Number(i.value));
       if(dados.recorrencia==='semanal') dados.dias_semana=[Number(d('e-semanal').value)];
       if(dados.recorrencia==='mensal') dados.dia_mes=Number(d('e-diames').value)||null;
@@ -268,6 +277,7 @@
           ${seletor}
           <button class="act prim" id="${cfg.pfx}-limpar">Limpar filtros</button>
           <button class="act prim" id="${cfg.pfx}-novo">+ Nova demanda</button>
+          <button class="act" id="${cfg.pfx}-auto" title="Desfaz a ordem arrastada à mão e volta a ordenar da entrega mais próxima para a mais distante">Ordenar por entrega</button>
           <button class="act" id="${cfg.pfx}-atualizar" title="Recarregar">↻</button>
           <span id="${cfg.pfx}-msg" style="font-size:12px;color:var(--muted)"></span>
         </div>
@@ -308,12 +318,10 @@
       const etiquetas=[];
       if(c.quadro==='extra'){
         etiquetas.push(`<span class="tq-urg tq-urg-${c.urgencia}">${URG[c.urgencia]||c.urgencia}</span>`);
-        if(c.prazo) etiquetas.push(`<span class="tq-prazo${c.atrasado?' tq-atraso':''}">${c.atrasado?'Atrasada · ':''}até ${ddmm(c.prazo)}</span>`);
+        if(c.prazo) etiquetas.push(`<span class="tq-prazo${c.atrasado?' tq-atraso':''}">${c.atrasado?'Vencida · ':''}até ${ddmm(c.prazo)}${c.hora_entrega?' '+escH(c.hora_entrega):''}</span>`);
       }else{
-        etiquetas.push(`<span class="tq-recor" title="Quando se renova">↻ ${escH(textoRenovacao(c))}${c.hora_renovacao?' · '+escH(c.hora_renovacao):''}</span>`);
-        // vale hoje mas o horário ainda não chegou: o cartão ainda é o de ontem
-        if(c.ativo!==false && c.vale_hoje && c.hora_renovacao && (!c.ultima_renovacao || c.ultima_renovacao<hojeSP()))
-          etiquetas.push(`<span class="tq-prox">Renova hoje às ${escH(c.hora_renovacao)}</span>`);
+        etiquetas.push(`<span class="tq-recor" title="Quando se renova">↻ ${escH(textoRenovacao(c))}</span>`);
+        if(c.hora_entrega) etiquetas.push(`<span class="tq-prazo${c.atrasado?' tq-atraso':''}" title="Horário de entrega">${c.atrasado?'Vencida · ':''}entregar até ${escH(c.hora_entrega)}</span>`);
         if(c.ativo===false) etiquetas.push('<span class="tq-pausa">Pausada</span>');
         else if(!c.vale_hoje && c.proximo_dia) etiquetas.push(`<span class="tq-prox">Não vale hoje · próxima ${DIAS_CURTO[diaSemanaIso(c.proximo_dia)].toLowerCase()} ${ddmm(c.proximo_dia)}</span>`);
       }
@@ -334,10 +342,29 @@
       </div>`;
     }
 
+    // ORDEM DE UMA COLUNA (arquivo 143)
+    //   automática: entrega mais próxima em cima (sem entrega no fim;
+    //   empate → urgência, título). Cartão arrastado à mão (ordem gravada)
+    //   fica onde foi posto; os demais se encaixam antes do primeiro cartão
+    //   arrastado cuja entrega é mais tarde.
+    const RANK_URG={urgente:0, alta:1, normal:2};
+    const chaveEnt=(c)=>c.entrega||'9999';
+    const porEntrega=(a,b)=> chaveEnt(a).localeCompare(chaveEnt(b))
+      || (RANK_URG[a.urgencia]??2)-(RANK_URG[b.urgencia]??2)
+      || String(a.titulo).localeCompare(String(b.titulo),'pt-BR');
+    function ordenarColuna(st){
+      const col=CARDS.filter(c=>c.status===st);
+      const out=col.filter(c=>c.ordem!=null).sort((a,b)=>a.ordem-b.ordem);
+      for(const a of col.filter(c=>c.ordem==null).sort(porEntrega)){
+        const i=out.findIndex(m=>m.ordem!=null && chaveEnt(m)>chaveEnt(a));
+        if(i<0) out.push(a); else out.splice(i,0,a);
+      }
+      return out;
+    }
+
     function render(){
       for(const [st] of COLUNAS){
-        // ordem: a que a pessoa arrastou (vem pronta do banco, arquivo 142)
-        const l=CARDS.filter(c=>c.status===st && passaBusca(c));
+        const l=ordenarColuna(st).filter(passaBusca);
         f('col-'+st).innerHTML = l.length ? l.map(cardHtml).join('')
           : `<div class="tq-vazio">${st==='a_fazer'?'Nada a fazer':st==='andamento'?'Nada em andamento':'Nada concluído'}</div>`;
         f('n-'+st).textContent=l.length;
@@ -435,13 +462,13 @@
         const mudouColuna = c.status!==st;
         // nova ordem da coluna de destino (todos os cartões dela, mesmo os
         // escondidos pela busca, para não embaralhar a posição deles)
-        const ids=CARDS.filter(x=>x.status===st && x.id!==id).map(x=>x.id);
+        const ids=ordenarColuna(st).filter(x=>x.id!==id).map(x=>x.id);
         const pos = antesDe!=null && ids.includes(antesDe) ? ids.indexOf(antesDe) : ids.length;
         ids.splice(pos,0,id);
         const antigo={lista:CARDS.slice(), status:c.status, concluido_em:c.concluido_em, concluido_por:c.concluido_por,
                       ordens:new Map(CARDS.map(x=>[x.id,x.ordem]))};
         if(!mudouColuna){
-          const atuais=CARDS.filter(x=>x.status===st).map(x=>x.id);
+          const atuais=ordenarColuna(st).map(x=>x.id);
           if(atuais.join(',')===ids.join(',')) return;   // soltou no mesmo lugar
         }
         // aplica na tela antes de gravar (volta atrás se o banco recusar)
@@ -484,6 +511,12 @@
         });
       }
       f('limpar').addEventListener('click',limpar);
+      f('auto').addEventListener('click',async ()=>{
+        const ids=CARDS.filter(c=>c.ordem!=null).map(c=>c.id);
+        if(!ids.length){ msg('Já está na ordem por entrega.'); return; }
+        try{ await rpc('cn_tarefas_ordem_auto',{p_usuario_id:USER.id, p_ids:ids}); await carregar(); msg('Ordenado por entrega.'); }
+        catch(e){ msg('Não foi possível ordenar: '+(e.message||e),true); }
+      });
       f('atualizar').addEventListener('click',()=>{ RENOVOU=false; carregar(); });
       f('novo').addEventListener('click',()=>abrirDrawer(QUADRO,null,recarregar, cfg.gestor&&PESSOA?Number(PESSOA):null));
       const cols=f('quadro-cols');

@@ -997,8 +997,8 @@
       <div class="navgroup" id="grp-tarefas">
         <div class="navtit navtit-toggle" data-grp="grp-tarefas">Tarefas Diárias<span class="caret">▾</span></div>
         <button data-tela="mensagens" id="nav-mensagens"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5a2 2 0 0 1-2 2H7.5l-4 3.5V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/><path d="M7.5 8h9M7.5 11.5h6"/></svg><span class="nav-lbl">Mensagens Padrões e Informações</span></button>
-        <button data-tela="tarefas_diarias" id="nav-tarefas_diarias"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="1.8"/><path d="M3.5 9h17M8 2.8v3.4M16 2.8v3.4"/><path d="m8.6 14.6 2.2 2.2 4.6-4.6"/></svg><span class="nav-lbl">Demandas Diárias</span><span class="badge-dot" id="badge-tarefas_diarias" style="display:none" title="Demandas diárias suas ainda não concluídas"></span></button>
-        <button data-tela="tarefas_extras" id="nav-tarefas_extras"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2.8 4.5 13.5H12l-1 7.7 8.5-10.7H12z"/></svg><span class="nav-lbl">Demandas Extras</span><span class="badge-dot" id="badge-tarefas_extras" style="display:none" title="Demandas extras em aberto para você"></span></button>
+        <button data-tela="tarefas_diarias" id="nav-tarefas_diarias"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="1.8"/><path d="M3.5 9h17M8 2.8v3.4M16 2.8v3.4"/><path d="m8.6 14.6 2.2 2.2 4.6-4.6"/></svg><span class="nav-lbl">Demandas Diárias</span><span class="badge-dot" id="badge-tarefas_diarias" style="display:none" title="Demandas diárias suas vencidas (passou do horário de entrega)"></span></button>
+        <button data-tela="tarefas_extras" id="nav-tarefas_extras"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2.8 4.5 13.5H12l-1 7.7 8.5-10.7H12z"/></svg><span class="nav-lbl">Demandas Extras</span><span class="badge-dot" id="badge-tarefas_extras" style="display:none" title="Demandas extras suas vencidas (passou do prazo)"></span></button>
         <button data-tela="tarefas_gestor" id="nav-tarefas_gestor"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.2"/><rect x="9.5" y="4" width="5" height="11" rx="1.2"/><rect x="16" y="4" width="5" height="7" rx="1.2"/></svg><span class="nav-lbl">Painel do Gestor</span></button>
       </div>
       <div class="navgroup" id="grp-expedicao">
@@ -1070,9 +1070,9 @@
 
     <!-- =================== TELAS DE DEMANDAS (Tarefas Diárias) — o conteúdo é montado pelo tarefas.js =================== -->
     <section class="tela" id="scr-tarefas_diarias"><div id="td-root"></div>
-      <p class="tq-rodape-tela">Aqui aparecem só as demandas em que você é o responsável; as que você enviar para outra pessoa aparecem no Painel do Gestor. Os itens de cada cartão voltam desmarcados nos dias em que a demanda vale, no horário escolhido no cartão (ou no começo do dia). Marque um item para riscá-lo; arraste o cartão para mudar de coluna ou de posição.</p></section>
+      <p class="tq-rodape-tela">Aqui aparecem só as demandas em que você é o responsável; as que você enviar para outra pessoa aparecem no Painel do Gestor. Os itens de cada cartão voltam desmarcados no começo de cada dia em que a demanda vale. Os cartões ficam da entrega mais próxima para a mais distante; arraste para mudar à mão. Marque um item para riscá-lo; arraste o cartão para mudar de coluna ou de posição.</p></section>
     <section class="tela" id="scr-tarefas_extras"><div id="tx-root"></div>
-      <p class="tq-rodape-tela">Aqui aparecem só as demandas em que você é o responsável; as que você enviar para outra pessoa aparecem no Painel do Gestor. As concluídas saem da tela 7 dias depois. Marque um item para riscá-lo; arraste o cartão para mudar de coluna ou de posição.</p></section>
+      <p class="tq-rodape-tela">Aqui aparecem só as demandas em que você é o responsável; as que você enviar para outra pessoa aparecem no Painel do Gestor. Os cartões ficam da entrega mais próxima para a mais distante; arraste para mudar à mão. As concluídas saem da tela 7 dias depois. Marque um item para riscá-lo; arraste o cartão para mudar de coluna ou de posição.</p></section>
     <section class="tela" id="scr-tarefas_gestor"><div id="tg-root"></div>
       <p class="tq-rodape-tela">Todas as demandas de todas as pessoas. Clique no cartão de uma pessoa para ver só as dela.</p></section>
 
@@ -2511,8 +2511,8 @@
           <select id="tq-e-semanal"><option value="1">Segunda</option><option value="2">Terça</option><option value="3">Quarta</option><option value="4">Quinta</option><option value="5">Sexta</option><option value="6">Sábado</option><option value="7">Domingo</option></select></div>
         <div class="fld full" id="tq-bl-mensal"><label>Dia do mês (1 a 31 — em meses mais curtos vale o último dia)</label>
           <input id="tq-e-diames" type="number" min="1" max="31" placeholder="Ex.: 5"></div>
-        <div class="fld full"><label>Horário em que a demanda é renovada <span style="color:var(--muted)">(vazio = começo do dia)</span></label>
-          <input id="tq-e-hora" type="time" style="max-width:160px"></div>
+        <div class="fld full" id="tq-slot-hora-d"><div class="fld" id="tq-fld-hora"><label id="tq-lbl-hora">Entregar até (horário)</label>
+          <input id="tq-e-hora" type="time" style="max-width:160px"></div></div>
         <div class="fld full"><label class="tq-ck"><input type="checkbox" id="tq-e-ativo"> Ativa <span style="color:var(--muted)">(desmarque para pausar sem apagar)</span></label></div>
       </div>
     </div>
@@ -2522,6 +2522,7 @@
       <div class="grid">
         <div class="fld"><label>Urgência</label><select id="tq-e-urg"><option value="normal">Normal</option><option value="alta">Alta</option><option value="urgente">Urgente</option></select></div>
         <div class="fld"><label>Prazo <span style="color:var(--muted)">(opcional)</span></label><input id="tq-e-prazo" type="date"></div>
+        <div class="fld full" id="tq-slot-hora-x"></div>
       </div>
     </div>
 
