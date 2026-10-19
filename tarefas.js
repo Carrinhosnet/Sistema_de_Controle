@@ -31,6 +31,8 @@
 //     para arrastar à mão, e "Ordenar por entrega" desfaz a ordem manual.
 //     Passou do horário sem concluir → "Vencida" (e só então a bolinha
 //     do menu avisa).
+//   - Diária só é gerada de novo se a anterior foi concluída (antes do
+//     dia da geração); aberta → fica a mesma, "Pendente desde …" (arquivo 144).
 //   - Diárias se renovam no começo de cada dia em que valem (a tela
 //     também pede a renovação ao abrir, caso a rotina não tenha passado).
 //   - Extras concluídas somem da tela 7 dias depois.
@@ -323,6 +325,9 @@
         etiquetas.push(`<span class="tq-recor" title="Quando se renova">↻ ${escH(textoRenovacao(c))}</span>`);
         if(c.hora_entrega) etiquetas.push(`<span class="tq-prazo${c.atrasado?' tq-atraso':''}" title="Horário de entrega">${c.atrasado?'Vencida · ':''}entregar até ${escH(c.hora_entrega)}</span>`);
         if(c.ativo===false) etiquetas.push('<span class="tq-pausa">Pausada</span>');
+        // aberta desde um dia anterior: a demanda nova não foi gerada (arquivo 144)
+        else if(c.status!=='concluido' && c.ultima_renovacao && c.ultima_renovacao<hojeSP())
+          etiquetas.push(`<span class="tq-pausa" title="Enquanto esta não for concluída, o sistema não gera a demanda nova">Pendente desde ${DIAS_CURTO[diaSemanaIso(c.ultima_renovacao)].toLowerCase()} ${ddmm(c.ultima_renovacao)}</span>`);
         else if(!c.vale_hoje && c.proximo_dia) etiquetas.push(`<span class="tq-prox">Não vale hoje · próxima ${DIAS_CURTO[diaSemanaIso(c.proximo_dia)].toLowerCase()} ${ddmm(c.proximo_dia)}</span>`);
       }
       const outro = c.criado_por && c.criado_por!==c.responsavel_id;
