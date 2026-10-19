@@ -17,7 +17,10 @@
 // REGRAS (quem garante é o banco — arquivo 140)
 //   - Marcar o 1º item → Em andamento; marcar todos → Concluído;
 //     desmarcar um item de um concluído → volta para Em andamento.
-//   - Cada pessoa vê os cartões dela e os que enviou; o gestor vê todos.
+//   - Demandas Diárias e Demandas Extras mostram SÓ os cartões em que a
+//     pessoa é a responsável (inclusive para o gestor). Dá para criar
+//     demanda para outra pessoa, mas ela sai da tela ao salvar: as
+//     demandas de terceiros só aparecem no Painel do Gestor (18/10/2026).
 //   - Editar: quem criou, o responsável ou o gestor. Excluir: quem criou
 //     ou o gestor.
 //   - Diárias se renovam de madrugada nos dias em que valem (a tela
@@ -150,8 +153,12 @@
     const b=d('save'); b.disabled=true; const t=b.textContent; b.textContent='Salvando…';
     try{
       await rpc('cn_tarefas_salvar',{p_usuario_id:USER.id, p_id:ED.cartao?ED.cartao.id:null, p_dados:dados});
+      // enviada para outra pessoa: some das telas Diárias/Extras (só aparece
+      // no Painel do Gestor), então o aviso diz para quem foi
+      const sel=d('e-resp'), nomeResp=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text.replace(/ \(eu\)$/,''):'';
+      const aviso = dados.responsavel_id===USER.id ? 'Demanda salva.' : `Demanda enviada para ${nomeResp}.`;
       const cb=ED.aoSalvar; fecharDrawer();
-      if(cb) await cb('Demanda salva.');
+      if(cb) await cb(aviso);
       if(typeof atualizarBadges==='function') atualizarBadges();
     }catch(e){ d('erro').textContent=(e.message||e); }
     finally{ b.disabled=false; b.textContent=t; }
@@ -230,7 +237,7 @@
       const seletor = cfg.gestor
         ? `<select id="${cfg.pfx}-quadro"><option value="diaria">Demandas Diárias</option><option value="extra">Demandas Extras</option></select>
            <select id="${cfg.pfx}-pessoa"><option value="">Todas as pessoas</option></select>`
-        : `<select id="${cfg.pfx}-visao"><option value="">Minhas e as que enviei</option><option value="minhas">Só as minhas</option><option value="enviadas">Só as que enviei</option></select>`;
+        : '';
       raiz.innerHTML=`
         <div class="toolbar">
           <div class="search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -256,7 +263,7 @@
         if(!RENOVOU){ RENOVOU=true; try{ await rpc('cn_tarefas_renovar_tela',{p_usuario_id:USER.id}); }catch(e){} }
         const args={p_usuario_id:USER.id, p_quadro:QUADRO};
         if(cfg.gestor){ args.p_visao='todas'; args.p_responsavel_id=PESSOA?Number(PESSOA):null; }
-        else args.p_visao=f('visao').value||null;
+        else args.p_visao='minhas';   // só as minhas: terceiros só no Painel do Gestor
         const [cards,resumo]=await Promise.all([
           rpc('cn_tarefas_listar',args),
           cfg.gestor ? rpc('cn_tarefas_resumo_pessoas',{p_usuario_id:USER.id}) : null
@@ -394,7 +401,6 @@
     function limpar(){
       f('busca').value='';
       if(cfg.gestor){ PESSOA=''; f('pessoa').value=''; }
-      else f('visao').value='';
       carregar();
     }
 
@@ -408,8 +414,6 @@
           PESSOA = (PESSOA===k.dataset.pessoa) ? '' : k.dataset.pessoa;
           f('pessoa').value=PESSOA; carregar();
         });
-      }else{
-        f('visao').addEventListener('change',carregar);
       }
       f('limpar').addEventListener('click',limpar);
       f('atualizar').addEventListener('click',()=>{ RENOVOU=false; carregar(); });
