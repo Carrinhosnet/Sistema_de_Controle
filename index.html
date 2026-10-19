@@ -951,7 +951,9 @@
   #tq-add-item{padding:7px 12px;background:var(--surface);border:1px dashed var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:13px}
   #tq-add-item:hover{border-color:var(--accent);color:var(--accent)}
   .tq-it-ed{display:flex;align-items:center;gap:6px;margin-bottom:6px}
-  .tq-it-alca{color:var(--muted);font-size:12px}
+  .tq-it-alca{color:var(--muted);font-size:16px;cursor:grab;padding:0 4px;user-select:none}
+  .tq-it-alca:hover{color:var(--accent)}
+  .tq-it-ed.tq-it-arr{opacity:.45}
   .tq-it-txt{flex:1;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px}
   .tq-it-txt:focus{outline:none;border-color:var(--accent)}
   .tq-it-rm{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px;line-height:1}
@@ -1067,7 +1069,7 @@
 
     <!-- =================== TELAS DE DEMANDAS (Tarefas Diárias) — o conteúdo é montado pelo tarefas.js =================== -->
     <section class="tela" id="scr-tarefas_diarias"><div id="td-root"></div>
-      <p class="tq-rodape-tela">Aqui aparecem só as demandas em que você é o responsável; as que você enviar para outra pessoa aparecem no Painel do Gestor. Os itens de cada cartão voltam desmarcados todo dia em que a demanda vale (00:05). Marque um item para riscá-lo; arraste o cartão para mudar de coluna.</p></section>
+      <p class="tq-rodape-tela">Aqui aparecem só as demandas em que você é o responsável; as que você enviar para outra pessoa aparecem no Painel do Gestor. Os itens de cada cartão voltam desmarcados nos dias em que a demanda vale, no horário escolhido no cartão (ou no começo do dia). Marque um item para riscá-lo; arraste o cartão para mudar de coluna.</p></section>
     <section class="tela" id="scr-tarefas_extras"><div id="tx-root"></div>
       <p class="tq-rodape-tela">Aqui aparecem só as demandas em que você é o responsável; as que você enviar para outra pessoa aparecem no Painel do Gestor. As concluídas saem da tela 7 dias depois. Marque um item para riscá-lo; arraste o cartão para mudar de coluna.</p></section>
     <section class="tela" id="scr-tarefas_gestor"><div id="tg-root"></div>
@@ -2508,6 +2510,8 @@
           <select id="tq-e-semanal"><option value="1">Segunda</option><option value="2">Terça</option><option value="3">Quarta</option><option value="4">Quinta</option><option value="5">Sexta</option><option value="6">Sábado</option><option value="7">Domingo</option></select></div>
         <div class="fld full" id="tq-bl-mensal"><label>Dia do mês (1 a 31 — em meses mais curtos vale o último dia)</label>
           <input id="tq-e-diames" type="number" min="1" max="31" placeholder="Ex.: 5"></div>
+        <div class="fld full"><label>Horário em que a demanda é renovada <span style="color:var(--muted)">(vazio = começo do dia)</span></label>
+          <input id="tq-e-hora" type="time" style="max-width:160px"></div>
         <div class="fld full"><label class="tq-ck"><input type="checkbox" id="tq-e-ativo"> Ativa <span style="color:var(--muted)">(desmarque para pausar sem apagar)</span></label></div>
       </div>
     </div>
@@ -2523,7 +2527,7 @@
     <div class="sec-tit">Itens da demanda</div>
     <div id="tq-itens"></div>
     <button type="button" class="act" id="tq-add-item" style="margin-top:8px">+ Adicionar item</button>
-    <p style="color:var(--muted);font-size:11px;margin-top:6px">Enter no último item cria o próximo. Itens em branco são ignorados.</p>
+    <p style="color:var(--muted);font-size:11px;margin-top:6px">Arraste pela alça ⠿ para mudar a ordem. Enter no último item cria o próximo. Itens em branco são ignorados.</p>
 
     <div id="tq-info" style="color:var(--muted);font-size:12px;margin-top:16px"></div>
     <div id="tq-hist-corpo" style="display:none;margin-top:12px"></div>

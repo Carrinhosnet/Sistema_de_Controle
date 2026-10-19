@@ -23,7 +23,9 @@
 //     demandas de terceiros só aparecem no Painel do Gestor (18/10/2026).
 //   - Editar: quem criou, o responsável ou o gestor. Excluir: quem criou
 //     ou o gestor.
-//   - Diárias se renovam de madrugada nos dias em que valem (a tela
+//   - Ordem dos itens: no drawer, arrastando pela alça ⠿.
+//   - Diárias se renovam nos dias em que valem, no horário escolhido no
+//     cartão (vazio = começo do dia; arquivo 141) (a tela
 //     também pede a renovação ao abrir, caso a rotina não tenha passado).
 //   - Extras concluídas somem da tela 7 dias depois.
 // =====================================================================
@@ -68,7 +70,7 @@
 
   function itemLinha(it){
     return `<div class="tq-it-ed" data-id="${it&&it.id?it.id:''}">
-      <span class="tq-it-alca">⠿</span>
+      <span class="tq-it-alca" title="Arraste para mudar a ordem">⠿</span>
       <input class="tq-it-txt" value="${escH(it?it.texto:'')}" placeholder="Descreva o item" maxlength="300">
       <button type="button" class="tq-it-rm" title="Remover item">×</button></div>`;
   }
@@ -106,6 +108,7 @@
     d('e-semanal').value= String(((cartao && cartao.dias_semana)||[1])[0]);
     d('e-diames').value= (cartao && cartao.dia_mes) || '';
     d('e-ativo').checked= !cartao || cartao.ativo!==false;
+    d('e-hora').value= (cartao && cartao.hora_renovacao) || '';
     ajustarRenovacao();
     // extra
     d('e-urg').value= (cartao && cartao.urgencia) || 'normal';
@@ -143,6 +146,7 @@
     if(ED.quadro==='diaria'){
       dados.recorrencia=d('e-recor').value;
       dados.ativo=d('e-ativo').checked;
+      dados.hora_renovacao=d('e-hora').value||null;
       if(dados.recorrencia==='dias_semana') dados.dias_semana=[...d('e-dias').querySelectorAll('input:checked')].map(i=>Number(i.value));
       if(dados.recorrencia==='semanal') dados.dias_semana=[Number(d('e-semanal').value)];
       if(dados.recorrencia==='mensal') dados.dia_mes=Number(d('e-diames').value)||null;
@@ -211,6 +215,23 @@
       if(!d('itens').children.length) addItem(false);
     });
     // Enter no último item cria o próximo
+    // ordem dos itens: arrastar pela alça ⠿ (a ordem da tela é a que fica salva)
+    let ARR_IT=null;
+    d('itens').addEventListener('mousedown',(e)=>{ const a=e.target.closest('.tq-it-alca'); if(a) a.closest('.tq-it-ed').draggable=true; });
+    d('itens').addEventListener('mouseup',()=>{ d('itens').querySelectorAll('.tq-it-ed[draggable="true"]').forEach(l=>{ if(l!==ARR_IT) l.draggable=false; }); });
+    d('itens').addEventListener('dragstart',(e)=>{
+      const l=e.target.closest && e.target.closest('.tq-it-ed'); if(!l || !l.draggable) return;
+      ARR_IT=l; l.classList.add('tq-it-arr');
+      e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain','item'); }catch(_){}
+    });
+    d('itens').addEventListener('dragover',(e)=>{
+      if(!ARR_IT) return; e.preventDefault();
+      const alvo=e.target.closest('.tq-it-ed'); if(!alvo || alvo===ARR_IT) return;
+      const r=alvo.getBoundingClientRect();
+      alvo.parentNode.insertBefore(ARR_IT, e.clientY>r.top+r.height/2 ? alvo.nextSibling : alvo);
+    });
+    d('itens').addEventListener('drop',(e)=>{ if(ARR_IT) e.preventDefault(); });
+    d('itens').addEventListener('dragend',()=>{ if(!ARR_IT) return; ARR_IT.classList.remove('tq-it-arr'); ARR_IT.draggable=false; ARR_IT=null; });
     d('itens').addEventListener('keydown',(e)=>{
       if(e.key!=='Enter' || !e.target.classList.contains('tq-it-txt')) return;
       e.preventDefault();
@@ -287,7 +308,10 @@
         etiquetas.push(`<span class="tq-urg tq-urg-${c.urgencia}">${URG[c.urgencia]||c.urgencia}</span>`);
         if(c.prazo) etiquetas.push(`<span class="tq-prazo${c.atrasado?' tq-atraso':''}">${c.atrasado?'Atrasada · ':''}até ${ddmm(c.prazo)}</span>`);
       }else{
-        etiquetas.push(`<span class="tq-recor" title="Quando se renova">↻ ${escH(textoRenovacao(c))}</span>`);
+        etiquetas.push(`<span class="tq-recor" title="Quando se renova">↻ ${escH(textoRenovacao(c))}${c.hora_renovacao?' · '+escH(c.hora_renovacao):''}</span>`);
+        // vale hoje mas o horário ainda não chegou: o cartão ainda é o de ontem
+        if(c.ativo!==false && c.vale_hoje && c.hora_renovacao && (!c.ultima_renovacao || c.ultima_renovacao<hojeSP()))
+          etiquetas.push(`<span class="tq-prox">Renova hoje às ${escH(c.hora_renovacao)}</span>`);
         if(c.ativo===false) etiquetas.push('<span class="tq-pausa">Pausada</span>');
         else if(!c.vale_hoje && c.proximo_dia) etiquetas.push(`<span class="tq-prox">Não vale hoje · próxima ${DIAS_CURTO[diaSemanaIso(c.proximo_dia)].toLowerCase()} ${ddmm(c.proximo_dia)}</span>`);
       }
