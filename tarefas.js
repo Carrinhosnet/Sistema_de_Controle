@@ -39,7 +39,12 @@
 // =====================================================================
 (function(){
   const escH=(s)=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const COLUNAS=[['a_fazer','A fazer'],['andamento','Em andamento'],['concluido','Concluído']];
+  // "Atrasados" é uma coluna AUTOMÁTICA (20/10/2026): mostra os cartões
+  // vencidos (passou da entrega e não concluiu), seja qual for a situação
+  // deles. Não dá para soltar cartão nela; tirar daqui = concluir.
+  const COLUNAS=[['atrasado','Atrasados'],['a_fazer','A fazer'],['andamento','Em andamento'],['concluido','Concluído']];
+  const NOME_SIT={a_fazer:'A fazer', andamento:'Em andamento', concluido:'Concluído'};
+  const emAtraso=(c)=>!!c.atrasado && c.status!=='concluido';
   const URG={normal:'Normal', alta:'Alta', urgente:'Urgente'};
   const DIAS_CURTO=['','Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];          // isodow 1..7
   const DIAS_LONGO=['','segunda','terça','quarta','quinta','sexta','sábado','domingo'];
@@ -263,7 +268,7 @@
   // ---------------------------------------------------------------
   function criarQuadro(cfg){
     const f=(id)=>$(cfg.pfx+'-'+id);
-    let CARDS=[], QUADRO=cfg.quadro, PESSOA='', RESUMO=[];
+    let CARDS=[], QUADRO=cfg.quadro, PESSOA='', RESUMO=[], AVISOS=[], DESTACAR=null;
     let RENOVOU=false;
 
     function montar(){
@@ -283,7 +288,8 @@
           <button class="act" id="${cfg.pfx}-atualizar" title="Recarregar">↻</button>
           <span id="${cfg.pfx}-msg" style="font-size:12px;color:var(--muted)"></span>
         </div>
-        ${cfg.gestor?`<div class="tq-resumo" id="${cfg.pfx}-resumo"></div>`:''}
+        ${cfg.gestor?`<div class="tq-avisos" id="${cfg.pfx}-avisos" style="display:none"></div>
+                      <div class="tq-resumo" id="${cfg.pfx}-resumo"></div>`:''}
         <div class="tq-quadro" id="${cfg.pfx}-quadro-cols">
           ${COLUNAS.map(([st,nome])=>`<div class="tq-col tq-col-${st}" data-status="${st}">
               <div class="tq-col-tit">${nome}<span class="tq-col-n" id="${cfg.pfx}-n-${st}">0</span></div>
@@ -299,13 +305,22 @@
         const args={p_usuario_id:USER.id, p_quadro:QUADRO};
         if(cfg.gestor){ args.p_visao='todas'; args.p_responsavel_id=PESSOA?Number(PESSOA):null; }
         else args.p_visao='minhas';   // só as minhas: terceiros só no Painel do Gestor
-        const [cards,resumo]=await Promise.all([
+        const todas=(q)=>rpc('cn_tarefas_listar',{p_usuario_id:USER.id, p_quadro:q, p_visao:'todas'});
+        const [cards,resumo,tdD,tdX]=await Promise.all([
           rpc('cn_tarefas_listar',args),
-          cfg.gestor ? rpc('cn_tarefas_resumo_pessoas',{p_usuario_id:USER.id}) : null
+          cfg.gestor ? rpc('cn_tarefas_resumo_pessoas',{p_usuario_id:USER.id}) : null,
+          // gestor: as atrasadas de TODAS as pessoas, nos dois quadros (avisos)
+          cfg.gestor ? todas('diaria') : null,
+          cfg.gestor ? todas('extra') : null
         ]);
         CARDS=cards||[];
-        if(cfg.gestor) RESUMO=resumo||[];
+        if(cfg.gestor){
+          RESUMO=resumo||[];
+          AVISOS=[...(tdD||[]), ...(tdX||[])].filter(emAtraso).sort(porEntrega);
+        }
         render();
+        if(DESTACAR){ const el=f('quadro-cols').querySelector(`.tq-card[data-id="${DESTACAR}"]`); DESTACAR=null;
+          if(el){ el.scrollIntoView({block:'center', behavior:'smooth'}); el.classList.add('tq-destaque'); setTimeout(()=>el.classList.remove('tq-destaque'),2500); } }
       }catch(e){ msg('Erro: '+(e.message||e),true); }
     }
 
@@ -330,6 +345,7 @@
           etiquetas.push(`<span class="tq-pausa" title="Enquanto esta não for concluída, o sistema não gera a demanda nova">Pendente desde ${DIAS_CURTO[diaSemanaIso(c.ultima_renovacao)].toLowerCase()} ${ddmm(c.ultima_renovacao)}</span>`);
         else if(!c.vale_hoje && c.proximo_dia) etiquetas.push(`<span class="tq-prox">Não vale hoje · próxima ${DIAS_CURTO[diaSemanaIso(c.proximo_dia)].toLowerCase()} ${ddmm(c.proximo_dia)}</span>`);
       }
+      if(emAtraso(c)) etiquetas.unshift(`<span class="tq-sit" title="Situação do cartão">${NOME_SIT[c.status]||c.status}</span>`);
       const outro = c.criado_por && c.criado_por!==c.responsavel_id;
       return `<div class="tq-card${c.status==='concluido'?' tq-feito':''}${c.atrasado?' tq-card-atraso':''}${c.ativo===false?' tq-card-pausa':''}"
                    draggable="true" data-id="${c.id}">
@@ -357,8 +373,10 @@
     const porEntrega=(a,b)=> chaveEnt(a).localeCompare(chaveEnt(b))
       || (RANK_URG[a.urgencia]??2)-(RANK_URG[b.urgencia]??2)
       || String(a.titulo).localeCompare(String(b.titulo),'pt-BR');
-    function ordenarColuna(st){
-      const col=CARDS.filter(c=>c.status===st);
+    function ordenarColuna(st, comAtrasados){
+      // Atrasados: o mais antigo em cima (pela entrega)
+      if(st==='atrasado') return CARDS.filter(emAtraso).sort(porEntrega);
+      const col=CARDS.filter(c=>c.status===st && (comAtrasados || !emAtraso(c)));
       const out=col.filter(c=>c.ordem!=null).sort((a,b)=>a.ordem-b.ordem);
       for(const a of col.filter(c=>c.ordem==null).sort(porEntrega)){
         const i=out.findIndex(m=>m.ordem!=null && chaveEnt(m)>chaveEnt(a));
@@ -371,10 +389,26 @@
       for(const [st] of COLUNAS){
         const l=ordenarColuna(st).filter(passaBusca);
         f('col-'+st).innerHTML = l.length ? l.map(cardHtml).join('')
-          : `<div class="tq-vazio">${st==='a_fazer'?'Nada a fazer':st==='andamento'?'Nada em andamento':'Nada concluído'}</div>`;
+          : `<div class="tq-vazio">${({atrasado:'Nada atrasado', a_fazer:'Nada a fazer', andamento:'Nada em andamento'})[st]||'Nada concluído'}</div>`;
         f('n-'+st).textContent=l.length;
       }
-      if(cfg.gestor) renderResumo();
+      if(cfg.gestor){ renderResumo(); renderAvisos(); }
+    }
+
+    // AVISOS DO GESTOR (20/10/2026): cada cartão atrasado, de qualquer
+    // pessoa e dos dois quadros, vira uma linha. Clicar leva até o cartão.
+    const quandoEnt=(e)=> e ? `${DIAS_CURTO[diaSemanaIso(e.slice(0,10))].toLowerCase()} ${ddmm(e.slice(0,10))} ${e.slice(11,16)}` : '';
+    function renderAvisos(){
+      const box=f('avisos'); if(!box) return;
+      if(!AVISOS.length){ box.style.display='none'; box.innerHTML=''; return; }
+      box.style.display='';
+      box.innerHTML=`<div class="tq-avisos-tit">🔔 ${AVISOS.length} ${AVISOS.length===1?'demanda atrasada':'demandas atrasadas'} na equipe</div>`+
+        AVISOS.map(c=>`<div class="tq-aviso" data-aviso="${c.id}" data-q="${c.quadro}" data-p="${c.responsavel_id}" title="Abrir o cartão">
+          <span class="tq-aviso-q">${c.quadro==='diaria'?'Diária':'Extra'}</span>
+          <span class="tq-av">${escH(inicial(c.responsavel))}</span>
+          <span class="tq-aviso-p">${escH(c.responsavel)}</span>
+          <span class="tq-aviso-t">${escH(c.titulo)}</span>
+          <span class="tq-aviso-d">venceu ${escH(quandoEnt(c.entrega))}</span></div>`).join('');
     }
 
     function renderResumo(){
@@ -406,8 +440,11 @@
         if(c){
           if(feito && it){ it.feito_por=USER.nome; it.feito_em=new Date().toISOString(); }
           if(st && st!==c.status){
+            const deConcluido=c.status==='concluido';
             c.status=st;
-            if(st==='concluido'){ c.concluido_em=new Date().toISOString(); c.concluido_por=USER.nome; msg(`"${c.titulo}" concluída.`); }
+            if(st==='concluido'){ c.atrasado=false; c.concluido_em=new Date().toISOString(); c.concluido_por=USER.nome; msg(`"${c.titulo}" concluída.`); }
+            // reaberta: o banco recalcula entrega e atraso
+            if(deConcluido){ render(); await carregar(); if(typeof atualizarBadges==='function') atualizarBadges(); return; }
           }
         }
         render();
@@ -445,6 +482,9 @@
       });
       quadro.addEventListener('dragover',(e)=>{
         const col=e.target.closest('.tq-col'); if(!col || ARRASTA==null) return;
+        if(col.dataset.status==='atrasado'){   // coluna automática: não recebe cartão
+          tirarMarca(); quadro.querySelectorAll('.tq-alvo').forEach(x=>x.classList.remove('tq-alvo')); return;
+        }
         e.preventDefault(); e.dataTransfer.dropEffect='move';
         quadro.querySelectorAll('.tq-alvo').forEach(x=>{ if(x!==col) x.classList.remove('tq-alvo'); });
         col.classList.add('tq-alvo');
@@ -456,6 +496,7 @@
       });
       quadro.addEventListener('drop',async (e)=>{
         const col=e.target.closest('.tq-col'); if(!col || ARRASTA==null) return;
+        if(col.dataset.status==='atrasado') return;
         e.preventDefault();
         const corpo=col.querySelector('.tq-col-corpo');
         const depoisEl=cartaoDepois(corpo, e.clientY);
@@ -467,18 +508,18 @@
         const mudouColuna = c.status!==st;
         // nova ordem da coluna de destino (todos os cartões dela, mesmo os
         // escondidos pela busca, para não embaralhar a posição deles)
-        const ids=ordenarColuna(st).filter(x=>x.id!==id).map(x=>x.id);
+        const ids=ordenarColuna(st,true).filter(x=>x.id!==id).map(x=>x.id);
         const pos = antesDe!=null && ids.includes(antesDe) ? ids.indexOf(antesDe) : ids.length;
         ids.splice(pos,0,id);
         const antigo={lista:CARDS.slice(), status:c.status, concluido_em:c.concluido_em, concluido_por:c.concluido_por,
                       ordens:new Map(CARDS.map(x=>[x.id,x.ordem]))};
         if(!mudouColuna){
-          const atuais=ordenarColuna(st).map(x=>x.id);
+          const atuais=ordenarColuna(st,true).map(x=>x.id);
           if(atuais.join(',')===ids.join(',')) return;   // soltou no mesmo lugar
         }
         // aplica na tela antes de gravar (volta atrás se o banco recusar)
         c.status=st;
-        if(mudouColuna && st==='concluido'){ c.concluido_em=new Date().toISOString(); c.concluido_por=USER.nome; }
+        if(mudouColuna && st==='concluido'){ c.atrasado=false; c.concluido_em=new Date().toISOString(); c.concluido_por=USER.nome; }
         ids.forEach((x,i)=>{ const k=CARDS.find(y=>y.id===x); if(k) k.ordem=i+1; });
         const posNova=new Map(ids.map((x,i)=>[x,i]));
         const resto=CARDS.filter(x=>!posNova.has(x.id));
@@ -487,6 +528,8 @@
         try{
           if(mudouColuna) await rpc('cn_tarefas_mover',{p_usuario_id:USER.id, p_id:id, p_status:st});
           await rpc('cn_tarefas_ordenar',{p_usuario_id:USER.id, p_ids:ids});
+          // saiu de Concluído: o banco recalcula entrega e atraso
+          if(mudouColuna && antigo.status==='concluido') await carregar();
           if(mudouColuna && typeof atualizarBadges==='function') atualizarBadges();
         }catch(err){
           CARDS=antigo.lista; Object.assign(c,{status:antigo.status, concluido_em:antigo.concluido_em, concluido_por:antigo.concluido_por});
@@ -509,6 +552,12 @@
       if(cfg.gestor){
         f('quadro').addEventListener('change',()=>{ QUADRO=f('quadro').value; carregar(); });
         f('pessoa').addEventListener('change',()=>{ PESSOA=f('pessoa').value; carregar(); });
+        f('avisos').addEventListener('click',(e)=>{
+          const a=e.target.closest('[data-aviso]'); if(!a) return;
+          QUADRO=a.dataset.q; f('quadro').value=QUADRO;
+          PESSOA=a.dataset.p; f('pessoa').value=PESSOA;
+          f('busca').value=''; DESTACAR=a.dataset.aviso; carregar();
+        });
         f('resumo').addEventListener('click',(e)=>{
           const k=e.target.closest('[data-pessoa]'); if(!k) return;
           PESSOA = (PESSOA===k.dataset.pessoa) ? '' : k.dataset.pessoa;

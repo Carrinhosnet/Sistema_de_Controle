@@ -895,7 +895,23 @@
   #mp-canais-modal .mp-c-nome:focus{outline:none;border-color:var(--accent)}
 
   /* ===== DEMANDAS (Diárias · Extras · Painel do Gestor) — tarefas.js ===== */
-  .tq-quadro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+  .tq-quadro{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start}
+  /* Atrasados: coluna automática (não recebe cartão arrastado) */
+  .tq-col-atrasado{border-color:rgba(239,68,68,.45)}
+  .tq-col-atrasado .tq-col-tit{color:var(--danger)}
+  .tq-col-atrasado .tq-col-tit::before{background:var(--danger)}
+  .tq-etq .tq-sit{color:var(--text)}
+  /* avisos do gestor: uma linha por cartão atrasado da equipe */
+  .tq-avisos{background:var(--surface);border:1px solid rgba(239,68,68,.45);border-left:3px solid var(--danger);border-radius:var(--radius);padding:10px 12px;margin-bottom:14px;max-height:240px;overflow-y:auto}
+  .tq-avisos-tit{font-size:13px;font-weight:600;color:var(--danger);margin-bottom:6px}
+  .tq-aviso{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12.5px}
+  .tq-aviso:hover{background:var(--surface2)}
+  .tq-aviso-q{font-size:10.5px;border:1px solid var(--border);border-radius:4px;padding:0 6px;color:var(--muted);flex:none;min-width:44px;text-align:center}
+  .tq-aviso-p{color:var(--text);flex:none;min-width:110px}
+  .tq-aviso-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .tq-aviso-d{color:var(--danger);flex:none;font-size:12px}
+  .tq-card.tq-destaque{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
+  @media (max-width:1300px){ .tq-quadro{grid-template-columns:repeat(2,minmax(0,1fr))} }
   .tq-col{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;min-height:220px;transition:border-color .15s,background .15s}
   .tq-col.tq-alvo{border-color:var(--accent);background:var(--accent-soft)}
   .tq-col-tit{padding:10px 14px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
@@ -999,7 +1015,7 @@
         <button data-tela="mensagens" id="nav-mensagens"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5a2 2 0 0 1-2 2H7.5l-4 3.5V5.5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/><path d="M7.5 8h9M7.5 11.5h6"/></svg><span class="nav-lbl">Mensagens Padrões e Informações</span></button>
         <button data-tela="tarefas_diarias" id="nav-tarefas_diarias"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="1.8"/><path d="M3.5 9h17M8 2.8v3.4M16 2.8v3.4"/><path d="m8.6 14.6 2.2 2.2 4.6-4.6"/></svg><span class="nav-lbl">Demandas Diárias</span><span class="badge-dot" id="badge-tarefas_diarias" style="display:none" title="Demandas diárias suas vencidas (passou do horário de entrega)"></span></button>
         <button data-tela="tarefas_extras" id="nav-tarefas_extras"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2.8 4.5 13.5H12l-1 7.7 8.5-10.7H12z"/></svg><span class="nav-lbl">Demandas Extras</span><span class="badge-dot" id="badge-tarefas_extras" style="display:none" title="Demandas extras suas vencidas (passou do prazo)"></span></button>
-        <button data-tela="tarefas_gestor" id="nav-tarefas_gestor"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.2"/><rect x="9.5" y="4" width="5" height="11" rx="1.2"/><rect x="16" y="4" width="5" height="7" rx="1.2"/></svg><span class="nav-lbl">Painel do Gestor</span></button>
+        <button data-tela="tarefas_gestor" id="nav-tarefas_gestor"><svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="5" height="16" rx="1.2"/><rect x="9.5" y="4" width="5" height="11" rx="1.2"/><rect x="16" y="4" width="5" height="7" rx="1.2"/></svg><span class="nav-lbl">Painel do Gestor</span><span class="badge-dot" id="badge-tarefas_gestor" style="display:none" title="Demandas atrasadas de toda a equipe"></span></button>
       </div>
       <div class="navgroup" id="grp-expedicao">
         <div class="navtit navtit-toggle" data-grp="grp-expedicao">Expedição<span class="caret">▾</span></div>
@@ -2934,6 +2950,7 @@ async function atualizarBadges(){
   const n = await Promise.all([
     setDot('badge-tarefas_diarias', temPermissao('tarefas.usar'),    'cn_tarefas_diarias_pendencias'),
     setDot('badge-tarefas_extras',  temPermissao('tarefas.usar'),    'cn_tarefas_extras_pendencias'),
+    setDot('badge-tarefas_gestor',  temPermissao('tarefas.gestor'),  'cn_tarefas_gestor_pendencias'),
     setDot('badge-vendas',        temPermissao('vendas.ver'),        'cn_vendas_pendencias'),
     setDot('badge-mediacoes',     temPermissao('mediacoes.ver'),     'cn_mediacoes_pendencias'),
     setDot('badge-devolucoes',    temPermissao('devolucoes.ver'),    'cn_devolucoes_pendencias'),
