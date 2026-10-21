@@ -1062,6 +1062,31 @@
     #mp-drawer #mp-copiar{order:-1;flex:1 1 100% !important;padding:14px;font-size:15px}
     #mp-drawer .drawer-erro{padding:0 16px}
 
+    /* ---- DEMAIS TELAS: ajuste genérico (21/10/2026) ----
+       Não foram desenhadas para o celular: aqui só cabem na tela.
+       Tabelas mantêm todas as colunas e rolam de lado dentro do quadro;
+       filtros e botões quebram em linhas; boxes em 2 colunas; drawers e
+       janelas em tela cheia, com os campos um embaixo do outro. */
+    .kpis{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px}
+    .kpi{padding:10px 12px}
+    .kpi .val{font-size:19px}
+    .kpi .hint{min-height:0}
+    .tablewrap > .scroll{max-height:70vh;overflow:auto;-webkit-overflow-scrolling:touch;padding-right:0}
+    .tablewrap table{min-width:760px}
+    #scr-mensagens table,#ex-painel table,#et-painel table,#mp-canais-modal table{min-width:0 !important}
+    .tablewrap .foot{flex-wrap:wrap;gap:8px}
+    .toolbar input[style*="min-width"]{min-width:0 !important;flex:1 1 100%}
+    .toolbar input[type=date]{flex:1 1 30%;min-width:0}
+    .toolbar .search{min-width:0}
+    .subtabs{overflow-x:auto;scrollbar-width:none}
+    .subtabs::-webkit-scrollbar{display:none}
+    .subtabs button{white-space:nowrap;flex:none}
+    .drawer .grid[style],.modal .grid[style],main .grid[style]{grid-template-columns:1fr !important}
+    .met-grid{grid-template-columns:1fr !important}
+    main img,main canvas,main svg{max-width:100%}
+    .modal .box{width:100% !important}
+    .ex-toast{max-width:calc(100vw - 24px)}
+
     /* ---- Listagem de Envios e Emissão de Etiquetas ---- */
     /* filtros do painel: busca na linha toda, datas lado a lado */
     #ex-painel .toolbar input[type=search],#et-painel .toolbar input[type=search]{flex:1 1 100%;min-width:0 !important;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text)}
