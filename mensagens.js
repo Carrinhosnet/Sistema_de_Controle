@@ -131,7 +131,10 @@ const MP = (function(){
     f('excluir').style.display = (ed && EDIT) ? '' : 'none';
     f('fechar').style.display = ed ? 'none' : '';
     f('overlay').classList.add('open'); f('drawer').classList.add('open');
-    if(ed) setTimeout(()=>f(EDIT?'e-texto':'e-titulo').focus(),60);
+    // celular: ao abrir um texto que já existe NÃO põe o cursor no campo
+    // (senão o teclado sobe e cobre o texto e o botão Copiar)
+    const celular=window.matchMedia && window.matchMedia('(max-width:760px)').matches;
+    if(ed && !(celular && EDIT)) setTimeout(()=>f(EDIT?'e-texto':'e-titulo').focus(),60);
   }
   function fechar(){ f('overlay').classList.remove('open'); f('drawer').classList.remove('open'); EDIT=null; }
 

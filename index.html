@@ -1043,9 +1043,95 @@
     #scr-mensagens table th:nth-child(4),#scr-mensagens table td:nth-child(4),
     #scr-mensagens table th:nth-child(5),#scr-mensagens table td:nth-child(5){display:none}
     #scr-mensagens td{white-space:normal}
-    #scr-mensagens .scroll{max-height:none}
+    #scr-mensagens .scroll{max-height:none;padding-right:0}
+    #scr-mensagens table{width:100%}
+    #scr-mensagens td:first-child{width:1%;white-space:nowrap}
+    #scr-mensagens tbody tr td{padding-top:12px;padding-bottom:12px}
     #scr-mensagens .tablewrap .foot{flex-direction:column;gap:4px}
-    #mp-drawer .fld textarea{min-height:45vh}
+    #scr-mensagens .toolbar button.act{flex:1 1 40%}
+
+    /* drawers de Mensagens e Demandas: cabeçalho e botões sempre à vista,
+       só o meio rola (dvh: altura real com a barra do navegador) */
+    #mp-drawer,#tq-drawer{height:100vh;height:100dvh;overflow:hidden}
+    #mp-drawer .body,#tq-drawer .body{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+    #mp-drawer h2,#tq-drawer h2{padding:14px 16px}
+    #mp-drawer .foot,#tq-drawer .foot{padding:10px 12px calc(10px + env(safe-area-inset-bottom));gap:8px}
+    #mp-drawer .fld textarea{min-height:42vh;font-size:16px;line-height:1.5}
+    /* "Copiar texto" grande, na linha de cima, sozinho */
+    #mp-drawer .foot-linha:first-child{flex-wrap:wrap}
+    #mp-drawer #mp-copiar{order:-1;flex:1 1 100% !important;padding:14px;font-size:15px}
+    #mp-drawer .drawer-erro{padding:0 16px}
+
+    /* ---- Listagem de Envios e Emissão de Etiquetas ---- */
+    /* filtros do painel: busca na linha toda, datas lado a lado */
+    #ex-painel .toolbar input[type=search],#et-painel .toolbar input[type=search]{flex:1 1 100%;min-width:0 !important;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+    #ex-painel .toolbar input[type=date],#et-painel .toolbar input[type=date]{flex:1 1 30%;min-width:0;padding:9px 8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+    #ex-painel .toolbar .rot,#et-painel .toolbar .rot{flex:none}
+    #ex-f-periodo,#et-f-periodo{flex:1 1 100% !important}
+    #ex-msg,#et-msg{flex:1 1 100%}
+    /* tabela do painel vira lista: hora + origem em cima, resumo e leitura embaixo */
+    #ex-painel table thead,#et-painel table thead{display:none}
+    #ex-painel .scroll,#et-painel .scroll{max-height:none;padding-right:0}
+    #ex-painel table,#et-painel table,#ex-painel tbody,#et-painel tbody{display:block;width:100%}
+    #ex-painel-tbody tr.ex-dia,#et-painel-tbody tr.ex-dia{display:block}
+    #ex-painel-tbody tr.ex-dia td,#et-painel-tbody tr.ex-dia td{display:block}
+    #ex-painel-tbody tr.ex-linha,#et-painel-tbody tr.ex-linha{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:10px;
+      padding:10px 14px;border-bottom:1px solid var(--border)}
+    #ex-painel-tbody tr.ex-linha td,#et-painel-tbody tr.ex-linha td{display:block;padding:2px 0;border:none;white-space:normal;overflow:visible}
+    #ex-painel-tbody tr.ex-linha td:nth-child(3),#et-painel-tbody tr.ex-linha td:nth-child(3),
+    #ex-painel-tbody tr.ex-linha td:nth-child(4),#et-painel-tbody tr.ex-linha td:nth-child(4){grid-column:1 / -1}
+    #ex-painel-tbody tr.ex-linha td:nth-child(1) b,#et-painel-tbody tr.ex-linha td:nth-child(1) b{font-size:16px}
+    #ex-painel .tablewrap .foot,#et-painel .tablewrap .foot{flex-wrap:wrap;gap:8px}
+    #ex-painel-tbody tr.ex-naolida,#et-painel-tbody tr.ex-naolida{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+    #ex-painel-tbody tr.ex-naolida td,#et-painel-tbody tr.ex-naolida td{background:none !important;box-shadow:none !important}
+    #ex-painel-tbody td.ex-vazio,#et-painel-tbody td.ex-vazio{display:block;white-space:normal}
+    /* detalhe: barra de botões, título, boxes compactos em 2 colunas */
+    #ex-detalhe .toolbar button.act,#ex-detalhe .ex-drop{flex:1 1 45%}
+    #ex-detalhe .ex-drop > button{width:100%;justify-content:center}
+    #ex-status-etq{flex:1 1 100% !important}
+    .ex-drop-lista{min-width:0;width:min(92vw,340px)}
+    .ex-titulo{margin:0 0 10px;line-height:1.5}
+    .kpis.ex-boxes{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:8px}
+    .kpis.ex-boxes .kpi{padding:10px 12px}
+    .kpis.ex-boxes .kpi .hint{display:none}
+    .kpis.ex-boxes .kpi .val{font-size:20px;margin-top:6px}
+    .ex-simples-texto{max-height:55vh;font-size:14px;padding:10px 12px}
+    /* tabelas completas da listagem: rolam de lado dentro do bloco
+       (o título do bloco fica parado) */
+    #ex-corpo .ex-bloco{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    #ex-corpo .ex-bt{position:sticky;left:0}
+    #ex-corpo .ex-tab{min-width:900px}
+    #ex-corpo .ex-bloco-conf .ex-tab,#ex-corpo .ex-resumo .ex-tab{min-width:520px}
+    .ex-toast{left:12px;right:12px;bottom:12px;flex-wrap:wrap}
+    /* Emissão de Etiquetas */
+    .et-mkt-topo{flex-wrap:wrap;gap:8px}
+    .et-mkt-topo button.act{white-space:nowrap;padding:9px 12px}
+    #et-situacao{margin-left:0 !important;flex:1 1 100%}
+    #et-msg2{flex:1 1 100%;order:5}
+    .et-mkt-tit{font-size:22px}
+    .et-bt{flex-wrap:wrap;row-gap:4px;padding:10px 12px}
+    .et-bt .et-q{margin-left:30px;flex:1 1 100%}
+    .et-bt input{width:20px;height:20px}
+    /* cada envio vira um cartão: marcar | pacote · despacho / produtos / envio / situação · emitida */
+    .et-tab thead{display:none}
+    .et-tab,.et-tab tbody{display:block;width:100%}
+    .et-tab tr{display:grid;grid-template-columns:40px 1fr auto;grid-template-areas:"cb pac desp" "cb prod prod" "cb env env" "cb sit emit";
+      column-gap:8px;row-gap:3px;padding:10px 12px 10px 4px;border-bottom:1px solid var(--border)}
+    .et-tab td{display:block;padding:0 !important;border:none !important;width:auto !important}
+    .et-tab td:nth-child(1){grid-area:cb;align-self:start;padding-top:2px !important}
+    .et-tab td:nth-child(2){grid-area:pac;font-weight:700}
+    .et-tab td:nth-child(2)::before{content:"Pacote ";font-weight:500;color:var(--muted)}
+    .et-tab td:nth-child(3){grid-area:prod;font-size:14px}
+    .et-tab td:nth-child(4){grid-area:env;font-size:12.5px;color:var(--muted)}
+    .et-tab td:nth-child(5){grid-area:desp;text-align:right;font-size:12.5px}
+    .et-tab td:nth-child(6){grid-area:sit}
+    .et-tab td:nth-child(7){grid-area:emit;text-align:right;font-size:12px}
+    .et-tab input[type=checkbox]{width:22px;height:22px}
+    .et-barra{flex-wrap:wrap;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-radius:14px 14px 0 0;margin:4px -12px 0}
+    .et-barra > span{flex:1 1 100%}
+    .et-fmt{margin-left:0;flex:1 1 100%}
+    .et-fmt-op{flex:1 1 50%;justify-content:center;padding:9px 6px;font-size:12.5px}
+    .et-barra .et-emitir{flex:1 1 100%;justify-content:center;padding:13px}
 
     /* ---- Demandas: abas + uma coluna por vez ---- */
     .tq-abas{display:flex;gap:6px;overflow-x:auto;margin:0 -12px 10px;padding:0 12px 4px;scrollbar-width:none}
