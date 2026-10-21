@@ -903,7 +903,10 @@
   .tq-etq .tq-sit{color:var(--text)}
   /* avisos do gestor: uma linha por cartão atrasado da equipe */
   .tq-avisos{background:var(--surface);border:1px solid rgba(239,68,68,.45);border-left:3px solid var(--danger);border-radius:var(--radius);padding:10px 12px;margin-bottom:14px;max-height:240px;overflow-y:auto}
-  .tq-avisos-tit{font-size:13px;font-weight:600;color:var(--danger);margin-bottom:6px}
+  .tq-avisos-tit{font-size:13px;font-weight:600;color:var(--danger);margin-bottom:6px;display:flex;align-items:center;gap:10px}
+  .tq-avisos-btn{margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:2px 10px;font-size:12px;cursor:pointer}
+  .tq-avisos-btn:hover{color:var(--text);border-color:var(--muted)}
+  .tq-avisos.tq-avisos-fechado .tq-avisos-tit{margin-bottom:0;cursor:pointer}
   .tq-aviso{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12.5px}
   .tq-aviso:hover{background:var(--surface2)}
   .tq-aviso-q{font-size:10.5px;border:1px solid var(--border);border-radius:4px;padding:0 6px;color:var(--muted);flex:none;min-width:44px;text-align:center}

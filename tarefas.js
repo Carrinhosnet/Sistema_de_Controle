@@ -402,13 +402,17 @@
       const box=f('avisos'); if(!box) return;
       if(!AVISOS.length){ box.style.display='none'; box.innerHTML=''; return; }
       box.style.display='';
-      box.innerHTML=`<div class="tq-avisos-tit">🔔 ${AVISOS.length} ${AVISOS.length===1?'demanda atrasada':'demandas atrasadas'} na equipe</div>`+
-        AVISOS.map(c=>`<div class="tq-aviso" data-aviso="${c.id}" data-q="${c.quadro}" data-p="${c.responsavel_id}" title="Abrir o cartão">
+      // recolher: guarda a escolha neste navegador (só conveniência)
+      let fechado=false; try{ fechado=localStorage.getItem('cn_tq_avisos_fechado')==='1'; }catch(_){}
+      box.classList.toggle('tq-avisos-fechado',fechado);
+      box.innerHTML=`<div class="tq-avisos-tit">🔔 ${AVISOS.length} ${AVISOS.length===1?'demanda atrasada':'demandas atrasadas'} na equipe
+          <button type="button" class="tq-avisos-btn" data-recolher title="${fechado?'Mostrar a lista':'Recolher a lista'}">${fechado?'Mostrar ▾':'Recolher ▴'}</button></div>`+
+        (fechado ? '' : AVISOS.map(c=>`<div class="tq-aviso" data-aviso="${c.id}" data-q="${c.quadro}" data-p="${c.responsavel_id}" title="Abrir o cartão">
           <span class="tq-aviso-q">${c.quadro==='diaria'?'Diária':'Extra'}</span>
           <span class="tq-av">${escH(inicial(c.responsavel))}</span>
           <span class="tq-aviso-p">${escH(c.responsavel)}</span>
           <span class="tq-aviso-t">${escH(c.titulo)}</span>
-          <span class="tq-aviso-d">venceu ${escH(quandoEnt(c.entrega))}</span></div>`).join('');
+          <span class="tq-aviso-d">venceu ${escH(quandoEnt(c.entrega))}</span></div>`).join(''));
     }
 
     function renderResumo(){
@@ -553,6 +557,11 @@
         f('quadro').addEventListener('change',()=>{ QUADRO=f('quadro').value; carregar(); });
         f('pessoa').addEventListener('change',()=>{ PESSOA=f('pessoa').value; carregar(); });
         f('avisos').addEventListener('click',(e)=>{
+          if(e.target.closest('[data-recolher]') || (e.target.closest('.tq-avisos-tit') && f('avisos').classList.contains('tq-avisos-fechado'))){
+            let fechado=false; try{ fechado=localStorage.getItem('cn_tq_avisos_fechado')==='1'; }catch(_){}
+            try{ localStorage.setItem('cn_tq_avisos_fechado', fechado?'0':'1'); }catch(_){}
+            renderAvisos(); return;
+          }
           const a=e.target.closest('[data-aviso]'); if(!a) return;
           QUADRO=a.dataset.q; f('quadro').value=QUADRO;
           PESSOA=a.dataset.p; f('pessoa').value=PESSOA;
