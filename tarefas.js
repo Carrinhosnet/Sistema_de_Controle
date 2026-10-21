@@ -23,6 +23,9 @@
 //     demandas de terceiros só aparecem no Painel do Gestor (18/10/2026).
 //   - Editar: quem criou, o responsável ou o gestor. Excluir: quem criou
 //     ou o gestor.
+//   - CELULAR (21/10/2026): uma coluna por vez (abas no topo do quadro);
+//     o botão ⋯ do cartão move de coluna, sobe/desce e abre para editar
+//     (arrastar não funciona no toque); no drawer, ▲▼ ordenam os itens.
 //   - Ordem dos itens: no drawer, arrastando pela alça ⠿.
 //   - Ordem dos cartões: arrastando o cartão para cima/baixo na coluna
 //     (grava em tarefas_cartoes.ordem — arquivo 142).
@@ -85,6 +88,8 @@
     return `<div class="tq-it-ed" data-id="${it&&it.id?it.id:''}">
       <span class="tq-it-alca" title="Arraste para mudar a ordem">⠿</span>
       <input class="tq-it-txt" value="${escH(it?it.texto:'')}" placeholder="Descreva o item" maxlength="300">
+      <button type="button" class="tq-it-mv" data-mv="-1" title="Subir">▲</button>
+      <button type="button" class="tq-it-mv" data-mv="1" title="Descer">▼</button>
       <button type="button" class="tq-it-rm" title="Remover item">×</button></div>`;
   }
   function addItem(foco){
@@ -228,6 +233,14 @@
     d('e-recor').addEventListener('change',ajustarRenovacao);
     d('add-item').addEventListener('click',()=>addItem(true));
     d('itens').addEventListener('click',(e)=>{
+      // ▲▼ (celular, onde não dá para arrastar)
+      const mv=e.target.closest('.tq-it-mv');
+      if(mv){
+        const l=mv.closest('.tq-it-ed');
+        if(mv.dataset.mv==='-1' && l.previousElementSibling) l.parentNode.insertBefore(l, l.previousElementSibling);
+        if(mv.dataset.mv==='1' && l.nextElementSibling) l.parentNode.insertBefore(l.nextElementSibling, l);
+        return;
+      }
       if(!e.target.classList.contains('tq-it-rm')) return;
       const linha=e.target.closest('.tq-it-ed'); if(linha) linha.remove();
       if(!d('itens').children.length) addItem(false);
@@ -261,6 +274,27 @@
   }
 
   // ---------------------------------------------------------------
+  // FOLHA DE AÇÕES (celular): lista de opções que sobe do rodapé
+  // ---------------------------------------------------------------
+  let FOLHA=null, FOLHA_CB=null;
+  function folhaAcoes(titulo, opcoes, cb){
+    if(!FOLHA){
+      FOLHA=document.createElement('div'); FOLHA.className='tq-folha';
+      FOLHA.innerHTML='<div class="tq-folha-box"><div class="tq-folha-tit"></div><div class="tq-folha-ops"></div><button type="button" class="tq-folha-x">Cancelar</button></div>';
+      document.body.appendChild(FOLHA);
+      FOLHA.addEventListener('click',(e)=>{
+        const b=e.target.closest('[data-op]');
+        if(b){ const op=b.dataset.op, f=FOLHA_CB; FOLHA.classList.remove('open'); if(f) f(op); return; }
+        if(e.target===FOLHA || e.target.closest('.tq-folha-x')) FOLHA.classList.remove('open');
+      });
+    }
+    FOLHA_CB=cb;
+    FOLHA.querySelector('.tq-folha-tit').textContent=titulo;
+    FOLHA.querySelector('.tq-folha-ops').innerHTML=opcoes.map(([v,t])=>`<button type="button" data-op="${escH(v)}">${escH(t)}</button>`).join('');
+    FOLHA.classList.add('open');
+  }
+
+  // ---------------------------------------------------------------
   // QUADRO (uma instância por tela)
   //   cfg.pfx     prefixo dos ids da tela ('td', 'tx', 'tg')
   //   cfg.quadro  'diaria' | 'extra' (o gestor troca pelo seletor)
@@ -269,6 +303,7 @@
   function criarQuadro(cfg){
     const f=(id)=>$(cfg.pfx+'-'+id);
     let CARDS=[], QUADRO=cfg.quadro, PESSOA='', RESUMO=[], AVISOS=[], DESTACAR=null;
+    let ABA=null;   // coluna mostrada no celular (uma por vez)
     let RENOVOU=false;
 
     function montar(){
@@ -290,6 +325,9 @@
         </div>
         ${cfg.gestor?`<div class="tq-avisos" id="${cfg.pfx}-avisos" style="display:none"></div>
                       <div class="tq-resumo" id="${cfg.pfx}-resumo"></div>`:''}
+        <div class="tq-abas" id="${cfg.pfx}-abas">
+          ${COLUNAS.map(([st,nome])=>`<button type="button" data-aba="${st}" class="tq-aba tq-aba-${st}">${nome}<span id="${cfg.pfx}-an-${st}">0</span></button>`).join('')}
+        </div>
         <div class="tq-quadro" id="${cfg.pfx}-quadro-cols">
           ${COLUNAS.map(([st,nome])=>`<div class="tq-col tq-col-${st}" data-status="${st}">
               <div class="tq-col-tit">${nome}<span class="tq-col-n" id="${cfg.pfx}-n-${st}">0</span></div>
@@ -359,6 +397,7 @@
           <span class="tq-av" title="Responsável">${escH(inicial(c.responsavel))}</span>
           <span class="tq-resp">${escH(c.responsavel)}${outro?`<span class="tq-de"> · de ${escH(c.criador||'—')}</span>`:''}</span>
           ${tot?`<span class="tq-prog${feitos===tot?' tq-prog-ok':''}">${feitos}/${tot}</span>`:''}
+          <button type="button" class="tq-mais" data-mais="${c.id}" title="Mover, ordenar ou editar" aria-label="Ações do cartão">⋯</button>
         </div>
       </div>`;
     }
@@ -391,7 +430,12 @@
         f('col-'+st).innerHTML = l.length ? l.map(cardHtml).join('')
           : `<div class="tq-vazio">${({atrasado:'Nada atrasado', a_fazer:'Nada a fazer', andamento:'Nada em andamento'})[st]||'Nada concluído'}</div>`;
         f('n-'+st).textContent=l.length;
+        f('an-'+st).textContent=l.length;
       }
+      // celular: abre em Atrasados se houver algum, senão em A fazer
+      if(!ABA) ABA = ordenarColuna('atrasado').length ? 'atrasado' : 'a_fazer';
+      f('quadro-cols').dataset.aba=ABA;
+      f('abas').querySelectorAll('[data-aba]').forEach(b=>b.classList.toggle('on', b.dataset.aba===ABA));
       if(cfg.gestor){ renderResumo(); renderAvisos(); }
     }
 
@@ -507,40 +551,47 @@
         const antesDe=depoisEl ? Number(depoisEl.dataset.id) : null;
         tirarMarca();
         quadro.querySelectorAll('.tq-alvo').forEach(x=>x.classList.remove('tq-alvo'));
-        const id=ARRASTA, st=col.dataset.status;
-        const c=CARDS.find(x=>x.id===id); if(!c) return;
-        const mudouColuna = c.status!==st;
-        // nova ordem da coluna de destino (todos os cartões dela, mesmo os
-        // escondidos pela busca, para não embaralhar a posição deles)
-        const ids=ordenarColuna(st,true).filter(x=>x.id!==id).map(x=>x.id);
-        const pos = antesDe!=null && ids.includes(antesDe) ? ids.indexOf(antesDe) : ids.length;
-        ids.splice(pos,0,id);
-        const antigo={lista:CARDS.slice(), status:c.status, concluido_em:c.concluido_em, concluido_por:c.concluido_por,
-                      ordens:new Map(CARDS.map(x=>[x.id,x.ordem]))};
-        if(!mudouColuna){
-          const atuais=ordenarColuna(st,true).map(x=>x.id);
-          if(atuais.join(',')===ids.join(',')) return;   // soltou no mesmo lugar
-        }
-        // aplica na tela antes de gravar (volta atrás se o banco recusar)
-        c.status=st;
-        if(mudouColuna && st==='concluido'){ c.atrasado=false; c.concluido_em=new Date().toISOString(); c.concluido_por=USER.nome; }
-        ids.forEach((x,i)=>{ const k=CARDS.find(y=>y.id===x); if(k) k.ordem=i+1; });
-        const posNova=new Map(ids.map((x,i)=>[x,i]));
-        const resto=CARDS.filter(x=>!posNova.has(x.id));
-        CARDS=[...resto, ...ids.map(x=>CARDS.find(y=>y.id===x))];
-        render();
-        try{
-          if(mudouColuna) await rpc('cn_tarefas_mover',{p_usuario_id:USER.id, p_id:id, p_status:st});
-          await rpc('cn_tarefas_ordenar',{p_usuario_id:USER.id, p_ids:ids});
-          // saiu de Concluído: o banco recalcula entrega e atraso
-          if(mudouColuna && antigo.status==='concluido') await carregar();
-          if(mudouColuna && typeof atualizarBadges==='function') atualizarBadges();
-        }catch(err){
-          CARDS=antigo.lista; Object.assign(c,{status:antigo.status, concluido_em:antigo.concluido_em, concluido_por:antigo.concluido_por});
-          CARDS.forEach(x=>{ x.ordem=antigo.ordens.get(x.id); });
-          render(); msg('Não foi possível mover: '+(err.message||err),true);
-        }
+        await moverCartao(ARRASTA, col.dataset.status, antesDe);
       });
+    }
+
+
+    // muda a coluna e/ou a posição de um cartão; antesDe = id do cartão
+    // antes do qual ele entra (null = fim da coluna). Usado pelo arrastar
+    // (computador) e pelo menu ⋯ do cartão (celular).
+    async function moverCartao(id, st, antesDe){
+      const c=CARDS.find(x=>x.id===id); if(!c) return;
+      const mudouColuna = c.status!==st;
+      // nova ordem da coluna de destino (todos os cartões dela, mesmo os
+      // escondidos pela busca, para não embaralhar a posição deles)
+      const ids=ordenarColuna(st,true).filter(x=>x.id!==id).map(x=>x.id);
+      const pos = antesDe!=null && ids.includes(antesDe) ? ids.indexOf(antesDe) : ids.length;
+      ids.splice(pos,0,id);
+      const antigo={lista:CARDS.slice(), status:c.status, concluido_em:c.concluido_em, concluido_por:c.concluido_por,
+                    ordens:new Map(CARDS.map(x=>[x.id,x.ordem]))};
+      if(!mudouColuna){
+        const atuais=ordenarColuna(st,true).map(x=>x.id);
+        if(atuais.join(',')===ids.join(',')) return;   // soltou no mesmo lugar
+      }
+      // aplica na tela antes de gravar (volta atrás se o banco recusar)
+      c.status=st;
+      if(mudouColuna && st==='concluido'){ c.atrasado=false; c.concluido_em=new Date().toISOString(); c.concluido_por=USER.nome; }
+      ids.forEach((x,i)=>{ const k=CARDS.find(y=>y.id===x); if(k) k.ordem=i+1; });
+      const posNova=new Map(ids.map((x,i)=>[x,i]));
+      const resto=CARDS.filter(x=>!posNova.has(x.id));
+      CARDS=[...resto, ...ids.map(x=>CARDS.find(y=>y.id===x))];
+      render();
+      try{
+        if(mudouColuna) await rpc('cn_tarefas_mover',{p_usuario_id:USER.id, p_id:id, p_status:st});
+        await rpc('cn_tarefas_ordenar',{p_usuario_id:USER.id, p_ids:ids});
+        // saiu de Concluído: o banco recalcula entrega e atraso
+        if(mudouColuna && antigo.status==='concluido') await carregar();
+        if(mudouColuna && typeof atualizarBadges==='function') atualizarBadges();
+      }catch(err){
+        CARDS=antigo.lista; Object.assign(c,{status:antigo.status, concluido_em:antigo.concluido_em, concluido_por:antigo.concluido_por});
+        CARDS.forEach(x=>{ x.ordem=antigo.ordens.get(x.id); });
+        render(); msg('Não foi possível mover: '+(err.message||err),true);
+      }
     }
 
     async function recarregar(texto){ await carregar(); if(texto) msg(texto); }
@@ -584,13 +635,44 @@
       f('novo').addEventListener('click',()=>abrirDrawer(QUADRO,null,recarregar, cfg.gestor&&PESSOA?Number(PESSOA):null));
       const cols=f('quadro-cols');
       cols.addEventListener('change',(e)=>{ if(e.target.matches('input[data-item]')) marcar(e.target); });
+      f('abas').addEventListener('click',(e)=>{
+        const b=e.target.closest('[data-aba]'); if(!b) return;
+        ABA=b.dataset.aba; render();
+      });
       cols.addEventListener('click',(e)=>{
+        const m=e.target.closest('[data-mais]');
+        if(m){ const c=CARDS.find(x=>x.id===Number(m.dataset.mais)); if(c) abrirAcoes(c); return; }
         const t=e.target.closest('[data-abrir]'); if(!t) return;
         const c=CARDS.find(x=>x.id===Number(t.dataset.abrir)); if(!c) return;
         if(!c.pode_editar){ msg('Só quem criou, o responsável ou o gestor podem editar este cartão.',true); return; }
         abrirDrawer(c.quadro,c,recarregar);
       });
       ligarArrasto();
+    }
+
+    // MENU ⋯ DO CARTÃO (celular, onde não dá para arrastar):
+    // mover de coluna, subir/descer na coluna e editar
+    function abrirAcoes(c){
+      const atrasado=emAtraso(c);
+      const lista=ordenarColuna(c.status,true).map(x=>x.id);
+      const idx=lista.indexOf(c.id);
+      const opcoes=[];
+      if(c.pode_editar) opcoes.push(['editar','✎  Abrir e editar']);
+      for(const [st,nome] of COLUNAS){
+        if(st==='atrasado' || st===c.status) continue;
+        opcoes.push(['col:'+st,'→  Mover para '+nome]);
+      }
+      if(!atrasado && idx>0) opcoes.push(['subir','▲  Subir na coluna']);
+      if(!atrasado && idx>=0 && idx<lista.length-1) opcoes.push(['descer','▼  Descer na coluna']);
+      folhaAcoes(c.titulo, opcoes, async (op)=>{
+        if(op==='editar'){ abrirDrawer(c.quadro,c,recarregar); return; }
+        if(op.startsWith('col:')){
+          const st=op.slice(4); await moverCartao(c.id, st, null);
+          msg(`"${c.titulo}" movida para ${(COLUNAS.find(x=>x[0]===st)||[])[1]}.`); return;
+        }
+        if(op==='subir') await moverCartao(c.id, c.status, lista[idx-1]);
+        if(op==='descer') await moverCartao(c.id, c.status, lista[idx+2] ?? null);
+      });
     }
 
     async function init(){ montar(); ligarDrawer(); bind(); await carregar(); }

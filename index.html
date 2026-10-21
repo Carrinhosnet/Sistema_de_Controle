@@ -979,6 +979,126 @@
   .tq-it-rm{background:none;border:1px solid var(--border);color:var(--muted);border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px;line-height:1}
   .tq-it-rm:hover{color:var(--danger);border-color:var(--danger)}
   @media (max-width:900px){ .tq-quadro{grid-template-columns:1fr} }
+
+  /* =====================================================================
+     VERSÃO CELULAR (21/10/2026) — telas: login, Início e o grupo Tarefas
+     Diárias (Mensagens, Demandas Diárias, Demandas Extras e Painel do
+     Gestor). As demais telas abrem, mas continuam pensadas para o
+     computador.
+       - menu vira gaveta (☰ na barra do topo, fecha ao escolher a tela)
+       - quadro de demandas: uma coluna por vez, com abas
+       - botão ⋯ no cartão substitui o arrastar (não funciona no toque)
+       - campos com 16px: o iPhone não dá zoom ao tocar
+     ===================================================================== */
+  .mob-topo,.mob-overlay,.tq-abas,.tq-mais,.tq-it-mv{display:none}
+  .tq-folha{display:none}
+  @media (max-width:760px){
+    body{font-size:15px}
+    input,select,textarea{font-size:16px !important}
+    /* login */
+    #login{padding:16px}
+    .card{padding:26px 20px 22px}
+    /* barra do topo + menu em gaveta */
+    #app.on{display:block}
+    .mob-topo{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:40;height:56px;padding:0 12px;
+      background:rgba(11,18,16,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--menu-borda)}
+    .mob-menu{position:relative;width:42px;height:42px;border-radius:10px;border:1px solid var(--menu-borda);background:var(--menu-painel);
+      color:var(--text);font-size:20px;cursor:pointer;flex:none}
+    .mob-badge{position:absolute;top:-5px;right:-6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--danger);
+      color:#fff;font-size:10.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+    .mob-tit{flex:1;min-width:0;font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mob-logo{height:30px;width:auto;flex:none}
+    .floating-toggle,#app.nav-hidden .floating-toggle,.resize-handle{display:none !important}
+    #app.nav-hidden .sidebar{display:flex}
+    .sidebar{position:fixed !important;left:0;top:0;bottom:0;z-index:90;margin:0;height:100%;width:min(86vw,320px) !important;border-radius:0 18px 18px 0;
+      transform:translateX(-105%);transition:transform .22s ease}
+    body.menu-aberto .sidebar{transform:none}
+    .mob-overlay{position:fixed;inset:0;z-index:85;background:rgba(0,0,0,.55)}
+    body.menu-aberto .mob-overlay{display:block}
+    nav button{padding:12px 10px;font-size:15px}
+    main{padding:12px}
+    /* toolbar: busca na linha toda, botões dividem a linha */
+    .toolbar{gap:8px}
+    .toolbar .search{flex:1 1 100%;min-width:0}
+    .toolbar select{flex:1 1 45%;min-width:0}
+    .toolbar button.act{flex:1 1 auto;padding:10px 12px}
+    /* drawers e modais ocupam a tela */
+    .drawer{width:100vw !important;max-width:100vw !important}
+    .drawer .grid{grid-template-columns:1fr}
+    .drawer .foot.foot-2l .foot-linha button{padding:12px}
+    .modal{padding:8px}
+    .modal .box{max-width:100%;max-height:92vh}
+
+    /* ---- Início ---- */
+    .ini-topo{flex-direction:column;gap:10px;margin-bottom:12px}
+    .ini-ola{font-size:22px}
+    .ini-dir{align-items:flex-start}
+    .ini-rotinas{justify-content:flex-start}
+    .ini-pend,.ini-nums,.ini-grupos{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .ini-telas{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:10px}
+    .ini-card,.ini-num,.ini-grupo,.ini-tela{padding:14px;border-radius:16px}
+
+    /* ---- Mensagens Padrões e Informações: só Tipo e Título ---- */
+    #scr-mensagens table th:nth-child(2),#scr-mensagens table td:nth-child(2),
+    #scr-mensagens table th:nth-child(4),#scr-mensagens table td:nth-child(4),
+    #scr-mensagens table th:nth-child(5),#scr-mensagens table td:nth-child(5){display:none}
+    #scr-mensagens td{white-space:normal}
+    #scr-mensagens .scroll{max-height:none}
+    #scr-mensagens .tablewrap .foot{flex-direction:column;gap:4px}
+    #mp-drawer .fld textarea{min-height:45vh}
+
+    /* ---- Demandas: abas + uma coluna por vez ---- */
+    .tq-abas{display:flex;gap:6px;overflow-x:auto;margin:0 -12px 10px;padding:0 12px 4px;scrollbar-width:none}
+    .tq-abas::-webkit-scrollbar{display:none}
+    .tq-aba{flex:none;display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:20px;border:1px solid var(--border);
+      background:var(--surface);color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap}
+    .tq-aba span{background:var(--surface2);border-radius:10px;padding:0 7px;font-size:11.5px;color:var(--text)}
+    .tq-aba.on{background:var(--accent-soft);border-color:var(--accent);color:var(--text)}
+    .tq-aba-atrasado{color:var(--danger)}
+    .tq-aba-atrasado.on{background:rgba(239,68,68,.12);border-color:var(--danger);color:var(--danger)}
+    .tq-quadro{grid-template-columns:1fr !important}
+    .tq-quadro[data-aba="atrasado"] .tq-col:not(.tq-col-atrasado),
+    .tq-quadro[data-aba="a_fazer"] .tq-col:not(.tq-col-a_fazer),
+    .tq-quadro[data-aba="andamento"] .tq-col:not(.tq-col-andamento),
+    .tq-quadro[data-aba="concluido"] .tq-col:not(.tq-col-concluido){display:none}
+    .tq-col{border:none;background:none;min-height:0}
+    .tq-col-tit{display:none}
+    .tq-col-corpo{padding:0}
+    .tq-card{cursor:default;padding:12px 14px}
+    .tq-tit{font-size:15px}
+    .tq-itens label{font-size:14.5px;padding:5px 0;gap:10px}
+    .tq-itens input{width:20px;height:20px;margin-top:1px}
+    .tq-mais{display:inline-flex;align-items:center;justify-content:center;width:36px;height:30px;margin-left:4px;border-radius:8px;
+      border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:18px;line-height:1;cursor:pointer;flex:none}
+    .tq-rodape{font-size:12.5px}
+    .tq-resumo{grid-template-columns:1fr}
+    .tq-avisos{max-height:none}
+    .tq-aviso{flex-wrap:wrap;row-gap:2px}
+    .tq-aviso-t{flex:1 1 100%;order:5;white-space:normal}
+    .tq-aviso-p{min-width:0}
+    .tq-aviso-d{margin-left:auto}
+    .tq-rodape-tela{font-size:12px}
+    /* drawer da demanda: ▲▼ no lugar da alça */
+    .tq-it-alca{display:none}
+    .tq-it-mv{display:inline-flex;align-items:center;justify-content:center;width:34px;height:36px;border-radius:6px;border:1px solid var(--border);
+      background:none;color:var(--muted);font-size:12px;cursor:pointer;flex:none}
+    .tq-it-rm{width:36px;height:36px;flex:none}
+    .tq-it-ed{gap:5px}
+    .tq-it-txt{min-width:0}
+    .tq-aba{padding:7px 11px;font-size:13px}
+    #tq-drawer .fld .tq-dias label{padding:8px 11px}
+    /* folha de ações do ⋯ */
+    .tq-folha{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.55);align-items:flex-end}
+    .tq-folha.open{display:flex}
+    .tq-folha-box{width:100%;background:var(--surface);border-top:1px solid var(--border);border-radius:18px 18px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));
+      animation:tqSobe .18s ease-out}
+    @keyframes tqSobe{from{transform:translateY(30px);opacity:.5}to{transform:none;opacity:1}}
+    .tq-folha-tit{font-weight:600;font-size:14px;color:var(--muted);padding:2px 4px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tq-folha-ops{display:flex;flex-direction:column;gap:6px}
+    .tq-folha-ops button,.tq-folha-x{width:100%;text-align:left;padding:14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);
+      color:var(--text);font-size:15px;cursor:pointer}
+    .tq-folha-x{margin-top:10px;text-align:center;background:none;color:var(--muted)}
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -1005,6 +1125,13 @@
 
 <!-- ============ APP ============ -->
 <div id="app">
+  <!-- barra do topo: só no celular (o menu vira gaveta que abre pelo ☰) -->
+  <header class="mob-topo">
+    <button type="button" class="mob-menu" id="mob-menu" aria-label="Abrir menu">☰<span class="mob-badge" id="mob-badge" style="display:none"></span></button>
+    <span class="mob-tit" id="mob-tit">Início</span>
+    <img src="logo.png" alt="Carrinhos_Net" class="mob-logo" id="mob-logo" onerror="this.style.display='none'" />
+  </header>
+  <div class="mob-overlay" id="mob-overlay"></div>
   <button class="floating-toggle" id="btn-expand" title="Mostrar menu">☰</button>
   <aside class="sidebar" id="sidebar">
     <div class="resize-handle" id="nav-resize" title="Arraste para ajustar a largura (duplo clique volta ao padrão)"></div>
@@ -2985,6 +3112,8 @@ let FAVICON_ORIGINAL = null;
 
 function aplicarBadgeGlobal(total){
   total = Number(total)||0;
+  // celular: o total aparece no botão ☰ (o menu fica escondido)
+  const mb=$('mob-badge'); if(mb){ mb.textContent = total>99 ? '99+' : String(total); mb.style.display = total>0 ? '' : 'none'; }
   // No titulo cabe o numero inteiro; o corte "99+" fica so no favicon,
   // que tem espaco para 3 caracteres.
   document.title = total>0 ? `(${total}) ${TITULO_BASE}` : TITULO_BASE;
@@ -3138,6 +3267,10 @@ async function abrirApp(){
   else document.querySelector('main').innerHTML='<p style="padding:40px;color:var(--muted)">Você não tem permissão para nenhuma tela.</p>';
 }
 function mostrarTela(t){
+  // celular: fecha a gaveta do menu e mostra o nome da tela na barra do topo
+  document.body.classList.remove('menu-aberto');
+  (function(){ const b=$('nav-'+t), el=$('mob-tit');
+    if(el) el.textContent = t==='inicio' ? 'Início' : (b && b.querySelector('.nav-lbl') ? b.querySelector('.nav-lbl').textContent : ''); })();
   document.querySelectorAll('.tela').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   const scr=$('scr-'+t); if(scr) scr.classList.add('active');
@@ -3360,7 +3493,14 @@ restaurarLarguraNav();
   alca.addEventListener('dblclick', ()=>aplicarLarguraNav(NAV_LARGURA_PADRAO));
 })();
 
-$('btn-collapse').addEventListener('click', ()=>$('app').classList.add('nav-hidden'));
+$('btn-collapse').addEventListener('click', ()=>{
+  // no celular o "‹" fecha a gaveta; no computador esconde o menu
+  if(window.matchMedia('(max-width:760px)').matches){ document.body.classList.remove('menu-aberto'); return; }
+  $('app').classList.add('nav-hidden');
+});
+$('mob-menu').addEventListener('click', ()=>document.body.classList.add('menu-aberto'));
+$('mob-overlay').addEventListener('click', ()=>document.body.classList.remove('menu-aberto'));
+$('mob-logo').addEventListener('click', ()=>{ if(typeof mostrarTela==='function') mostrarTela('inicio'); });
 $('btn-expand').addEventListener('click', ()=>$('app').classList.remove('nav-hidden'));
 document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click', ()=>mostrarTela(b.dataset.tela)));
 // categorias retráteis (abre/fecha ao clicar no título; lembra na sessão)
